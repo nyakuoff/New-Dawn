@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "defaults": {
+    "height_scale": 0.025,
+    "normal_strength": 1.0,
+    "invert": false,
+    "roughness_range": [
+      0.65,
+      0.95
+    ]
+  },
+  "materials": [
+    {
+      "resource": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00C340",
+      "label": "South Clock Town pale brick wall",
+      "overrides": {
+        "height_scale": 0.015,
+        "normal_strength": 1.0,
+        "invert": false,
+        "roughness_range": [
+          0.72,
+          0.95
+        ]
+      }
+    },
+    {
+      "resource": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00D880",
+      "label": "South Clock Town ochre brick wall",
+      "overrides": {
+        "height_scale": 0.018,
+        "normal_strength": 1.0,
+        "invert": false,
+        "roughness_range": [
+          0.7,
+          0.94
+        ]
+      }
+    },
+    {
+      "resource": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_010D00",
+      "label": "South Clock Town stone paving",
+      "overrides": {
+        "height_scale": 0.012,
+        "normal_strength": 1.0,
+        "invert": false,
+        "roughness_range": [
+          0.7,
+          0.93
+        ]
+      }
+    },
+    {
+      "resource": "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01F650",
+      "label": "Termina Field dirt path",
+      "overrides": {
+        "height_scale": 0.009,
+        "normal_strength": 1.0,
+        "invert": false,
+        "roughness_range": [
+          0.82,
+          0.98
+        ]
+      }
+    },
+    {
+      "resource": "scenes/nonmq/Z2_30GYOSON/Z2_30GYOSONTex_00F730",
+      "label": "Great Bay Coast pale sand candidate",
+      "overrides": {
+        "height_scale": 0.006,
+        "normal_strength": 1.0,
+        "invert": false,
+        "roughness_range": [
+          0.85,
+          0.99
+        ]
+      }
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_012B58",
+      "label": "Ikana Canyon rock face",
+      "overrides": {
+        "height_scale": 0.02,
+        "normal_strength": 1.0,
+        "invert": false,
+        "roughness_range": [
+          0.78,
+          0.98
+        ]
+      }
+    }
+  ]
+}
