@@ -116,6 +116,11 @@ static const std::vector<const char*> textureFilteringOptions = {
     "None",        // Fast::FILTER_NONE
 };
 
+// The cvar stores the actual sample count, not the combobox index.
+static const std::unordered_map<int32_t, const char*> anisotropyOptions = {
+    { 0, "Off (1x)" }, { 2, "2x" }, { 4, "4x" }, { 8, "8x" }, { 16, "16x" },
+};
+
 static const std::vector<const char*> motionBlurOptions = {
     "Dynamic (default)", // MOTION_BLUR_DYNAMIC
     "Always Off",        // MOTION_BLUR_ALWAYS_OFF
@@ -751,6 +756,27 @@ void BenMenu::AddSettings() {
                               "for comparison. Ambient occlusion buffer shows the occlusion on its own.")
                      .ComboVec(&newDawnDebugViewOptions)
                      .DefaultIndex(0));
+
+    AddWidget(path, "Texture Filtering", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Mipmaps", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Textures.Mipmaps")
+        .Options(CheckboxOptions()
+                     .Tooltip("Builds a mip chain for every game texture, removing shimmer on distant and oblique "
+                              "surfaces. Cost is about a third more texture memory. OpenGL only.")
+                     .DefaultValue(true));
+    AddWidget(path, "Anisotropy", WIDGET_CVAR_COMBOBOX)
+        .CVar("gNewDawn.Textures.Anisotropy")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_MIPMAPS_OFF); })
+        .Options(ComboboxOptions()
+                     .Tooltip("Improves texture sharpness on surfaces seen at a steep angle, such as floors. "
+                              "Requires mipmaps.")
+                     .ComboMap(&anisotropyOptions)
+                     .DefaultIndex(16));
+    AddWidget(path, "Mipmap LOD Bias: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Textures.LodBias")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_MIPMAPS_OFF); })
+        .Options(FloatSliderOptions().Min(-2.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(0.0f).Tooltip(
+            "Negative values sharpen textures at the cost of aliasing; positive values soften them."));
 
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
@@ -2514,6 +2540,9 @@ void BenMenu::InitElement() {
         { DISABLE_FOR_NEWDAWN_GRADE_OFF,
           { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.PostFx.Grade.Enabled", 1); },
             "Colour Grade is Disabled" } },
+        { DISABLE_FOR_NEWDAWN_MIPMAPS_OFF,
+          { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.Textures.Mipmaps", 1); },
+            "Mipmaps are Disabled" } },
         { DISABLE_FOR_MATCH_REFRESH_RATE_ON,
           { [](disabledInfo& info) -> bool { return CVarGetInteger("gMatchRefreshRate", 0); },
             "Match Refresh Rate is Enabled" } },
