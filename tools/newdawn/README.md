@@ -52,9 +52,11 @@ python3 tools/newdawn/materials.py --pack /path/to/local-pack.o2r --out /tmp/nd/
 ```
 
 The default `materials.json` selects six visually inspected world textures: three South
-Clock Town brick/paving surfaces, Termina Field dirt, Great Bay pale sand and Ikana
-rock. Scene membership and surface appearance identify these candidates; their exact
-in-game draw assignments still need confirmation. Use `--manifest FILE` to supply
+Clock Town brick/paving surfaces, Termina Field dirt, Great Bay pale plaster and Ikana
+rock. Debug captures confirmed the three Clock Town surfaces, the Great Bay texture (it lights the white plaster
+building walls, not the beach), the Termina Field dirt request and Ikana layered rock as live draws; the
+Termina Field dirt path itself was not found on screen in any tested view, so its look is unverified. Town brown paving and Ikana
+layered rock replace two unused candidates from the initial offline manifest. Use `--manifest FILE` to supply
 other canonical resource paths (without `alt/`). Each material's `overrides` accepts
 `height_scale` (UV units), `normal_strength`, `invert` (height sign), and
 `roughness_range: [lo, hi]` within `[0,1]`; `defaults` applies to every entry.
@@ -80,9 +82,8 @@ Binary contract, verified against this fork's `ResourceLoader` and
   unflagged native RGBA32; palettes and other layouts fail rather than guessing.
 - `alt/<resource>_n` and `_r` are TextureV1 type 9 (IA16 container), flags 0,
   scales 1, storing two tightly packed **linear RG8** bytes per texel. `_n` holds
-  normal X/Y; `_r` holds roughness/height. This uses IA16 only as a two-byte
-  container: a future material uploader must read RG8 directly, bypassing the
-  ordinary IA-to-RGBA albedo expansion. These files alone do not enable shading.
+  normal X/Y; `_r` holds roughness/height. The material uploader reads RG8 directly, bypassing the
+  ordinary IA-to-RGBA albedo expansion.
 - Decode normal XY as `RG/255*2-1`, reconstruct positive Z with
   `sqrt(max(0,1-dot(XY,XY)))`, then normalize. Convention: +X right, +Y up,
   +Z outward, while image rows increase downward. Preserve albedo alpha separately.
@@ -91,11 +92,68 @@ Binary contract, verified against this fork's `ResourceLoader` and
   Roughness maps bounded local standard deviation into the requested range.
   `newdawn-materials.json` inside the archive records generator version, recipes,
   per-entry source SHA-256 (including header), dimensions, scales and full-image
-  crop/UV metadata. Consumers must match the winning albedo hash before use.
+  crop/UV metadata. The runtime also checks `source_pixels_fnv1a64` (FNV-1a of decoded full-resolution
+  RGBA8), dimensions and source scales against the winning albedo, on a background worker.
+  Regenerate archives made before this fingerprint was added; stale/mismatched maps are skipped.
 
 Self-checks cover LE/BE TextureV1 round trips, malformed payload rejection, synthetic
 bump normal directions, wrap filtering, flat normals, roughness bounds, and agreement
 between stdlib and NumPy when available. Previews permit offline inspection only:
 painted shadows and colour variation can create false relief, and no in-game visual
-quality, runtime binding, or performance claim follows from generation. No gameplay,
-animation, shader or engine code changes are involved.
+quality claim follows from generation alone. The generator changes no gameplay or animation data.
+
+
+## Loading and lighting materials
+
+Drop the generated `newdawn-materials.o2r` into the game's `mods/` directory and enable it
+in the mod menu, after the albedo pack. It is an ordinary mod archive; no new loader or
+external asset directory is needed. Enable **New Dawn → Lighting → Companion Materials**
+and per-pixel lighting. The New Dawn preset enables both. `gNewDawn.Materials.Enabled`
+defaults to 0 outside the preset; `gNewDawn.Materials.Strength` defaults to 1 (0 restores
+original shading, range 0–2). The effect works in HDR and LDR on OpenGL.
+
+`capture.py --mods` accepts one directory and uses a private mod list. For full-pack plus
+companion captures, make a small directory of symlinks (the following only links local files):
+
+```sh
+mkdir -p /tmp/nd/matbind/mods
+for f in /home/loganp/dev/ghm-mods/sets/full/*.o2r; do
+    ln -s "$f" /tmp/nd/matbind/mods/
+done
+ln -s /path/to/generated/newdawn-materials.o2r /tmp/nd/matbind/mods/zz-newdawn-materials.o2r
+python tools/newdawn/capture.py --bin-dir build/mm --mods /tmp/nd/matbind/mods \
+    --points south_clock_town --rot 180 --out /tmp/nd/matbind/on \
+    --cvar gEnhancements.Mods.AlternateAssets=1 \
+    --cvar gNewDawn.Lighting.PerPixel=1 --cvar gNewDawn.Materials.Enabled=1
+```
+
+Add all `sNewDawnPresetCvars` values from `mm/2s2h/BenGui/BenMenu.cpp` for a full-preset
+comparison; the command above only demonstrates loading. Change Materials.Enabled to 0
+for the matching off image. Archives actually loaded are printed by the capture tool.
+
+Only supported opaque, lit world surfaces use maps: no rectangles, environment-generated
+UVs, masked/blended replacements, framebuffer textures, custom shaders or translucent draws.
+The renderer supports a separable texture×shade combiner, its primitive tint, primary
+albedo×detail, and two-albedo blends/LOD aliases. A companion follows its own tile's UV,
+clamp, repeat and mirror state; a real blend weights relief/highlights by that tile's
+contribution. If both different albedos have companions, one pair is selected (tile 0 wins);
+this foundation does not evaluate two full material lobes per pixel.
+
+Companion reads share the existing asynchronous resource pool. Flat shading continues
+while reads and provenance checks are pending. The existing synchronous rule for mod-only
+**albedo** remains intact. Hits and misses are cached per winning albedo until texture-cache
+invalidation; invalidation after a mod change is required. The RG8 maps use units 6/7,
+mipmaps and the same LRU GPU byte budget as albedo. Units 8+ remain for scene effects.
+There is no parallax, displacement or asset redistribution.
+
+`gNewDawn.Materials.Debug.Stats=1` optionally times all OpenGL draw batches with deferred
+GPU queries, equally with materials on/off. Compare the same scene, view, preset, resolution
+and GPU. Logs report ms/frame averaged over 300 output frames and any untimed draws; these
+exclude post-processing and presentation. Do not infer material cost from post-fx timers.
+
+Shading: a supported surface keeps the game's own per-pixel diffuse model (so tone, shadows and
+HDR behaviour match the surrounding scene) but evaluates it on the map-perturbed normal, then adds
+a GGX/Smith/Schlick dielectric specular term from the same light set, with roughness from the
+map widened by minification. Strength scales relief (0-2) and specular (capped at 1). With
+Enabled=0 frames were pixel-identical to a build without this feature in the three scenes tested. The New Dawn preset
+uses Strength 1.5.

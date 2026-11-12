@@ -37,8 +37,8 @@
       }
     },
     {
-      "resource": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_010D00",
-      "label": "South Clock Town stone paving",
+      "resource": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00CB40",
+      "label": "South Clock Town brown stone paving",
       "overrides": {
         "height_scale": 0.012,
         "normal_strength": 1.0,
@@ -64,7 +64,7 @@
     },
     {
       "resource": "scenes/nonmq/Z2_30GYOSON/Z2_30GYOSONTex_00F730",
-      "label": "Great Bay Coast pale sand candidate",
+      "label": "Great Bay Coast pale plaster wall",
       "overrides": {
         "height_scale": 0.006,
         "normal_strength": 1.0,
@@ -76,8 +76,8 @@
       }
     },
     {
-      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_012B58",
-      "label": "Ikana Canyon rock face",
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_017340",
+      "label": "Ikana Canyon layered rock face",
       "overrides": {
         "height_scale": 0.02,
         "normal_strength": 1.0,
