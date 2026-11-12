@@ -813,7 +813,7 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Shadow Radius: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Shadows.Radius")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
-        .Options(FloatSliderOptions().Min(300.0f).Max(3000.0f).Step(50.0f).Format("%.0f").DefaultValue(700.0f).Tooltip(
+        .Options(FloatSliderOptions().Min(300.0f).Max(3000.0f).Step(50.0f).Format("%.0f").DefaultValue(1500.0f).Tooltip(
             "Half the width of the area around Link that receives shadows, in world units."));
     AddWidget(path, "Shadow Map", WIDGET_CVAR_COMBOBOX)
         .CVar("gNewDawn.Shadows.MapSize")
@@ -821,7 +821,7 @@ void BenMenu::AddSettings() {
         .Options(ComboboxOptions()
                      .Tooltip("Shadow map resolution. Higher is sharper but costs more GPU time.")
                      .ComboMap(&shadowMapSizeOptions)
-                     .DefaultIndex(2048));
+                     .DefaultIndex(4096));
 
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);

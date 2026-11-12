@@ -14,8 +14,8 @@ static float NewDawnClampF(float value, float low, float high) {
 static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params) {
     params->shadowEnabled = 0;
     params->shadowStrength = 0.0f;
-    params->shadowRadius = 700.0f;
-    params->shadowMapSize = 2048;
+    params->shadowRadius = 1500.0f;
+    params->shadowMapSize = 4096;
 
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) || play->envCtx.sunDisabled ||
         play->envCtx.lightMode != LIGHT_MODE_TIME) {
@@ -50,8 +50,8 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
         focus = play->view.eye;
     }
 
-    float radius = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Radius", 700.0f), 200.0f, 5000.0f);
-    int mapSize = CVarGetInteger("gNewDawn.Shadows.MapSize", 2048);
+    float radius = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Radius", 1500.0f), 200.0f, 5000.0f);
+    int mapSize = CVarGetInteger("gNewDawn.Shadows.MapSize", 4096);
     mapSize = (int)NewDawnClampF((float)mapSize, 512.0f, 4096.0f);
 
     params->shadowEnabled = 1;
