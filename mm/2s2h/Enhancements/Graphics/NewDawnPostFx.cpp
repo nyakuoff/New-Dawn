@@ -14,7 +14,7 @@ static float NewDawnClampF(float value, float low, float high) {
 static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params) {
     params->shadowEnabled = 0;
     params->shadowStrength = 0.0f;
-    params->shadowRadius = 1500.0f;
+    params->shadowRadius = 700.0f;
     params->shadowMapSize = 2048;
 
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) || play->envCtx.sunDisabled ||
@@ -50,7 +50,7 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
         focus = play->view.eye;
     }
 
-    float radius = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Radius", 1500.0f), 200.0f, 5000.0f);
+    float radius = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Radius", 700.0f), 200.0f, 5000.0f);
     int mapSize = CVarGetInteger("gNewDawn.Shadows.MapSize", 2048);
     mapSize = (int)NewDawnClampF((float)mapSize, 512.0f, 4096.0f);
 
@@ -73,18 +73,13 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     params->shadowCameraEye[0] = play->view.eye.x;
     params->shadowCameraEye[1] = play->view.eye.y;
     params->shadowCameraEye[2] = play->view.eye.z;
-    params->shadowCameraAt[0] = play->view.at.x;
-    params->shadowCameraAt[1] = play->view.at.y;
-    params->shadowCameraAt[2] = play->view.at.z;
-    params->shadowCameraUp[0] = play->view.up.x;
-    params->shadowCameraUp[1] = play->view.up.y;
-    params->shadowCameraUp[2] = play->view.up.z;
 }
 
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
     auto* params = static_cast<NewDawnPostFxParams*>(GRAPH_ALLOC(play->state.gfxCtx, sizeof(NewDawnPostFxParams)));
+    memset(params, 0, sizeof(*params));
 
     // The same values Play_DrawMain hands to the projection (View_SetPerspective) and to Play_SetFog.
     s32 fogFar = play->lightCtx.zFar * (5.0f / 64.0f);

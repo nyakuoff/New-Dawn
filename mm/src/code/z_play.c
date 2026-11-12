@@ -1382,6 +1382,7 @@ void Play_DrawMain(PlayState* this) {
                         }
                     }
 
+                    NewDawnShadows_Begin(this);
                     Environment_Draw(this);
                 }
 
@@ -1403,7 +1404,6 @@ void Play_DrawMain(PlayState* this) {
                         gSPSetExtraGeometryMode(POLY_XLU_DISP++, G_EX_ALWAYS_EXECUTE_BRANCH);
                     }
 
-                    NewDawnShadows_Begin(this);
                     Scene_Draw(this);
                     if (this->roomCtx.unk78) {
                         Room_Draw(this, &this->roomCtx.curRoom, roomDrawFlags & 3);
