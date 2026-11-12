@@ -3,7 +3,7 @@
 > **Live handoff document.** Keep this brief and update after meaningful milestones. Record facts, not aspirations. Only one integration owner should edit this file at a time.
 
 ## Current milestone
-**M3: Shadows (#4).** M2 (texture quality, lighting, preset) is done and merged.
+**M4: Next visual features.** M3 (sun shadows, opt-in) was merged in #21.
 
 ## Implemented (merged to `main` / `new-dawn`)
 | Feature | Settings | Evidence |
@@ -13,6 +13,7 @@
 | Texture cache VRAM budget | `gNewDawn.Textures.CacheBudgetMB` (2048) | #14. A 64 MB stress test: no missing textures. |
 | Async HD texture loading | `gNewDawn.Textures.AsyncAltLoad` | #16 and #19. The scene-entry stall drops from about 290 to about 175 ms. Mod-only textures load synchronously. |
 | Per-pixel lighting (opt-in) | `gNewDawn.Lighting.PerPixel`, `.PointLightQuality` | #15. Off is pixel-identical; point lights were verified in the Astral Observatory. |
+| Real-time sun shadows (opt-in) | `gNewDawn.Shadows.*` | #21. Ikana and Termina cast correctly; 0.3 ms GPU. Not yet checked in motion. |
 | New Dawn graphics preset buttons | the `sNewDawnPresetCvars` table in BenMenu.cpp | #17 |
 | Capture tool, branding, docs | `tools/newdawn/`, `docs/images` | #8, #9, #11 |
 
@@ -23,15 +24,15 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 - With the preset and the full mods set: no magenta or missing textures, 0 null-texture and 0 GL errors in the logs. The image is slightly darker overall (AO plus contrast).
 
 ## In progress
-| Owner | Task | Where |
-| --- | --- | --- |
-| DeepSeek 5eb97e6a | Shadows v1 (#4): same-frame deferred sun shadow map. Reconstruction is fixed (exact inverse P_matrix). Remaining problem: world geometry barely casts, probably because alpha-compare draws are skipped, so it is moving to alpha-tested casters. | `../nd-lighting`, branch `feature/shadows` (both repos) |
+Nothing is running. OpenCode Go hit its weekly limit on 2026-11-12, and Codex was limited until 12:21 Africa/Casablanca that day.
 
 ## Next priority
-1. Finish and merge shadows (#4), off by default until validated at midday in several scenes.
-2. Candidates after that: sun shafts / god rays (post-fx), water, and making shadows default-on in the preset.
+1. Check shadows in motion (swimming, actor lag) in a daytime scene with a moving camera. Then add them to the preset and make them default-on (#4).
+2. Sun shafts / god rays (post-fx, reusing the shadow map for occlusion).
+3. Water and sky improvements, investigated before committing to them.
 
 ## Known limitations
+- Shadows: casters the game culls itself (room meshes beyond camera distance or FOV, distant actors) are missing. Foliage with alpha cutouts does not cast.
 - Post-fx and mipmaps are OpenGL only. With MSAA, AO uses one depth sample.
 - With mipmaps on, vanilla textures use bilinear filtering instead of three-point. The N64 two-tile LOD is not emulated.
 
