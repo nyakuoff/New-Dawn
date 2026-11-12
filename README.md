@@ -1,3 +1,9 @@
+<p align="center"><img src="docs/images/new-dawn-wordmark.png" width="600"></p>
+
+**New Dawn** is a visual-only modernization of *The Legend of Zelda: Majora's Mask*, built on top of [2 Ship 2 Harkinian](https://github.com/2ship2harkinian/2ship2harkinian). Gameplay, story, and mechanics are untouched — only the visuals have been reimagined. See [docs/NEW_DAWN.md](docs/NEW_DAWN.md) for more about the project.
+
+The original 2 Ship 2 Harkinian readme follows.
+
 [comment]: <> (Todo: Make Light Mode Image)
 [comment]: <> (Todo: Make Dark Mode Image)
 
