@@ -98,7 +98,9 @@ static const NewDawnWaterScene sNewDawnWaterScenes[] = {
 
 static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params) {
     params->waterEnabled = 0;
-    if (!CVarGetInteger("gNewDawn.Water.Enabled", 0) || play->colCtx.colHeader == NULL) {
+    // Without a time of day there is no sun or moon, so only the faint sky tint would be left: interiors skip the pass.
+    if (!CVarGetInteger("gNewDawn.Water.Enabled", 0) || play->colCtx.colHeader == NULL ||
+        play->envCtx.lightMode != LIGHT_MODE_TIME) {
         return;
     }
     const CollisionHeader* col = play->colCtx.colHeader;
@@ -114,6 +116,9 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
         float dx = NewDawnClampF(play->view.eye.x, box->minPos.x, box->minPos.x + box->xLength) - play->view.eye.x;
         float dz = NewDawnClampF(play->view.eye.z, box->minPos.z, box->minPos.z + box->zLength) - play->view.eye.z;
         float distSq = dx * dx + dz * dz;
+        if (distSq > play->view.zFar * play->view.zFar) {
+            continue; // beyond the far plane, can never be seen
+        }
         int slot = count;
         if (count == NEWDAWN_MAX_WATER_BOXES) {
             slot = 0; // replace the farthest
