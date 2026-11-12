@@ -778,6 +778,22 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(-2.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(0.0f).Tooltip(
             "Negative values sharpen textures at the cost of aliasing; positive values soften them."));
 
+    AddWidget(path, "Lighting", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Per-Pixel Lighting", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Lighting.PerPixel")
+        .Options(CheckboxOptions()
+                     .Tooltip("Computes the game's lighting for every pixel instead of every vertex. Large, low-poly "
+                              "surfaces get smooth gradients and point lights get smooth falloff across a triangle. "
+                              "At the default setting the result is meant to match the original shading closely. "
+                              "OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Point Light Smoothness: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Lighting.PointLightQuality")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.0f).Tooltip(
+            "0.00 reproduces the original distance stepping of point lights. Higher values smooth "
+            "the falloff instead of showing rings. Requires per-pixel lighting."));
+
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
     AddWidget(path, "Popout Bindings Window", WIDGET_WINDOW_BUTTON)
@@ -2543,6 +2559,9 @@ void BenMenu::InitElement() {
         { DISABLE_FOR_NEWDAWN_MIPMAPS_OFF,
           { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.Textures.Mipmaps", 1); },
             "Mipmaps are Disabled" } },
+        { DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF,
+          { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.Lighting.PerPixel", 0); },
+            "Per-Pixel Lighting is Disabled" } },
         { DISABLE_FOR_MATCH_REFRESH_RATE_ON,
           { [](disabledInfo& info) -> bool { return CVarGetInteger("gMatchRefreshRate", 0); },
             "Match Refresh Rate is Enabled" } },
