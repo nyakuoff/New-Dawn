@@ -944,6 +944,17 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.5f).Tooltip(
             "How strong the glints and reflection are. Scenes with dull water (the poisoned swamp) get less."));
 
+    AddWidget(path, "Water Reflections", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Reflections")
+        .Options(CheckboxOptions()
+                     .Tooltip("Soft reflections of the visible opaque world on water. Objects outside the screen fade "
+                              "to the sky tint. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Reflection Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.ReflectionStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.35f).Tooltip(
+            "How visible the water reflections are. The poisoned swamp gets a weaker reflection."));
+
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
     AddWidget(path, "Popout Bindings Window", WIDGET_WINDOW_BUTTON)
