@@ -44,6 +44,7 @@ u8 sMotionBlurStatus;
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/Enhancements/Graphics/Graphics.h"
+#include "2s2h/Enhancements/Graphics/NewDawnPostFx.h"
 #include "2s2h/DeveloperTools/CollisionViewer.h"
 #include "2s2h/framebuffer_effects.h"
 #include <string.h>
@@ -1437,6 +1438,8 @@ void Play_DrawMain(PlayState* this) {
                 Actor_DrawAll(this, &this->actorCtx);
             }
 
+            NewDawnPostFx_OpaqueEnd(this);
+
             if (1) {
                 if (!this->envCtx.sunDisabled) {
                     temp.x = this->view.eye.x + this->envCtx.sunPos.x;
@@ -1479,6 +1482,8 @@ void Play_DrawMain(PlayState* this) {
             if (1) {
                 DebugDisplay_DrawObjects(this);
             }
+
+            NewDawnPostFx_SceneEnd(this);
 
             Play_DrawMotionBlur(this);
 

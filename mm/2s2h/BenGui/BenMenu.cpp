@@ -104,6 +104,12 @@ static const std::vector<const char*> fastTransformationOptions = {
     "After First Time", // FAST_TRANSFORM_AFTER_FIRST
 };
 
+static const std::vector<const char*> newDawnDebugViewOptions = {
+    "Normal",
+    "Split screen (left half unprocessed)",
+    "Ambient occlusion buffer",
+};
+
 static const std::vector<const char*> textureFilteringOptions = {
     "Three-Point", // Fast::FILTER_THREE_POINT,
     "Linear",      // Fast::FILTER_LINEAR
@@ -668,6 +674,83 @@ void BenMenu::AddSettings() {
 
     path.column = SECTION_COLUMN_2;
     AddWidget(path, "Advanced Graphics Options", WIDGET_SEPARATOR_TEXT);
+
+    AddWidget(path, "New Dawn", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Scene Post-Processing", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.PostFx.Enabled")
+        .Options(CheckboxOptions()
+                     .Tooltip("Modernizes the look of the 3D world with ambient occlusion, bloom, a gentle colour "
+                              "grade and dithering. The HUD and menus are not affected. When off, the game renders "
+                              "exactly as before. OpenGL only.")
+                     .DefaultValue(true));
+    AddWidget(path, "Ambient Occlusion", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.PostFx.AO.Enabled")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(CheckboxOptions().Tooltip("Darkens creases and the contact areas under objects.").DefaultValue(true));
+    AddWidget(path, "AO Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.PostFx.AO.Strength")
+        .PreFunc([](WidgetInfo& info) {
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF);
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_AO_OFF);
+        })
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.4f).Tooltip(
+            "How dark the occlusion gets."));
+    AddWidget(path, "AO Radius: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.PostFx.AO.Radius")
+        .PreFunc([](WidgetInfo& info) {
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF);
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_AO_OFF);
+        })
+        .Options(FloatSliderOptions().Min(5.0f).Max(150.0f).Step(1.0f).Format("%.0f").DefaultValue(40.0f).Tooltip(
+            "How far occlusion reaches, in world units. Link is roughly 60 units tall."));
+    AddWidget(path, "Bloom", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.PostFx.Bloom.Enabled")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(CheckboxOptions().Tooltip("A soft glow around the brightest highlights.").DefaultValue(true));
+    AddWidget(path, "Bloom Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.PostFx.Bloom.Strength")
+        .PreFunc([](WidgetInfo& info) {
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF);
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_BLOOM_OFF);
+        })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.01f).Format("%.2f").DefaultValue(0.25f).Tooltip(
+            "How strong the glow is."));
+    AddWidget(path, "Bloom Threshold: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.PostFx.Bloom.Threshold")
+        .PreFunc([](WidgetInfo& info) {
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF);
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_BLOOM_OFF);
+        })
+        .Options(FloatSliderOptions().Min(0.5f).Max(0.98f).Step(0.01f).Format("%.2f").DefaultValue(0.90f).Tooltip(
+            "Brightness above which things glow. Lower values make more of the scene glow and can look hazy."));
+    AddWidget(path, "Colour Grade", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.PostFx.Grade.Enabled")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(CheckboxOptions().Tooltip("A gentle contrast and saturation adjustment.").DefaultValue(true));
+    AddWidget(path, "Contrast: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.PostFx.Grade.Contrast")
+        .PreFunc([](WidgetInfo& info) {
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF);
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_GRADE_OFF);
+        })
+        .Options(FloatSliderOptions().Min(0.7f).Max(1.4f).Step(0.01f).Format("%.2f").DefaultValue(1.06f).Tooltip(
+            "1.00 leaves contrast unchanged."));
+    AddWidget(path, "Saturation: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.PostFx.Grade.Saturation")
+        .PreFunc([](WidgetInfo& info) {
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF);
+            info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_GRADE_OFF);
+        })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.6f).Step(0.01f).Format("%.2f").DefaultValue(1.08f).Tooltip(
+            "1.00 leaves colours unchanged."));
+    AddWidget(path, "Debug View", WIDGET_CVAR_COMBOBOX)
+        .CVar("gNewDawn.PostFx.Debug.View")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(ComboboxOptions()
+                     .Tooltip("Normal shows the result. Split screen leaves the left half of the screen unprocessed "
+                              "for comparison. Ambient occlusion buffer shows the occlusion on its own.")
+                     .ComboVec(&newDawnDebugViewOptions)
+                     .DefaultIndex(0));
 
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
@@ -2419,6 +2502,18 @@ void BenMenu::InitElement() {
                       Fast::WindowBackend::FAST3D_DXGI_DX11;
            },
             "Not Available on DirectX" } },
+        { DISABLE_FOR_NEWDAWN_POSTFX_OFF,
+          { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.PostFx.Enabled", 1); },
+            "Scene Post-Processing is Disabled" } },
+        { DISABLE_FOR_NEWDAWN_AO_OFF,
+          { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.PostFx.AO.Enabled", 1); },
+            "Ambient Occlusion is Disabled" } },
+        { DISABLE_FOR_NEWDAWN_BLOOM_OFF,
+          { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.PostFx.Bloom.Enabled", 1); },
+            "Bloom is Disabled" } },
+        { DISABLE_FOR_NEWDAWN_GRADE_OFF,
+          { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.PostFx.Grade.Enabled", 1); },
+            "Colour Grade is Disabled" } },
         { DISABLE_FOR_MATCH_REFRESH_RATE_ON,
           { [](disabledInfo& info) -> bool { return CVarGetInteger("gMatchRefreshRate", 0); },
             "Match Refresh Rate is Enabled" } },

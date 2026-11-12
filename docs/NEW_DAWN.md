@@ -19,8 +19,8 @@ modern remake while playing exactly like the original.
 | Area | Location |
 |---|---|
 | Renderer (Fast3D interpreter, OpenGL backend, post-processing) | `libultraship/` submodule, fork [New-Dawn-libultraship](https://github.com/nyakuoff/New-Dawn-libultraship), branch `new-dawn` |
-| Game-side hooks and settings | `mm/2s2h/Enhancements/Graphics/`, the "Green Hat's Mask" group in the Graphics menu |
-| Test and capture tooling | `tools/ghm/` |
+| Game-side hooks and settings | `mm/2s2h/Enhancements/Graphics/`, the "New Dawn" group in the Graphics menu |
+| Test and capture tooling | `tools/newdawn/` |
 
 ## Textures and models
 
