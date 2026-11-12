@@ -150,26 +150,34 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     // Scene post-processing.
     { "gNewDawn.PostFx.Enabled", false, 1.0f, 1.0f },
     { "gNewDawn.PostFx.AO.Enabled", false, 1.0f, 1.0f },
-    { "gNewDawn.PostFx.AO.Strength", true, 1.4f, 1.4f },
+    { "gNewDawn.PostFx.AO.Strength", true, 1.2f, 1.4f },
     { "gNewDawn.PostFx.AO.Radius", true, 40.0f, 40.0f },
     { "gNewDawn.PostFx.Bloom.Enabled", false, 1.0f, 1.0f },
-    { "gNewDawn.PostFx.Bloom.Strength", true, 0.25f, 0.25f },
-    { "gNewDawn.PostFx.Bloom.Threshold", true, 0.90f, 0.90f },
+    { "gNewDawn.PostFx.Bloom.Strength", true, 0.18f, 0.25f },
+    { "gNewDawn.PostFx.Bloom.Threshold", true, 1.0f, 0.90f },
     { "gNewDawn.PostFx.Grade.Enabled", false, 1.0f, 1.0f },
     { "gNewDawn.PostFx.Grade.Contrast", true, 1.06f, 1.06f },
     { "gNewDawn.PostFx.Grade.Saturation", true, 1.08f, 1.08f },
     { "gNewDawn.PostFx.Debug.View", false, 0.0f, 0.0f },
+    { "gNewDawn.PostFx.Dither.Enabled", false, 1.0f, 1.0f },
+    // Linear HDR world and display transform. Defaults stay opt-in outside this preset.
+    { "gNewDawn.HDR.Enabled", false, 1.0f, 0.0f },
+    { "gNewDawn.HDR.Exposure", true, -0.2f, -0.2f },
+    { "gNewDawn.HDR.SunIntensity", true, 1.8f, 1.8f },
+    { "gNewDawn.HDR.AmbientFill", true, 0.55f, 0.4f },
+    { "gNewDawn.HDR.SkyIntensity", true, 0.85f, 1.0f },
+    { "gNewDawn.HDR.FogIntensity", true, 0.85f, 1.0f },
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
     // Sun shadows (outdoor daytime only; the renderer disables them indoors, at night and at the horizon).
     { "gNewDawn.Shadows.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.Shadows.Strength", true, 0.7f, 1.0f }, // soft daylight shade rather than near-black
-    { "gNewDawn.Shadows.Floor", true, 0.65f, 0.55f },
+    { "gNewDawn.Shadows.Strength", true, 0.85f, 1.0f }, // sun occlusion; HDR ambient fill preserves readability
+    { "gNewDawn.Shadows.Floor", true, 0.30f, 0.55f },
     { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
     { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f }, // needs shadows
-    { "gNewDawn.SunShafts.Strength", true, 0.4f, 0.4f },
+    { "gNewDawn.SunShafts.Strength", true, 0.18f, 0.4f },
     { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Water.Strength", true, 0.5f, 0.5f },
     { "gNewDawn.Water.Reflections", false, 1.0f, 0.0f },
@@ -803,6 +811,18 @@ void BenMenu::AddSettings() {
         })
         .Options(FloatSliderOptions().Min(5.0f).Max(150.0f).Step(1.0f).Format("%.0f").DefaultValue(40.0f).Tooltip(
             "How far occlusion reaches, in world units. Link is roughly 60 units tall."));
+    AddWidget(path, "Display Dither", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.PostFx.Dither.Enabled")
+        .Options(CheckboxOptions().Tooltip("Reduce banding in the final display image.").DefaultValue(true));
+    AddWidget(path, "HDR Lighting", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.HDR.Enabled")
+        .Options(CheckboxOptions()
+                     .Tooltip("Linear lighting with filmic highlights. Included in the New Dawn preset.")
+                     .DefaultValue(false));
+    AddWidget(path, "HDR Exposure: %.2f EV", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.HDR.Exposure")
+        .Options(FloatSliderOptions().Min(-2.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(-0.2f).Tooltip(
+            "Brightness of the HDR world before the display transform."));
     AddWidget(path, "Bloom", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Bloom.Enabled")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
@@ -821,7 +841,7 @@ void BenMenu::AddSettings() {
             info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF);
             info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_BLOOM_OFF);
         })
-        .Options(FloatSliderOptions().Min(0.5f).Max(0.98f).Step(0.01f).Format("%.2f").DefaultValue(0.90f).Tooltip(
+        .Options(FloatSliderOptions().Min(0.5f).Max(4.0f).Step(0.01f).Format("%.2f").DefaultValue(0.90f).Tooltip(
             "Brightness above which things glow. Lower values make more of the scene glow and can look hazy."));
     AddWidget(path, "Colour Grade", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Grade.Enabled")

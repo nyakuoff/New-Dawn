@@ -41,12 +41,12 @@ Record only decisions that materially constrain future work. Avoid logs, specula
 ### ND-004 — Deferred, same-frame sun shadows
 - **Date:** 2026-11-12
 - **Status:** Accepted (in progress)
-- **Decision:** World-space opaque triangles are recorded during the opaque pass. At the OPAQUE_END marker they are rendered to a sun-aligned orthographic shadow map centred on the player. A screen-space pass then reconstructs world position with the exact inverse projection and darkens only the direct-light term.
+- **Decision:** World-space opaque triangles are recorded during the opaque pass. At the OPAQUE_END marker they are rendered to a sun-aligned orthographic shadow map centred on the player. A screen-space pass then reconstructs world position with the exact inverse projection and attenuates the estimated direct-light fraction (no separate direct-light attachment).
 - **Alternatives considered:** a previous-frame shadow map (rejected: actor shadows lag a frame) and a second display-list walk (rejected: double CPU cost).
 
 ### ND-005 — Explicit HDR world and display-colour boundary
 - **Date:** 2026-11-12
-- **Status:** Accepted experiment (lead-approved HDR design)
+- **Status:** Accepted M1 experiment (continued by ND-006)
 - **Decision:** Extend ND-003 with a `WORLD_BEGIN` colour phase and scene-end display conversion. RGBA16F replaces only world colour; the original depth/stencil attachment, canonical framebuffer IDs and gameplay depth queries remain intact. Legacy captures store display colour, including early tonemapped snapshots.
 - **Tradeoffs / rollback:** Default off; single-sample only. Incompatible scene effects are gated off, and Deku bubble refraction falls back to LDR. Unsupported combiners retain their bounded artistic result. Disable `gNewDawn.HDR.Enabled` to restore the existing renderer.
 - **Controls:** `gNewDawn.HDR.Enabled` (0), `.Exposure` (EV, default -0.2, -8..8), `.SunIntensity` (1.8, 0..16), `.AmbientFill` (0.4, 0..4), `.Debug.Inspect` (every 300 frames: float peak, pixels>1, depth samples; keep off for timings). Defaults tuned from side-by-sides at Termina Field and South Clock Town (08:00, 12:00); the earlier 4.0 sun blew out noon surfaces.
@@ -54,3 +54,13 @@ Record only decisions that materially constrain future work. Avoid logs, specula
 - **Gated under HDR:** AO, sun shadows, shafts, water, bloom and grade (LDR-only, RGB8 targets); MSAA above 1 (whole feature falls back, logged once); frames with a Deku bubble actor (it samples a display-colour capture as a texture). Pause and pictograph buffers stay display colour; saved pause backgrounds skip HDR.
 - **Verified 2026-11-12 (RX 7800 XT, 1080p, MSAA 1):** off is byte-identical to main in both test scenes; pre-tonemap peak 1.76-1.97 (up to 103k pixels over 1 at noon); depth samples and `GetPixelDepth` equal on/off; opaque HUD patches identical; display conversion 0.03-0.04 ms GPU (legacy AO plus bloom/grade: about 0.47-0.58 ms, gated off in HDR; total world cost unmeasured); 0 GL errors over 300-frame live-to-pause runs. Pictograph, Deku bubble, resize, transitions and repeated pause were not exercised.
 - **Next:** linear AO/shadow application with direct-versus-ambient separation, HDR bloom, sky calibration, float MSAA, display-source materials, then HDR in the preset.
+
+### ND-006 — HDR scene effects and multisample presentation
+- **Date:** 2026-11-12
+- **Status:** Accepted (HDR milestone 2)
+- **Decision:** Keep scene colour in RGBA16F through AO, shadows, shafts, water/SSR and bloom. Resolve multisampled RGBA16F into same-format scratch before sampling. Add bloom radiance before the display transform; grade after the transform and sRGB encoding, then dither last. The New Dawn preset enables HDR and MSAA 4; individual features remain switchable.
+- **Depth / capture contract:** Replace only the game FBO's colour attachment. Keep its original DEPTH24_STENCIL8 storage, sample count and GetPixelDepth implementation. Early copies/readbacks sample a private single-sample display snapshot. At scene end restore the original RGB8 colour attachment and shader-copy display colour into it, including when multisampled. Later HUD, pause and capture draws remain in display colour.
+- **Atmosphere:** Explicit skybox begin/end markers classify sky draws without changing their order. HDR-only SkyIntensity and FogIntensity scale decoded artistic colours; fog ranges/factors and environment time remain unchanged.
+- **Tradeoffs:** AO multiplies the linear opaque scene because no separate indirect-light attachment exists. Shadows estimate the direct/ambient ratio using HDR light scales; points, emission and baked texture shadows cannot be isolated exactly. A direct-light auxiliary attachment remains future work. The existing Deku-bubble LDR fallback and bounded unsupported combiners remain.
+- **Rollback:** Disable gNewDawn.HDR.Enabled (also exposed in the graphics menu). Reset Graphics restores the previous opt-in HDR default. The existing LDR effect branches remain; downsample, shadow and composite shaders compile separate HDR/LDR variants from shared GLSL so the HDR arithmetic does not perturb legacy rounding. The bloom threshold retains its legacy clamp in LDR.
+- **Validation:** See docs/HDR_M2.md for capture commands, image review, GPU measurements and unexercised cases. No proprietary assets or game captures are added to the repository.
