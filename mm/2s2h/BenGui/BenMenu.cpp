@@ -145,6 +145,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Textures.AsyncAltLoad", false, 1.0f, 1.0f },     // load HD textures in the background
     { "gNewDawn.Textures.Mipmaps", false, 1.0f, 1.0f },          // no shimmer on distant surfaces
     { "gNewDawn.Textures.Anisotropy", false, 16.0f, 16.0f },     // sharp floors and walls at steep angles
+    { "gNewDawn.Textures.AlphaToCoverage", false, 1.0f, 1.0f },  // smooth foliage and fence edges (needs MSAA)
     { "gNewDawn.Textures.LodBias", true, 0.0f, 0.0f },
     // Scene post-processing.
     { "gNewDawn.PostFx.Enabled", false, 1.0f, 1.0f },
@@ -852,6 +853,12 @@ void BenMenu::AddSettings() {
         .Options(CheckboxOptions()
                      .Tooltip("Builds a mip chain for every game texture, removing shimmer on distant and oblique "
                               "surfaces. Cost is about a third more texture memory. OpenGL only.")
+                     .DefaultValue(true));
+    AddWidget(path, "Smooth Cutout Edges", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Textures.AlphaToCoverage")
+        .Options(CheckboxOptions()
+                     .Tooltip("With MSAA on, anti-aliases the edges of alpha-tested textures (leaves, fences, grass) "
+                              "using alpha-to-coverage. No effect without MSAA. OpenGL only.")
                      .DefaultValue(true));
     AddWidget(path, "Anisotropy", WIDGET_CVAR_COMBOBOX)
         .CVar("gNewDawn.Textures.Anisotropy")
