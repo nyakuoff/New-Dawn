@@ -143,6 +143,14 @@ def box_blur(values, width, height, radius):
     return a
 
 
+def pixel_fingerprint(pixels):
+    """FNV-1a of decoded RGBA8; the renderer checks this off its render thread."""
+    value = 14695981039346656037
+    for byte in pixels:
+        value = ((value ^ byte) * 1099511628211) & 0xffffffffffffffff
+    return f"{value:016x}"
+
+
 def normal_map(heightmap, width, height, scale):
     """+X right, +Y up (image rows down), +Z out; height scale is in UV units."""
     if np is not None:
@@ -291,6 +299,8 @@ def self_check():
         pass
     else:
         raise AssertionError("truncated payload accepted")
+    assert pixel_fingerprint(b"") == "cbf29ce484222325"
+    assert pixel_fingerprint(b"hello") == "a430d84680aabd0b"
     # Exercise both implementations, checking signs, wrapping, bounds and agreement.
     original_np = np
     results = []
@@ -380,6 +390,7 @@ def run(args):
                     pixels = albedo_rgba(tex)
                 except ValueError as exc:
                     raise ValueError(f"{entry}: {exc}") from exc
+                pixel_hash = pixel_fingerprint(pixels)
                 w, h = tex.width, tex.height
                 if args.resolution == 2:
                     pixels = half_rgba(pixels, w, h)
@@ -392,6 +403,7 @@ def run(args):
                 metadata["materials"].append({
                     "resource": resource, "label": item.get("label", resource),
                     "source_sha256": hashlib.sha256(raw).hexdigest(),
+                    "source_pixels_fnv1a64": pixel_hash,
                     "source_hash_scope": "entire uncompressed TextureV1 entry, including header",
                     "source_size": [tex.width, tex.height], "output_size": [w, h],
                     "source_type": tex.kind, "source_flags": tex.flags,

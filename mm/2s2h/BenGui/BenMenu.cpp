@@ -170,6 +170,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
+    { "gNewDawn.Materials.Enabled", false, 1.0f, 0.0f },
+    { "gNewDawn.Materials.Strength", true, 1.5f, 1.0f },
     // Sun shadows (outdoor daytime only; the renderer disables them indoors, at night and at the horizon).
     { "gNewDawn.Shadows.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Shadows.Strength", true, 0.85f, 1.0f }, // sun occlusion; HDR ambient fill preserves readability
@@ -914,6 +916,16 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.0f).Tooltip(
             "0.00 reproduces the original distance stepping of point lights. Higher values smooth "
             "the falloff instead of showing rings. Requires per-pixel lighting."));
+
+    AddWidget(path, "Companion Materials", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Materials.Enabled")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Light supported HD world surfaces using companion normal and roughness maps. "
+            "Requires a locally generated material archive and per-pixel lighting. OpenGL only."));
+    AddWidget(path, "Material Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Materials.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "Surface relief and dielectric highlights. Zero restores the original shading."));
 
     AddWidget(path, "Shadows", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Real-time Shadows", WIDGET_CVAR_CHECKBOX)
