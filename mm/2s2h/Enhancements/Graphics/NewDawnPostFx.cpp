@@ -99,7 +99,7 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     params->waterEnabled = 0;
     const bool glints = CVarGetInteger("gNewDawn.Water.Enabled", 0) != 0;
     const bool reflections = CVarGetInteger("gNewDawn.Water.Reflections", 0) != 0 &&
-                             CVarGetFloat("gNewDawn.Water.ReflectionStrength", 0.35f) > 0.0f;
+                             CVarGetFloat("gNewDawn.Water.ReflectionStrength", 0.7f) > 0.0f;
     if ((!glints && !reflections) || play->colCtx.colHeader == NULL) {
         return;
     }
@@ -187,7 +187,7 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     params->waterEnabled = 1;
     params->waterReflections = reflections;
     params->waterReflectionStrength =
-        reflections ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.ReflectionStrength", 0.35f), 0.0f, 1.0f) * sceneFactor
+        reflections ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.ReflectionStrength", 0.7f), 0.0f, 1.0f) * sceneFactor
                     : 0.0f;
     params->waterDebug = CVarGetInteger("gNewDawn.Water.Debug", 0);
     params->waterStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Water.Strength", 0.5f), 0.0f, 1.0f) * sceneFactor *

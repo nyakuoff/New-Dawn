@@ -171,6 +171,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.SunShafts.Strength", true, 0.4f, 0.4f },
     { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Water.Strength", true, 0.5f, 0.5f },
+    { "gNewDawn.Water.Reflections", false, 1.0f, 0.0f },
+    { "gNewDawn.Water.ReflectionStrength", true, 0.7f, 0.7f },
 };
 
 // Applies the preset (or returns the same cvars to their defaults) and persists the config.
@@ -947,12 +949,12 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Water Reflections", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Water.Reflections")
         .Options(CheckboxOptions()
-                     .Tooltip("Soft reflections of the visible opaque world on water. Objects outside the screen fade "
-                              "to the sky tint. OpenGL only.")
+                     .Tooltip("Reflections of nearby scenery, softened by gentle waves. Objects outside the screen fade "
+                              "into the sky colour. OpenGL only.")
                      .DefaultValue(false));
     AddWidget(path, "Reflection Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Water.ReflectionStrength")
-        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.35f).Tooltip(
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.7f).Tooltip(
             "How visible the water reflections are. The poisoned swamp gets a weaker reflection."));
 
     path.sidebarName = "Controls";
