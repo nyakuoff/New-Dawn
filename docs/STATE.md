@@ -13,7 +13,7 @@
 | Texture cache VRAM budget | `gNewDawn.Textures.CacheBudgetMB` (2048) | #14. A 64 MB stress test: no missing textures. |
 | Async HD texture loading | `gNewDawn.Textures.AsyncAltLoad` | #16 and #19. The scene-entry stall drops from about 290 to about 175 ms. Mod-only textures load synchronously. |
 | Per-pixel lighting (opt-in) | `gNewDawn.Lighting.PerPixel`, `.PointLightQuality` | #15. Off is pixel-identical; point lights were verified in the Astral Observatory. |
-| Real-time sun shadows (opt-in) | `gNewDawn.Shadows.*` | #21. Ikana and Termina cast correctly; 0.3 ms GPU. Not yet checked in motion. |
+| Real-time sun shadows (opt-in) | `gNewDawn.Shadows.*` | #21. Ikana and Termina cast correctly; 0.3 ms GPU. Checked in motion (walking, interpolated sub-frames, time-of-day fades): no swimming or lag. In the preset; the cvar default is still off. |
 | New Dawn graphics preset buttons | the `sNewDawnPresetCvars` table in BenMenu.cpp | #17 |
 | Capture tool, branding, docs | `tools/newdawn/`, `docs/images` | #8, #9, #11 |
 
@@ -27,7 +27,7 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 Nothing is running. OpenCode Go hit its weekly limit on 2026-11-12, and Codex was limited until 12:21 Africa/Casablanca that day.
 
 ## Next priority
-1. Check shadows in motion (swimming, actor lag) in a daytime scene with a moving camera. Then add them to the preset and make them default-on (#4).
+1. Make shadows default-on (#4). Motion checks passed; scene-to-scene transitions are untested.
 2. Sun shafts / god rays (post-fx, reusing the shadow map for occlusion).
 3. Water and sky improvements, investigated before committing to them.
 

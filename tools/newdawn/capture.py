@@ -255,6 +255,8 @@ def main():
     ap.add_argument("--out", help="output directory (default <bin-dir>/captures/<timestamp>)")
     ap.add_argument("--points", default="all", help="comma separated capture point names, or 'all' (default). See --list")
     ap.add_argument("--attract", metavar="SECONDS", help=f"also/only capture the title sequence at these seconds after launch, e.g. {DEFAULT_ATTRACT}")
+    ap.add_argument("--burst", metavar="N,INTERVAL", help="take N screenshots INTERVAL seconds apart per point, starting at --wait, "
+                    "named <point>_00.png ... (each screenshot adds its own latency, so the real spacing can be larger)")
     ap.add_argument("--no-points", action="store_true", help="skip the named points (use with --attract)")
     ap.add_argument("--wait", type=float, default=10.0, help="seconds after launch before the screenshot of a point (default %(default)s)")
     ap.add_argument("--width", type=int, default=1920)
@@ -291,7 +293,11 @@ def main():
     try:
         for n in names:
             print(f"[{time.monotonic() - t0:5.0f}s] {n}", flush=True)
-            problems += run_game(a, n, [(a.wait, out / f"{n}.png")], (n, POINTS[n][0]), log_dir, POINTS[n][2])
+            shots = [(a.wait, out / f"{n}.png")]
+            if a.burst:
+                count, gap = a.burst.split(",")
+                shots = [(a.wait + i * float(gap), out / f"{n}_{i:02d}.png") for i in range(int(count))]
+            problems += run_game(a, n, shots, (n, POINTS[n][0]), log_dir, POINTS[n][2])
         if a.attract:
             secs = sorted(float(s) for s in a.attract.split(","))
             print(f"[{time.monotonic() - t0:5.0f}s] attract {secs}", flush=True)

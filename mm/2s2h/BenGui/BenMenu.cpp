@@ -161,6 +161,11 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
+    // Sun shadows (outdoor daytime only; the renderer disables them indoors, at night and at the horizon).
+    { "gNewDawn.Shadows.Enabled", false, 1.0f, 0.0f },
+    { "gNewDawn.Shadows.Strength", true, 1.0f, 1.0f },
+    { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
+    { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
 };
 
 // Applies the preset (or returns the same cvars to their defaults) and persists the config.
