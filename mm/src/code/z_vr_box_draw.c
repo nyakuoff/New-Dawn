@@ -1,4 +1,5 @@
 #include "global.h"
+#include "2s2h/Enhancements/Graphics/NewDawnPostFx.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 
 Mtx* sSkyboxDrawMatrix;
@@ -22,6 +23,7 @@ void Skybox_SetColors(SkyboxContext* skyboxCtx, u8 primR, u8 primG, u8 primB, u8
 }
 
 void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId, s16 blend, f32 x, f32 y, f32 z) {
+    NewDawnHDR_Sky(gfxCtx, true);
     OPEN_DISPS(gfxCtx);
     FrameInterpolation_RecordOpenChild(NULL, FrameInterpolation_GetCameraEpoch());
 
@@ -73,6 +75,7 @@ void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId
 
     FrameInterpolation_RecordCloseChild();
     CLOSE_DISPS(gfxCtx);
+    NewDawnHDR_Sky(gfxCtx, false);
 }
 
 void Skybox_Update(SkyboxContext* skyboxCtx) {
