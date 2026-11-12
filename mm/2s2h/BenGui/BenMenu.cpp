@@ -121,6 +121,10 @@ static const std::unordered_map<int32_t, const char*> anisotropyOptions = {
     { 0, "Off (1x)" }, { 2, "2x" }, { 4, "4x" }, { 8, "8x" }, { 16, "16x" },
 };
 
+static const std::unordered_map<int32_t, const char*> shadowMapSizeOptions = {
+    { 512, "512" }, { 1024, "1024" }, { 2048, "2048" }, { 4096, "4096" },
+};
+
 static const std::vector<const char*> motionBlurOptions = {
     "Dynamic (default)", // MOTION_BLUR_DYNAMIC
     "Always Off",        // MOTION_BLUR_ALWAYS_OFF
@@ -793,6 +797,31 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.0f).Tooltip(
             "0.00 reproduces the original distance stepping of point lights. Higher values smooth "
             "the falloff instead of showing rings. Requires per-pixel lighting."));
+
+    AddWidget(path, "Shadows", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Real-time Shadows", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Shadows.Enabled")
+        .Options(CheckboxOptions()
+                     .Tooltip("Sun shadows from the world and actors, with the original blob shadows kept. "
+                              "Outdoor daytime scenes only. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Shadow Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Shadows.Strength")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How much the direct sunlight is darkened in shadow."));
+    AddWidget(path, "Shadow Radius: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Shadows.Radius")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(FloatSliderOptions().Min(300.0f).Max(3000.0f).Step(50.0f).Format("%.0f").DefaultValue(1500.0f).Tooltip(
+            "Half the width of the area around Link that receives shadows, in world units."));
+    AddWidget(path, "Shadow Map", WIDGET_CVAR_COMBOBOX)
+        .CVar("gNewDawn.Shadows.MapSize")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(ComboboxOptions()
+                     .Tooltip("Shadow map resolution. Higher is sharper but costs more GPU time.")
+                     .ComboMap(&shadowMapSizeOptions)
+                     .DefaultIndex(2048));
 
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
@@ -2562,6 +2591,9 @@ void BenMenu::InitElement() {
         { DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF,
           { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.Lighting.PerPixel", 0); },
             "Per-Pixel Lighting is Disabled" } },
+        { DISABLE_FOR_NEWDAWN_SHADOWS_OFF,
+          { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.Shadows.Enabled", 0); },
+            "Real-time Shadows are Disabled" } },
         { DISABLE_FOR_MATCH_REFRESH_RATE_ON,
           { [](disabledInfo& info) -> bool { return CVarGetInteger("gMatchRefreshRate", 0); },
             "Match Refresh Rate is Enabled" } },
