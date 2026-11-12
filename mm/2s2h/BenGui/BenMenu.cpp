@@ -164,7 +164,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
     // Sun shadows (outdoor daytime only; the renderer disables them indoors, at night and at the horizon).
     { "gNewDawn.Shadows.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.Shadows.Strength", true, 1.0f, 1.0f },
+    { "gNewDawn.Shadows.Strength", true, 0.7f, 1.0f }, // soft daylight shade rather than near-black
+    { "gNewDawn.Shadows.Floor", true, 0.65f, 0.55f },
     { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
     { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f }, // needs shadows
@@ -906,6 +907,11 @@ void BenMenu::AddSettings() {
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
             "How much the direct sunlight is darkened in shadow."));
+    AddWidget(path, "Shadow Floor: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Shadows.Floor")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.55f).Tooltip(
+            "The darkest a fully shadowed surface gets, as a fraction of its lit colour. Higher is softer."));
     AddWidget(path, "Shadow Radius: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Shadows.Radius")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })

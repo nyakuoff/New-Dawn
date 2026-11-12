@@ -1,18 +1,19 @@
 # New Dawn
 
 New Dawn is a visual modernization of The Legend of Zelda: Majora's Mask, built on
-[2 Ship 2 Harkinian](https://github.com/2ship2harkinian/2ship2harkinian). The aim is a game that looks like a
-modern remake while playing exactly like the original.
+[2 Ship 2 Harkinian](https://github.com/2ship2harkinian/2ship2harkinian). The aim is a game that looks reborn, a
+full modern remaster, while playing exactly like the original.
 
 ## Ground rules
 
 - **Visual only.** Nothing may change gameplay, physics, timing, animation, AI, schedules, cutscenes or anything
   else game logic observes. Every rendering change must leave what the game reads back (depth queries, framebuffer
   captures) as it was.
-- **Keep the atmosphere.** Effects should enrich the original art direction, not replace it: no heavy bloom, no
-  sharpening, no generic photorealism.
-- **Every effect is a setting.** New rendering features can be switched off, and switching them off restores the
-  original code path.
+- **Reborn, not retro.** The N64 look is not a constraint. Use HDR lighting, material detail, real skies, deep
+  shadows with bounce light, reflections, volumetrics, and whatever else makes the game look like a modern remake.
+  Effects should be clearly visible.
+- **The New Dawn look is the default.** Every rendering feature can still be switched off ("Original look"), and
+  switching it off restores the original code path.
 
 ## Where things live
 

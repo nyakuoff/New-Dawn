@@ -1,7 +1,7 @@
 # New Dawn — shared project rules
 
 ## Purpose
-New Dawn is a **visual-only modernization** of *Majora's Mask*, built on a fork of **2 Ship 2 Harkinian**. Aim for a cohesive, polished visual overhaul faithful to the game's surreal, eerie art direction. The user wants agents to determine technical and artistic approaches independently, then deliver working, demonstrated changes.
+New Dawn is a **visual-only modernization** of *Majora's Mask*, built on a fork of **2 Ship 2 Harkinian**. The goal is a game that looks **reborn**: a full modern remaster, comparable to a current-generation 3D remake. Do not preserve N64 rendering limitations or the retro look. Judge every feature by how much it visibly transforms the image. Keep the world, its places and its characters recognisable; everything about how they are rendered may change. The user wants agents to determine technical and artistic approaches independently, then deliver working, demonstrated changes.
 
 ## Hard boundaries
 - Preserve original gameplay, player movement, combat, physics, enemy AI, NPC schedules, quests, puzzles, progression, story, dialogue, cutscene sequencing, and **existing animations**.
