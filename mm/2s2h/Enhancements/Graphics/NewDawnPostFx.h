@@ -11,6 +11,8 @@ extern "C" {
 // renderer run a stage (see libultraship/include/fast/newdawn_postfx.h).
 
 // Start recording opaque world/actor shadow casters. Call just before Scene_Draw.
+void NewDawnHDR_Begin(PlayState* play);
+
 void NewDawnShadows_Begin(PlayState* play);
 
 // Ambient occlusion and/or real-time shadows of everything opaque drawn so far. Call right after Actor_DrawAll,

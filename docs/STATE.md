@@ -17,6 +17,7 @@
 | Sun shafts (opt-in, needs shadows) | `gNewDawn.SunShafts.Enabled/Strength` | Half-res raymarch through the shadow map, tinted by fog and sun colour, in the preset. Shadow filter is now a rotated Poisson PCF. Off is pixel-identical; 0.25 ms GPU for shafts, shadows 0.25 ms (was 0.30). |
 | Alpha-to-coverage for cutout textures (MSAA only) | `gNewDawn.Textures.AlphaToCoverage` (default 1) | Texture-edge draws keep the 0.19 threshold but resolve the edge through MSAA coverage; no effect at MSAA 1. Leaves, plants and ornaments are smoother; region mean colour changes under 0.2%. In the preset. |
 | Water glints and Fresnel (opt-in) | `gNewDawn.Water.Enabled/Strength/Debug` | Scene-end pass over the collision WaterBox planes (nearest 16): sun/moon GGX glints from a footprint-filtered 2-octave scrolling normal, faint sky tint, shallows fade; per-scene factor table (poisoned swamp 0.3). 0.05 ms GPU. In the preset. |
+| Linear HDR world path (opt-in, MSAA 1 only) | `gNewDawn.HDR.*` | ND-005. RGBA16F world, ACES-like display transform at scene end; AO/shadows/shafts/water/bloom/grade gated off under HDR. Off is byte-identical to main. Branch `feature/hdr`, not in the preset. |
 | New Dawn graphics preset buttons | the `sNewDawnPresetCvars` table in BenMenu.cpp | #17 |
 | Capture tool, branding, docs | `tools/newdawn/`, `docs/images` | #8, #9, #11 |
 

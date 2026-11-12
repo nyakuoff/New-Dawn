@@ -1367,6 +1367,7 @@ void Play_DrawMain(PlayState* this) {
                 goto PostWorldDraw;
             }
 
+            NewDawnHDR_Begin(this);
             GameInteractor_ExecuteOnPlayDrawWorldStart();
 
             if (!this->soaringCsOrSoTCsPlaying) {

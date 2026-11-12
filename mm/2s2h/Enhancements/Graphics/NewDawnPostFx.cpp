@@ -2,9 +2,11 @@
 
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <fast/newdawn_postfx.h>
+#include <spdlog/spdlog.h>
 
 extern "C" {
 #include "global.h"
+#include "overlays/actors/ovl_En_Arrow/z_en_arrow.h"
 }
 
 static float NewDawnClampF(float value, float low, float high) {
@@ -222,6 +224,26 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     return params;
 }
 
+extern "C" void NewDawnHDR_Begin(PlayState* play) {
+    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
+        return;
+    }
+    // Deku bubbles reuse a CPU display-colour snapshot as an in-world texture. Until display-source
+    // materials have an explicit shader classification, keep the whole frame in the compatible LDR path.
+    for (Actor* actor = play->actorCtx.actorLists[ACTORCAT_ITEMACTION].first; actor; actor = actor->next) {
+        if (actor->id == ACTOR_EN_ARROW && actor->params == ARROW_TYPE_DEKU_BUBBLE) {
+            static bool logged = false;
+            if (!logged)
+                SPDLOG_INFO("NewDawnHDR: LDR fallback while Deku bubble framebuffer refraction is active");
+            logged = true;
+            return;
+        }
+    }
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_WORLD_BEGIN, NewDawnPostFx_AllocParams(play));
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0)) {
         return;
@@ -252,7 +274,8 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
 }
 
 extern "C" void NewDawnPostFx_SceneEnd(PlayState* play) {
-    if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && !CVarGetInteger("gNewDawn.Water.Enabled", 0)) {
+    if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
+        !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
         return;
     }
 
