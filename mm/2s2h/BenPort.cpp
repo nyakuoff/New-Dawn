@@ -144,7 +144,7 @@ std::string portArchivePath = "";
 static bool shipArchiveVersionMatch = false;
 
 OTRGlobals::OTRGlobals() {
-    context = Ship::Context::CreateUninitializedInstance("2 Ship 2 Harkinian", appShortName, "2ship2harkinian.json");
+    context = Ship::Context::CreateUninitializedInstance("New Dawn", appShortName, "2ship2harkinian.json");
 
     portArchivePath = Ship::Context::LocateFileAcrossAppDirs("2ship.o2r");
     ArchiveVersion portArchiveVersion = DetectArchiveVersion("2ship.o2r", true);
