@@ -85,6 +85,118 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     params->shadowCameraEye[2] = play->view.eye.z;
 }
 
+
+// Per-scene feel of the water effect: how much of the global strength a scene gets. Scenes not listed get 1.0.
+// Poisoned water is meant to look dull and sickly, so it only gets a faint sheen.
+struct NewDawnWaterScene {
+    s16 sceneId;
+    float strength;
+};
+static const NewDawnWaterScene sNewDawnWaterScenes[] = {
+    { SCENE_20SICHITAI, 0.30f }, // Southern Swamp (poisoned)
+};
+
+static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params) {
+    params->waterEnabled = 0;
+    if (!CVarGetInteger("gNewDawn.Water.Enabled", 0) || play->colCtx.colHeader == NULL) {
+        return;
+    }
+    const CollisionHeader* col = play->colCtx.colHeader;
+    // Scenes with more boxes than fit (Great Bay Temple has 16 and dungeons can have more) keep the nearest to the camera.
+    struct Candidate {
+        float distSq;
+        const WaterBox* box;
+    };
+    Candidate candidates[NEWDAWN_MAX_WATER_BOXES];
+    int count = 0;
+    for (int i = 0; i < col->numWaterBoxes; i++) {
+        const WaterBox* box = &col->waterBoxes[i];
+        float dx = NewDawnClampF(play->view.eye.x, box->minPos.x, box->minPos.x + box->xLength) - play->view.eye.x;
+        float dz = NewDawnClampF(play->view.eye.z, box->minPos.z, box->minPos.z + box->zLength) - play->view.eye.z;
+        float distSq = dx * dx + dz * dz;
+        int slot = count;
+        if (count == NEWDAWN_MAX_WATER_BOXES) {
+            slot = 0; // replace the farthest
+            for (int j = 1; j < count; j++) {
+                if (candidates[j].distSq > candidates[slot].distSq) {
+                    slot = j;
+                }
+            }
+            if (candidates[slot].distSq <= distSq) {
+                continue;
+            }
+        } else {
+            count++;
+        }
+        candidates[slot] = { distSq, box };
+    }
+    for (int i = 0; i < count; i++) {
+        const WaterBox* box = candidates[i].box;
+        float* out = params->waterBoxes[i];
+        out[0] = box->minPos.x;
+        out[1] = box->minPos.z;
+        out[2] = box->minPos.x + box->xLength;
+        out[3] = box->minPos.z + box->zLength;
+        out[4] = box->minPos.y;
+    }
+    if (count == 0) {
+        return;
+    }
+
+    float sceneFactor = 1.0f;
+    for (const auto& entry : sNewDawnWaterScenes) {
+        if (entry.sceneId == play->sceneId) {
+            sceneFactor = entry.strength;
+        }
+    }
+
+    // The sun by day, a weak cool light from the opposite side of the sky by night. The glints fade with the same
+    // curves as the shadows. Scenes with fixed lighting (no time of day) get the sky tint only.
+    float light[3] = { 0.0f, 1.0f, 0.0f };
+    float lightColor[3] = { 0.0f, 0.0f, 0.0f };
+    float skyScale = 0.5f;
+    if (!play->envCtx.sunDisabled && play->envCtx.lightMode == LIGHT_MODE_TIME) {
+        const LightDirectional* sun = &play->envCtx.dirLight1.params.dir;
+        float len = sqrtf((f32)(sun->x * sun->x + sun->y * sun->y + sun->z * sun->z));
+        if (len > 0.001f) {
+            float dir[3] = { sun->x / len, sun->y / len, sun->z / len };
+            float dayFade = NewDawnClampF((dir[1] - 0.03f) / 0.25f, 0.0f, 1.0f);
+            float luminance = (sun->color[0] + sun->color[1] + sun->color[2]) / (3.0f * 255.0f);
+            dayFade *= NewDawnClampF(luminance * 3.0f, 0.0f, 1.0f);
+            float nightFade = NewDawnClampF((-dir[1] - 0.05f) / 0.25f, 0.0f, 1.0f) * 0.25f;
+            if (dayFade > 0.0f) {
+                for (int i = 0; i < 3; i++) {
+                    light[i] = dir[i];
+                    lightColor[i] = (sun->color[i] / 255.0f) * dayFade;
+                }
+            } else if (nightFade > 0.0f) {
+                light[0] = -dir[0];
+                light[1] = -dir[1];
+                light[2] = -dir[2];
+                lightColor[0] = 0.55f * nightFade;
+                lightColor[1] = 0.65f * nightFade;
+                lightColor[2] = 1.00f * nightFade;
+            }
+            skyScale = 1.0f;
+        }
+    }
+
+    params->waterEnabled = 1;
+    params->waterDebug = CVarGetInteger("gNewDawn.Water.Debug", 0);
+    params->waterStrength =
+        NewDawnClampF(CVarGetFloat("gNewDawn.Water.Strength", 0.5f), 0.0f, 1.0f) * sceneFactor * skyScale;
+    params->waterTime = (float)play->gameplayFrames * (1.0f / 20.0f);
+    params->waterBoxCount = count;
+    for (int i = 0; i < 3; i++) {
+        params->waterLightDir[i] = light[i];
+        params->waterLightColor[i] = lightColor[i];
+        params->waterSkyColor[i] = play->lightCtx.fogColor[i] / 255.0f;
+    }
+    params->waterCameraEye[0] = play->view.eye.x;
+    params->waterCameraEye[1] = play->view.eye.y;
+    params->waterCameraEye[2] = play->view.eye.z;
+}
+
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
@@ -101,16 +213,17 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     params->fogFar = (fogFar <= 1000) ? 1000 : fogFar;
     params->flags = 0;
     NewDawnFillShadowParams(play, params);
+    NewDawnFillWaterParams(play, params);
     return params;
 }
 
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
-    if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0)) {
+    if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!params->shadowEnabled) {
+    if (!params->shadowEnabled && !params->waterEnabled) {
         return;
     }
 
@@ -134,7 +247,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
 }
 
 extern "C" void NewDawnPostFx_SceneEnd(PlayState* play) {
-    if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1)) {
+    if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && !CVarGetInteger("gNewDawn.Water.Enabled", 0)) {
         return;
     }
 

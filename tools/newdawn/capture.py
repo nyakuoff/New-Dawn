@@ -256,6 +256,7 @@ def main():
     ap.add_argument("--points", default="all", help="comma separated capture point names, or 'all' (default). See --list")
     ap.add_argument("--attract", metavar="SECONDS", help=f"also/only capture the title sequence at these seconds after launch, e.g. {DEFAULT_ATTRACT}")
     ap.add_argument("--rot", type=float, metavar="DEG", help="override the point's yaw (degrees, 0 = +Z, 90 = +X); the camera starts behind the player")
+    ap.add_argument("--pos", metavar="X,Y,Z", help="override the point's standing position (world units), e.g. to stand at a spot of the same scene")
     ap.add_argument("--burst", metavar="N,INTERVAL", help="take N screenshots INTERVAL seconds apart per point, starting at --wait, "
                     "named <point>_00.png ... (each screenshot adds its own latency, so the real spacing can be larger)")
     ap.add_argument("--no-points", action="store_true", help="skip the named points (use with --attract)")
@@ -301,6 +302,8 @@ def main():
             warp = dict(POINTS[n][0])
             if a.rot is not None:
                 warp["rotY"] = int(round(a.rot / 360.0 * 65536)) % 65536
+            if a.pos:
+                warp["pos"] = dict(zip("xyz", (float(v) for v in a.pos.split(","))))
             problems += run_game(a, n, shots, (n, warp), log_dir, POINTS[n][2])
         if a.attract:
             secs = sorted(float(s) for s in a.attract.split(","))
