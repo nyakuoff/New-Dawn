@@ -121,6 +121,62 @@ static const std::unordered_map<int32_t, const char*> anisotropyOptions = {
     { 0, "Off (1x)" }, { 2, "2x" }, { 4, "4x" }, { 8, "8x" }, { 16, "16x" },
 };
 
+// "New Dawn" preset: one-click best-looking graphics configuration. This table is the single
+// source of truth for both the apply and the restore buttons. Graphics only: no gameplay,
+// cheats, timing, skip or HUD settings are touched.
+struct NewDawnPresetCVar {
+    const char* name;
+    bool isFloat;
+    float presetValue;
+    float defaultValue;
+};
+
+static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
+    // Resolution and anti-aliasing.
+    { "gSettings.InternalResolution", true, 1.0f, 1.0f }, // never render below native resolution
+    { "gSettings.MSAAValue", false, 4.0f, 1.0f },         // 4x MSAA
+    { "gMatchRefreshRate", false, 1.0f, 0.0f },           // interpolate to the display's refresh rate
+    // Textures.
+    { "gEnhancements.Mods.AlternateAssets", false, 1.0f, 0.0f }, // HD texture packs
+    { "gNewDawn.Textures.AsyncAltLoad", false, 1.0f, 1.0f },     // load HD textures in the background
+    { "gNewDawn.Textures.Mipmaps", false, 1.0f, 1.0f },          // no shimmer on distant surfaces
+    { "gNewDawn.Textures.Anisotropy", false, 16.0f, 16.0f },     // sharp floors and walls at steep angles
+    { "gNewDawn.Textures.LodBias", true, 0.0f, 0.0f },
+    // Scene post-processing.
+    { "gNewDawn.PostFx.Enabled", false, 1.0f, 1.0f },
+    { "gNewDawn.PostFx.AO.Enabled", false, 1.0f, 1.0f },
+    { "gNewDawn.PostFx.AO.Strength", true, 1.4f, 1.4f },
+    { "gNewDawn.PostFx.AO.Radius", true, 40.0f, 40.0f },
+    { "gNewDawn.PostFx.Bloom.Enabled", false, 1.0f, 1.0f },
+    { "gNewDawn.PostFx.Bloom.Strength", true, 0.25f, 0.25f },
+    { "gNewDawn.PostFx.Bloom.Threshold", true, 0.90f, 0.90f },
+    { "gNewDawn.PostFx.Grade.Enabled", false, 1.0f, 1.0f },
+    { "gNewDawn.PostFx.Grade.Contrast", true, 1.06f, 1.06f },
+    { "gNewDawn.PostFx.Grade.Saturation", true, 1.08f, 1.08f },
+    { "gNewDawn.PostFx.Debug.View", false, 0.0f, 0.0f },
+    // Lighting.
+    { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
+    { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
+};
+
+// Applies the preset (or returns the same cvars to their defaults) and persists the config.
+static void NewDawnApplyPreset(bool useDefaults) {
+    for (const auto& cvar : sNewDawnPresetCvars) {
+        const float value = useDefaults ? cvar.defaultValue : cvar.presetValue;
+        if (cvar.isFloat) {
+            CVarSetFloat(cvar.name, value);
+        } else {
+            CVarSetInteger(cvar.name, static_cast<int32_t>(value));
+        }
+    }
+    // These two are also picked up by the renderer on the next frame, but the window keeps its own
+    // copy that only the corresponding widget callbacks normally update.
+    auto window = Ship::Context::GetRawInstance()->GetWindow();
+    window->SetResolutionMultiplier(CVarGetFloat(CVAR_INTERNAL_RESOLUTION, 1.0f));
+    window->SetMsaaLevel(CVarGetInteger(CVAR_MSAA_VALUE, 1));
+    CVarSave();
+}
+
 static const std::vector<const char*> motionBlurOptions = {
     "Dynamic (default)", // MOTION_BLUR_DYNAMIC
     "Always Off",        // MOTION_BLUR_ALWAYS_OFF
@@ -681,6 +737,28 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Advanced Graphics Options", WIDGET_SEPARATOR_TEXT);
 
     AddWidget(path, "New Dawn", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Apply New Dawn Preset", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) {
+            NewDawnApplyPreset(false);
+            Notification::Emit({
+                .prefix = "New Dawn",
+                .message = "preset applied.",
+            });
+        })
+        .Options(ButtonOptions().Tooltip(
+            "Sets the recommended graphics options for the best-looking result: 4x MSAA, HD textures with "
+            "mipmaps and 16x anisotropy, post-processing, per-pixel lighting and interpolation at your display's "
+            "refresh rate. Widescreen, HUD and all gameplay settings are left untouched."));
+    AddWidget(path, "Restore Defaults", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) {
+            NewDawnApplyPreset(true);
+            Notification::Emit({
+                .prefix = "New Dawn",
+                .message = "graphics defaults restored.",
+            });
+        })
+        .Options(ButtonOptions().Tooltip("Returns only the settings listed in the New Dawn preset to their "
+                                         "defaults. Everything else is left as it is."));
     AddWidget(path, "Scene Post-Processing", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Enabled")
         .Options(CheckboxOptions()
