@@ -87,7 +87,6 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     params->shadowCameraEye[2] = play->view.eye.z;
 }
 
-
 // Per-scene feel of the water effect: how much of the global strength a scene gets. Scenes not listed get 1.0.
 // Poisoned water is meant to look dull and sickly, so it only gets a faint sheen.
 struct NewDawnWaterScene {
@@ -100,13 +99,18 @@ static const NewDawnWaterScene sNewDawnWaterScenes[] = {
 
 static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params) {
     params->waterEnabled = 0;
-    // Without a time of day there is no sun or moon, so only the faint sky tint would be left: interiors skip the pass.
-    if (!CVarGetInteger("gNewDawn.Water.Enabled", 0) || play->colCtx.colHeader == NULL ||
-        play->envCtx.lightMode != LIGHT_MODE_TIME) {
+    const bool glints = CVarGetInteger("gNewDawn.Water.Enabled", 0) != 0;
+    const bool reflections = CVarGetInteger("gNewDawn.Water.Reflections", 0) != 0 &&
+                             CVarGetFloat("gNewDawn.Water.ReflectionStrength", 0.7f) > 0.0f;
+    // Without a time of day there is no sun or moon, so glints alone would only add the faint sky tint: interiors
+    // skip the pass unless reflections are on.
+    if ((!glints && !reflections) || play->colCtx.colHeader == NULL ||
+        (play->envCtx.lightMode != LIGHT_MODE_TIME && !reflections)) {
         return;
     }
     const CollisionHeader* col = play->colCtx.colHeader;
-    // Scenes with more boxes than fit (Great Bay Temple has 16 and dungeons can have more) keep the nearest to the camera.
+    // Scenes with more boxes than fit (Great Bay Temple has 16 and dungeons can have more) keep the nearest to the
+    // camera.
     struct Candidate {
         float distSq;
         const WaterBox* box;
@@ -189,9 +193,13 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     }
 
     params->waterEnabled = 1;
+    params->waterReflections = reflections;
+    params->waterReflectionStrength =
+        reflections ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.ReflectionStrength", 0.7f), 0.0f, 1.0f) * sceneFactor
+                    : 0.0f;
     params->waterDebug = CVarGetInteger("gNewDawn.Water.Debug", 0);
-    params->waterStrength =
-        NewDawnClampF(CVarGetFloat("gNewDawn.Water.Strength", 0.5f), 0.0f, 1.0f) * sceneFactor * skyScale;
+    params->waterStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Water.Strength", 0.5f), 0.0f, 1.0f) * sceneFactor *
+                            skyScale * (glints ? 1.0f : 0.0f);
     params->waterTime = (float)play->gameplayFrames * (1.0f / 20.0f);
     params->waterBoxCount = count;
     for (int i = 0; i < 3; i++) {
@@ -245,7 +253,8 @@ extern "C" void NewDawnHDR_Begin(PlayState* play) {
 }
 
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
-    if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0)) {
+    if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
+        !CVarGetInteger("gNewDawn.Water.Reflections", 0)) {
         return;
     }
 
@@ -264,7 +273,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
         CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && CVarGetInteger("gNewDawn.PostFx.AO.Enabled", 1);
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!postFxAo && !params->shadowEnabled) {
+    if (!postFxAo && !params->shadowEnabled && !params->waterReflections) {
         return;
     }
 
@@ -275,7 +284,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
 
 extern "C" void NewDawnPostFx_SceneEnd(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
+        !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
         return;
     }
 
