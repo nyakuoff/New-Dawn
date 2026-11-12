@@ -166,6 +166,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Shadows.Strength", true, 1.0f, 1.0f },
     { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
+    { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f }, // needs shadows
+    { "gNewDawn.SunShafts.Strength", true, 0.4f, 0.4f },
 };
 
 // Applies the preset (or returns the same cvars to their defaults) and persists the config.
@@ -905,6 +907,20 @@ void BenMenu::AddSettings() {
                      .Tooltip("Shadow map resolution. Higher is sharper but costs more GPU time.")
                      .ComboMap(&shadowMapSizeOptions)
                      .DefaultIndex(4096));
+
+    AddWidget(path, "Sun Shafts", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Sun Shafts", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.SunShafts.Enabled")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(CheckboxOptions()
+                     .Tooltip("Light shafts through the shadow map, tinted by the scene's fog. Strongest when looking "
+                              "towards the sun. Requires Real-time Shadows.")
+                     .DefaultValue(false));
+    AddWidget(path, "Sun Shaft Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.SunShafts.Strength")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.4f).Tooltip(
+            "How visible the shafts and the sun haze are."));
 
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);

@@ -36,9 +36,14 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     float horizonFade = NewDawnClampF((dir.y - 0.03f) / 0.25f, 0.0f, 1.0f);
     float luminance = (sun->color[0] + sun->color[1] + sun->color[2]) / (3.0f * 255.0f);
     float colorFade = NewDawnClampF(luminance * 3.0f, 0.0f, 1.0f);
-    float strength =
-        NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Strength", 1.0f), 0.0f, 1.0f) * horizonFade * colorFade;
-    if (strength <= 0.001f) {
+    float fade = horizonFade * colorFade;
+    float strength = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Strength", 1.0f), 0.0f, 1.0f) * fade;
+    // Sun shafts ride on the shadow map and the same fades.
+    float shaftStrength = 0.0f;
+    if (CVarGetInteger("gNewDawn.SunShafts.Enabled", 0)) {
+        shaftStrength = NewDawnClampF(CVarGetFloat("gNewDawn.SunShafts.Strength", 0.4f), 0.0f, 1.0f) * fade;
+    }
+    if (strength <= 0.001f && shaftStrength <= 0.001f) {
         return;
     }
 
@@ -54,6 +59,11 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     int mapSize = CVarGetInteger("gNewDawn.Shadows.MapSize", 4096);
     mapSize = (int)NewDawnClampF((float)mapSize, 512.0f, 4096.0f);
 
+    params->shaftEnabled = shaftStrength > 0.001f;
+    params->shaftStrength = shaftStrength;
+    for (int i = 0; i < 3; i++) {
+        params->shaftFogColor[i] = play->lightCtx.fogColor[i] / 255.0f;
+    }
     params->shadowEnabled = 1;
     params->shadowStrength = strength;
     params->shadowRadius = radius;
