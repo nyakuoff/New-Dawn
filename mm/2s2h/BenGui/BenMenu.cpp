@@ -169,6 +169,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
     { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f }, // needs shadows
     { "gNewDawn.SunShafts.Strength", true, 0.4f, 0.4f },
+    { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
+    { "gNewDawn.Water.Strength", true, 0.5f, 0.5f },
 };
 
 // Applies the preset (or returns the same cvars to their defaults) and persists the config.
@@ -928,6 +930,19 @@ void BenMenu::AddSettings() {
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.4f).Tooltip(
             "How visible the shafts and the sun haze are."));
+
+    AddWidget(path, "Water", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Water Glints", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Enabled")
+        .Options(CheckboxOptions()
+                     .Tooltip("Sun (or moon) glints and a faint sky reflection on water, strongest at a low angle and "
+                              "towards the light. Never changes the water itself, only adds light. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Water Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.Strength")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_WATER_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.5f).Tooltip(
+            "How strong the glints and reflection are. Scenes with dull water (the poisoned swamp) get less."));
 
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
@@ -2697,6 +2712,9 @@ void BenMenu::InitElement() {
         { DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF,
           { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.Lighting.PerPixel", 0); },
             "Per-Pixel Lighting is Disabled" } },
+        { DISABLE_FOR_NEWDAWN_WATER_OFF,
+          { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.Water.Enabled", 0); },
+            "Water Glints are Disabled" } },
         { DISABLE_FOR_NEWDAWN_SHADOWS_OFF,
           { [](disabledInfo& info) -> bool { return !CVarGetInteger("gNewDawn.Shadows.Enabled", 0); },
             "Real-time Shadows are Disabled" } },
