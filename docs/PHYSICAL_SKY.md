@@ -63,3 +63,79 @@ link or framebuffer errors in the valid captures. Stage logs live alongside thei
 Remaining manual coverage: a real Clock Town doorway transition, moving/skyward camera sweeps and sun/Moon framing,
 active rain in an eligible scene, unusual cutscene sky transitions. Static images do not prove absence of flicker
 in motion. Native sun/Moon/stars are preserved by display-list ordering; stars were also seen in the night captures.
+
+## Milestone B: volumetric clouds
+
+The physical sky now includes opt-in cumulus: a 40-step march through a world-anchored 1.6–3.4 km layer,
+three coarse sun-visibility probes per occupied sample, four density octaves and a low-frequency weather/coverage
+map. An original deterministic 64³ R8 noise volume with mips costs about 293 KiB. Clouds render at half width/height
+into premultiplied RGBA16F and use a filtered spatial upscale. Noise mip levels follow the march footprint; a fixed
+world-direction sample offset breaks march bands without frame-varying noise. There is no temporal history to leak
+across scene cuts, ghost the Moon or require gameplay motion vectors. The previous 3D texture binding is restored.
+
+Wind is fixed at 18/9 m/s using monotonic renderer time, independent of the clock and simulation speed. Its wrapped
+1024 km domain matches every density octave and weather-map period. No game state or RNG is written/read for drift.
+Clouds share the physical sky's classification/fallback, HDR requirement and strength. No cloud shadows on geometry
+are added; native sun, Moon and star draws retain their original ordering and appearance (clouds do not attenuate
+those subsequent native draws).
+
+- `gNewDawn.Sky.Clouds`: default **0**, preset **1**; requires Physical Sky and HDR.
+- `gNewDawn.Sky.Coverage`: default/preset **0.55**, range 0–1; zero skips the cloud pass.
+- `gNewDawn.Sky.CloudStrength`: default/preset **1**, range 0–1; zero skips the cloud pass.
+- Menu controls are beside Physical Sky. Stats stage **7** reports clouds separately from sky stage 6.
+- Both Physical and Clouds are in the New Dawn preset; integrate milestones A and B together.
+
+Atmospheric quadrature now concentrates samples near the observer/scattering point so low sunlight passes through
+the dense lower atmosphere correctly. The horizon-to-fog fade narrows to 0–0.05 in ray Y (about 3 degrees), retaining
+more low-angle scattering and sunset glow while still matching fog exactly at the horizon. Native sun emission is
+not added a second time.
+
+### Final B evidence
+
+Same hardware/settings as A. All four new/updated programs pass GLSL 330 validation; build, shader asset equality
+and whitespace checks pass. Lead reviewed the B diff and approved its structure; the requested 3D binding restore
+is included. Local image locations:
+
+- `/tmp/nd/sky/clouds-{morning,noon,dusk,night}/`: all 20 final scene/time images visually inspected. Lit cumulus
+  lobes and shaded bodies with blue gaps by day; peach light against cool shaded cloud bodies at dusk; dark clouds
+  and native stars at night. Ikana and winter Mountain Village still take their native fallback.
+- `/tmp/nd/sky/original-{morning,noon,dusk,night}/`: 20 time-matched frozen-original-build captures, no mods/cvars,
+  also visually inspected. These compare the full New Dawn preset/mods against the original, rather than isolating
+  the sky. A-only captures above isolate the previous milestone.
+- `~/dev/ghm-mods/showcase/sky/{original,newdawn,split}/`: flattened, time-labelled images and original/New Dawn
+  splits made with `/tmp/nd/showcase/split.py`. Subdirectories `split/{morning,noon,dusk,night}/` retain point names.
+  Requested examples: `split/termina_field_dusk.png`, `split/south_clock_town_morning.png` (and noon/dusk counterparts).
+- `/tmp/nd/sky/clouds-drift/`: four one-second-interval captures with game frame **120 frozen**; clouds drift while
+  Link, clock and scene remain fixed. A sky patch shifts about **(10,-2) pixels** first-to-last. Its matching MSE
+  drops from 19.79 unshifted to 1.16 after that translation. `/tmp/nd/sky/drift-sky-strip.png` shows the sequence.
+- `/tmp/nd/sky/clouds-turn/`: eight captures at 0.35-second intervals while turning the normal C-Up camera.
+  Every frame inspected; no seams, sudden pattern jumps or evident shimmer in the burst. This coarse burst is
+  not a substitute for a continuous high-frame-rate motion check.
+- `/tmp/nd/sky/clouds-interior/`: Stock Pot Inn and Woodfall Temple with both toggles on; neither sky GPU pass runs,
+  interiors remain intact. Native gameplay/render classification is unchanged.
+- `/tmp/nd/sky/clouds-rain-clock/`: day 2 noon Clock Town, **40 rain drops** confirmed from actual environment
+  state. Active physical sky/clouds produce the expected grey overcast; precipitation and geometry stay visible.
+- `/tmp/nd/sky/{main-coast-sunset,cloud-final-coast-sunset}/`: the same sun-facing Coast view with exact-main and
+  new sky. Both show severe orange native glare, so that glare predates this change. Do not use it as a sky showcase.
+
+Across the final 20-point sweep plus drift/turn/interior captures, 300-run averages are:
+
+| Stage | Mean GPU ms | Range of 300-run means |
+| --- | ---: | ---: |
+| 0 AO | 0.500 | 0.344–0.694 |
+| 1 HDR bloom/display/grade | 0.189 | 0.184–0.193 |
+| 2 Shadows | 0.284 | 0.247–0.327 |
+| 3 Sun shafts | 0.235 | 0.158–0.371 |
+| 4 Water/SSR apply | 0.095 | 0.062–0.188 |
+| 5 Opaque water copy | 0.131 | 0.113–0.138 |
+| 6 Physical sky | 0.220 | 0.219–0.220 |
+| 7 Clouds | 0.343 | 0.310–0.415 |
+
+Sky+clouds are about **0.56 ms**, below the 1.5 ms budget in measured views. The separate first-person camera-change
+captures reached cloud averages of 0.66 ms (sky 0.22 ms). **Zenith/full-screen cloud cost remains unverified.**
+Final matrix logs contain **0 GL, shader build/link or framebuffer errors**. Fallbacks execute neither sky stage.
+
+Remaining limitations: the skyward C-Up fixture failed framing three times and was stopped; explicit giant-Moon,
+zenith and sun-facing scattering framing are not verified. Native celestial ordering is preserved by source, and
+stars are visible in the night images. The real doorway transition/manual high-frame-rate camera checks from A
+remain outstanding. Off-path exact outdoor byte identity remains limited by render-frame noise as documented in A.
