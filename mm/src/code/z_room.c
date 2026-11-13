@@ -1,6 +1,7 @@
 #include "global.h"
 #include "PR/gs2dex.h"
 #include "debug.h"
+#include "2s2h/Enhancements/Graphics/NewDawnMM3D.h"
 
 #include <libultraship/bridge/gfxbridge.h>
 
@@ -653,7 +654,11 @@ RoomDrawHandler sRoomDrawHandlers[] = {
 void Room_Draw(PlayState* play, Room* room, u32 flags) {
     if (room->segment != NULL) {
         gSegments[3] = OS_K0_TO_PHYSICAL(room->segment);
+        bool mm3d = NewDawnMM3D_BeginRoom(play, room, flags);
         sRoomDrawHandlers[room->roomShape->base.type](play, room, flags);
+        if (mm3d) {
+            NewDawnMM3D_EndRoom(play, room, flags);
+        }
     }
     return;
 }
