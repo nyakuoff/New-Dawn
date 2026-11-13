@@ -51,22 +51,60 @@ python3 tools/newdawn/materials.py --self-check
 python3 tools/newdawn/materials.py --pack /path/to/local-pack.o2r --out /tmp/nd/materials
 ```
 
-The default `materials.json` selects six visually inspected world textures: three South
-Clock Town brick/paving surfaces, Termina Field dirt, Great Bay pale plaster and Ikana
-rock. Debug captures confirmed the three Clock Town surfaces, the Great Bay texture (it lights the white plaster
-building walls, not the beach), the Termina Field dirt request and Ikana layered rock as live draws; the
-Termina Field dirt path itself was not found on screen in any tested view, so its look is unverified. Town brown paving and Ikana
-layered rock replace two unused candidates from the initial offline manifest. Use `--manifest FILE` to supply
-other canonical resource paths (without `alt/`). Each material's `overrides` accepts
-`height_scale` (UV units), `normal_strength`, `invert` (height sign), and
-`roughness_range: [lo, hi]` within `[0,1]`; `defaults` applies to every entry.
+The default `materials.json` keeps six calibrated per-texture overrides and nine
+material-class recipes. Generate coverage for the whole local pack with:
 
-`--resolution 2` (default) averages 2x2 albedo pixels before generating half-axis maps;
-`--resolution 1` retains full dimensions. `--stdlib` forces the slower fallback.
-Outputs are `DIR/newdawn-materials.o2r` and `DIR/preview/*.png`, each showing
-**albedo | normal | roughness | height**. Existing outputs are refused; choose a new
-output directory or move the earlier outputs aside. Output inside this repository is
-rejected. No game build or running game is needed.
+```sh
+python3 tools/newdawn/materials.py --pack /path/to/MM_Reloaded_v11.0.3_4K.o2r \
+    --classify tools/newdawn/material-classification.json --jobs 4
+python3 tools/newdawn/materials.py --pack /path/to/MM_Reloaded_v11.0.3_4K.o2r \
+    --classification tools/newdawn/material-classification.json \
+    --out /home/loganp/dev/ghm-mods/materials/full --jobs 8
+```
+
+Classification requires an already installed NumPy. Generation also has the stdlib
+fallback (`--stdlib`). Only `alt/scenes/` TextureV1 resources are candidates: actors,
+UI, fonts, skyboxes and particle resources outside scene paths are excluded. Within
+scenes, reject short axes below 128, areas below 65,536 pixels, nonopaque pixels and
+near-flat colours. This deliberately excludes opaque surfaces packed together with
+cutouts as well as foliage. It does not infer which textures are actually drawn.
+
+The classification JSON records every scene candidate, inclusion/exclusion, class,
+confidence, dimensions, hue, saturation, high-frequency energy and periodic-border
+statistics. Scene-name priors and directional grain refine the colour rules;
+poor tileability lowers confidence. Numeric resource names contain little semantic
+information: wood/stone, sand/plaster, snow/metal and painted signs/roof tiles can be
+confused. Confidence is a heuristic score, not a calibrated probability. These are
+reviewable hypotheses, not authored physical materials. `other`, grass and plaster
+use particularly mild relief. Metal remains rough to avoid speculative mirror-like
+surfaces. Transparent water is excluded; `wet` means an opaque coastal/dungeon candidate.
+
+Recipes merge built-in defaults → manifest defaults → class defaults → per-texture
+`overrides`. The original six overrides win over automatic classes. To correct a
+classification, edit its `class` (or `excluded`), or add a manifest entry with explicit
+`overrides`. `height_scale` is in UV units; `normal_strength`, `invert` and
+`roughness_range: [lo, hi]` retain their existing meanings. Running without
+`--classification` generates just the explicit manifest entries.
+
+`--resolution 2` (default) averages 2×2 albedo pixels before generating half-axis maps;
+`--resolution 1` retains full dimensions. Half axes use one quarter of the uncompressed
+map bytes and reduce high-frequency noise, at the cost of fine relief. The full source
+fingerprint still authenticates the original albedo. Wrap filters avoid introducing
+filter-edge discontinuities; a source painted with mismatched borders can still seam.
+
+Outputs stay outside the repository: `DIR/newdawn-materials.o2r`,
+`DIR/generation-report.json`, and a persistent `DIR/cache/` of compressed per-source
+maps. Cache keys cover the full source SHA-256 (including header), recipe, generator
+version and resolution. Unchanged entries skip fingerprinting and map generation;
+identical source/recipe pairs deduplicate. Changed archives are staged and atomically
+replaced after every entry succeeds. Entirely unchanged runs leave the archive untouched.
+Old cache entries may be deleted when no generator is running; doing so only costs
+regeneration time. Use one generator per output directory. Bulk generation omits
+previews to avoid multiplying disk use. Offline maps alone do not prove visual quality.
+
+Install the companion **after** the albedo archives. The local `sets/full` contains
+symlinks to the existing packs; leave those links alone and copy the generated archive
+as `sets/full/zz-newdawn-materials.o2r`. Never commit the archive or cache.
 
 Binary contract, verified against this fork's `ResourceLoader` and
 `ResourceFactoryBinaryTextureV1` in `libultraship`:
@@ -96,9 +134,9 @@ Binary contract, verified against this fork's `ResourceLoader` and
   RGBA8), dimensions and source scales against the winning albedo, on a background worker.
   Regenerate archives made before this fingerprint was added; stale/mismatched maps are skipped.
 
-Self-checks cover LE/BE TextureV1 round trips, malformed payload rejection, synthetic
+Self-checks cover incremental source/recipe cache invalidation, LE/BE TextureV1 round trips, malformed payload rejection, synthetic
 bump normal directions, wrap filtering, flat normals, roughness bounds, and agreement
-between stdlib and NumPy when available. Previews permit offline inspection only:
+between stdlib and NumPy when available. Offline inspection has limits:
 painted shadows and colour variation can create false relief, and no in-game visual
 quality claim follows from generation alone. The generator changes no gameplay or animation data.
 
@@ -157,3 +195,79 @@ a GGX/Smith/Schlick dielectric specular term from the same light set, with rough
 map widened by minification. Strength scales relief (0-2) and specular (capped at 1). With
 Enabled=0 frames were pixel-identical to a build without this feature in the three scenes tested. The New Dawn preset
 uses Strength 1.5.
+
+## Coverage validation — 2026-11-13 (local assets only)
+
+MM Reloaded v11.0.3 4K: 3,200 scene textures across 100 scenes; 2,209 selected,
+932 alpha-bearing and 59 small textures excluded; 6,807 resources outside the scene
+texture scope. Selected classes: stone 1,593; plaster 247; grass 195; other 115;
+dirt 30; wet 10; roof tile 10; wood 8; metal 1. Class labels remain heuristic.
+
+Eight workers generated the first pass in 92.8 s. After inspecting class samples and
+in-game images, roof/sign relief was reduced, then automatic stone height was reduced
+from .012 to .004 and dirt from .006 to .003. The final tuning pass regenerated 1,162
+entries in 188.54 s (including archive assembly). An unchanged full run reused all
+2,209 entries in 8.77 s. The installed half-axis archive is **1,024,776,857 bytes**
+(977.3 MiB), under the 1.5 GB target. Full-axis maps would quadruple uncompressed
+map storage; their compressed size and visual benefit were not measured.
+
+Validation commands run: `cmake --build build -j16` (current), `materials.py
+--self-check`, `materials.py --stdlib --self-check`, and `python3 -m py_compile
+tools/newdawn/materials.py`. Generation/classification commands are above. Local
+capture drivers `/tmp/nd/matcov/captures.py` and `motion.py` apply every current
+`sNewDawnPresetCvars` value, then call `capture.py --bin-dir build/mm --mods
+/home/loganp/dev/ghm-mods/sets/full --cvar gEnhancements.Mods.AlternateAssets=1`.
+All 12 points were captured with materials off and on, then on again after tuning.
+Comparisons: `/tmp/nd/matcov/final-compare/<point>.png` (off left, on right).
+The first-pass pairs remain in `/tmp/nd/matcov/compare/`.
+
+**Visual acceptance is blocked.** Relief/highlights are visible, especially on
+Ikana ground and Clock Town masonry; plaster and grass get gentler treatment.
+However, some dark surfaces become pale and shiny (Clock Town doorway/masonry,
+Termina grass/path transitions, Ikana lower wall). This persists with constant
+flat normals and roughness=1 (`/tmp/nd/matcov/flat/`) and disappears at strength
+0.0001 (`/tmp/nd/matcov/tiny/`). The current RG8 contract supplies roughness but no
+independent specular amplitude. This isolates the regression to the existing
+material specular treatment rather than inferred height. In particular, the shader's
+back-facing N·V clamp merits investigation; that specific cause is not yet proven.
+No engine or shader files were changed. Lowering relief cannot correct this response.
+
+Walking bursts (`--burst 8,0.35`) at Clock Town and Ikana are in
+`/tmp/nd/matcov/motion-{on,off}/`: the private Xwayland display receives W for five
+seconds to produce real player/camera motion, without changing gameplay code or saves.
+The first-pass bursts expose the same view-dependent pale patches. Full video,
+all-texture normal orientation and every source tile border are not certified by this
+limited sample. Painted shadows, ambiguous classes, opaque foliage, unsupported
+runtime draw combiners and alpha-bearing texture atlases remain limitations.
+
+At 1920×1080, MSAA 4, full preset, RX 7800 XT, matched 20-second runs with the
+same installed archives gave these steady draw-batch GPU times (last two 300-frame
+samples averaged; excludes post-processing/presentation):
+
+| Scene | Off | On | Difference |
+| --- | ---: | ---: | ---: |
+| South Clock Town | 0.366 ms | 0.491 ms | +0.125 ms |
+| Termina Field | 0.332 ms | 0.421 ms | +0.090 ms |
+| Ikana Canyon | 0.348 ms | 0.493 ms | +0.145 ms |
+| Stone Tower Temple | 0.330 ms | 0.386 ms | +0.056 ms |
+
+Raw samples: `/tmp/nd/matcov/perf-{off,on}/logs/`; summary:
+`/tmp/nd/matcov/metrics.json`. The boot archive-to-first-scene log marker varies
+from roughly 0.4–1.0 s across runs, including with materials off. It is not a
+scene-transition/load timer; a causal scene-load cost difference remains unmeasured.
+Companions become ready asynchronously after scene entry. No GL or null-texture
+errors were found in the 12-point off/on/tuned sweeps or first walking bursts.
+
+Additional 180° views of Clock Town, Termina and Ikana were captured off/on and
+inspected in `/tmp/nd/matcov/sun-compare/`; they reproduce the same pale patches.
+Tuned walking bursts are in `/tmp/nd/matcov/motion-final/`. They confirm reduced
+coarse ground relief but retain the view-dependent wall patches; this is not a
+clean shimmer signoff. Clock Town's W path crosses into East Clock Town, and frame
+`06` triggered the capture tool's uniform-image warning during the transition;
+that frame is unsuitable for assessing materials. No extra isolated sparkling or
+obvious inverted grooves were identified in the other sampled frames, but the
+existing lighting regression prevents visual approval. The final log scan covers
+56 runs (12 off, 12 first on, 12 tuned on, 8 performance, 6 rotated and 6 burst runs)
+with zero logged GL/null-texture errors. No gameplay, animation, engine or shader
+source was modified; interactive gameplay regression coverage remains limited to
+these private capture runs.
