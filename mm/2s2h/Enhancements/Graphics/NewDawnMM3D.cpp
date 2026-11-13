@@ -480,9 +480,113 @@ void FillLighting(PlayState* play, NewDawnMM3DRoomParams& params) {
         }
     }
 }
+
+struct CollisionScene {
+    int id;
+    const char* name;
+};
+#define MM3D_COLLISION_SCENE(id, name) { id, name },
+const CollisionScene sCollisionScenes[] = {
+#include "MM3DCollisionAllowlist.inc"
+};
+#undef MM3D_COLLISION_SCENE
+
+// Two slots so the previous scene's header stays valid while the next one is applied.
+struct CollisionSlot {
+    std::vector<Vec3s> vertices;
+    std::vector<CollisionPoly> polys;
+    CollisionHeader header;
+} sCollisionSlots[2];
+int sCollisionSlot = 0;
 } // namespace
 
+extern "C" CollisionHeader* NewDawnMM3D_CollisionOverride(PlayState* play, CollisionHeader* original) {
+    if (!CVarGetInteger("gNewDawn.MM3D.Collision", 0) || !play || !original) {
+        return original;
+    }
+    const CollisionScene* entry = nullptr;
+    for (const auto& scene : sCollisionScenes) {
+        if (scene.id == play->sceneId) {
+            entry = &scene;
+        }
+    }
+    const std::string root = CVarGetString("gNewDawn.MM3D.Path", "");
+    if (!entry || root.empty()) {
+        return original;
+    }
+    try {
+        const fs::path rootPath = fs::canonical(fs::path(root));
+        const auto bytes = ReadBytes(AssetPath(rootPath, std::string(entry->name) + "/collision.ndcol"), 8U * 1024U * 1024U);
+        Require(bytes.size() >= 28 && std::memcmp(bytes.data(), "NDCOL001", 8) == 0, "invalid MM3D collision magic");
+        const uint32_t nv = ReadLE32(bytes, 8), np = ReadLE32(bytes, 12);
+        Require(nv > 0 && nv <= 8192 && np > 0 && np <= 65535 && bytes.size() == 28 + size_t(nv) * 6 + size_t(np) * 16,
+                "invalid MM3D collision sizes");
+        auto& slot = sCollisionSlots[sCollisionSlot ^= 1];
+        slot.vertices.resize(nv);
+        slot.polys.resize(np);
+        int16_t bounds[6];
+        std::memcpy(bounds, bytes.data() + 16, sizeof(bounds));
+        std::memcpy(slot.vertices.data(), bytes.data() + 28, size_t(nv) * 6);
+        std::memcpy(slot.polys.data(), bytes.data() + 28 + size_t(nv) * 6, size_t(np) * 16);
+        for (const CollisionPoly& poly : slot.polys) {
+            Require(poly.type < 256 && (poly.flags_vIA & 0x1FFF) < nv && (poly.flags_vIB & 0x1FFF) < nv &&
+                        poly.vIC < nv,
+                    "MM3D collision index out of range");
+        }
+        slot.header = *original;
+        slot.header.minBounds = { bounds[0], bounds[1], bounds[2] };
+        slot.header.maxBounds = { bounds[3], bounds[4], bounds[5] };
+        slot.header.numVertices = nv;
+        slot.header.vtxList = slot.vertices.data();
+        slot.header.numPolygons = np;
+        slot.header.polyList = slot.polys.data();
+        SPDLOG_INFO("NewDawnMM3D: MM3D collision for {}: {} vertices, {} polys (N64 had {}/{})", entry->name, nv, np,
+                    original->numVertices, original->numPolygons);
+        return &slot.header;
+    } catch (const std::exception& error) {
+        SPDLOG_ERROR("NewDawnMM3D: MM3D collision rejected ({}); keeping N64 collision", error.what());
+        return original;
+    }
+}
+
 extern "C" bool NewDawnMM3D_BeginRoom(PlayState* play, Room* room, u32 flags) {
+    if (CVarGetInteger("gNewDawn.MM3D.CollisionDebug", 0) == 3 && play && play->gameplayFrames == 40 &&
+        play->roomCtx.curRoom.num == room->num) {
+        // Probe from per-column start heights (x z y per line) so the answer is the floor Link would stand on.
+        std::ifstream in(std::string(CVarGetString("gNewDawn.MM3D.Path", "")) + "/probe-start.txt");
+        int x, z;
+        float y0;
+        while (in >> x >> z >> y0) {
+            Vec3f pos = { float(x), y0, float(z) };
+            CollisionPoly* poly = nullptr;
+            const f32 y = BgCheck_EntityRaycastFloor1(&play->colCtx, &poly, &pos);
+            SPDLOG_INFO("MM3D probe {} {} {:.1f} {}", x, z, y,
+                        poly ? int(SurfaceType_GetFloorType(&play->colCtx, poly, BGCHECK_SCENE)) : -1);
+        }
+    }
+    if (CVarGetInteger("gNewDawn.MM3D.CollisionDebug", 0) == 2 && play && play->gameplayFrames == 40 &&
+        play->roomCtx.curRoom.num == room->num) {
+        // Collision-only probe (no Link movement): highest floor under a grid of columns, with its floor type.
+        for (int x = -2300; x <= 1700; x += 100) {
+            for (int z = -3100; z <= 1100; z += 100) {
+                Vec3f pos = { float(x), 1400.0f, float(z) };
+                CollisionPoly* poly = nullptr;
+                const f32 y = BgCheck_EntityRaycastFloor1(&play->colCtx, &poly, &pos);
+                SPDLOG_INFO("MM3D probe {} {} {:.1f} {}", x, z, y,
+                            poly ? int(SurfaceType_GetFloorType(&play->colCtx, poly, BGCHECK_SCENE)) : -1);
+            }
+        }
+    }
+    if (CVarGetInteger("gNewDawn.MM3D.CollisionDebug", 0) && play && play->gameplayFrames % 20 == 0 &&
+        play->roomCtx.curRoom.num == room->num) {
+        Player* player = GET_PLAYER(play);
+        if (player) {
+            SPDLOG_INFO("MM3D walk: frame {} pos {:.1f} {:.1f} {:.1f} floorY {:.1f} wall {} floorPoly {} speed {:.1f}",
+                        play->gameplayFrames, player->actor.world.pos.x, player->actor.world.pos.y,
+                        player->actor.world.pos.z, player->actor.floorHeight, player->actor.wallPoly != nullptr,
+                        player->actor.floorPoly != nullptr, player->actor.speed);
+        }
+    }
     sActive[0] = sActive[1] = nullptr;
     if (!CVarGetInteger("gNewDawn.MM3D.Rooms", 0) || !play || !room || !room->roomShape ||
         room->roomShape->base.type == ROOM_SHAPE_TYPE_IMAGE || room->roomShape->base.type == ROOM_SHAPE_TYPE_NONE ||
