@@ -55,6 +55,7 @@ struct OwnedMesh {
 struct OwnedScene {
     fs::path root;
     Json manifest;
+    Json animMap; // optional anim-map.json: mesh file -> material index -> N64 AnimatedMat segment
     std::map<std::string, std::unique_ptr<OwnedTexture>> textures;
     std::map<std::string, std::unique_ptr<OwnedMesh>> meshes;
     std::map<std::pair<int, int>, std::vector<const NewDawnMM3DMesh*>> rooms;
@@ -305,8 +306,18 @@ OwnedMesh& LoadMesh(OwnedScene& scene, const std::string& relative) {
         mesh->textures.push_back(LoadTexture(scene, item).view);
     }
     std::vector<NewDawnMM3DMaterial> materials;
+    const Json* animated = nullptr;
+    if (scene.animMap.contains("materials")) {
+        const auto found = scene.animMap.at("materials").find(path.filename().string());
+        animated = found == scene.animMap.at("materials").end() ? nullptr : &found.value();
+    }
     for (const Json& item : meta.at("materials")) {
         materials.push_back(ReadMaterial(item, mesh->textures.size()));
+        if (animated && animated->contains(std::to_string(item.at("index").get<int>()))) {
+            const int segment = animated->at(std::to_string(item.at("index").get<int>())).get<int>();
+            Require(segment >= 8 && segment <= 13, "invalid MM3D animated segment");
+            materials.back().animSegment = segment;
+        }
     }
     Require(meta.at("draws").is_array() && meta.at("draws").size() <= 65536, "too many MM3D draws");
     for (const Json& item : meta.at("draws")) {
@@ -431,6 +442,12 @@ OwnedScene* LoadScene(const std::string& rootName, const char* name) {
     Require(scene->manifest.at("format") == "NDMM3D01" && scene->manifest.at("scene") == name,
             "MM3D scene manifest mismatch");
     Require(scene->manifest.at("rooms").is_array(), "invalid MM3D room list");
+    const fs::path animPath = AssetPath(scene->root, std::string(name) + "/anim-map.json");
+    if (fs::exists(animPath)) {
+        const auto animBytes = ReadBytes(animPath, 4U * 1024U * 1024U);
+        scene->animMap = Json::parse(animBytes.begin(), animBytes.end());
+        Require(scene->animMap.at("format") == "NDMM3DANIM1", "MM3D anim map format mismatch");
+    }
     for (const Json& room : scene->manifest.at("rooms")) {
         for (const Json& setup : room.at("setups")) {
             for (const Json& mesh : setup.at("meshes")) {
