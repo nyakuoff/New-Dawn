@@ -786,6 +786,11 @@ void BenMenu::AddSettings() {
         })
         .Options(ButtonOptions().Tooltip("Returns only the settings listed in the New Dawn preset to their "
                                          "defaults. Everything else is left as it is."));
+    AddWidget(path, "3DS World Geometry (experimental)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.MM3D.Rooms")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Uses local converted 3DS room geometry in supported scenes. Original collision and gameplay remain active. "
+            "Set gNewDawn.MM3D.Path to your converted asset directory. OpenGL only."));
     AddWidget(path, "Scene Post-Processing", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Enabled")
         .Options(CheckboxOptions()

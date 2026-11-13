@@ -47,6 +47,7 @@ def render(meshes, path, size=1000, top=False):
             c, s = np.cos(rot*np.pi), np.sin(rot*np.pi)
             uv = v[:, 6:8].copy()
             uv = (uv-.5) @ np.array([[ss*c, st*s], [-ss*s, st*c]]) + np.array([ss*(.5-ts), st*(.5-tt)])
+            uv[:, 1] = 1-uv[:, 1]  # CMB atlas convention; payload rows themselves stay unchanged.
             inds = m['indices'][draw['first_index']:draw['first_index']+draw['index_count']].reshape(-1, 3)
             for ids in inds:
                 t = p[ids]
