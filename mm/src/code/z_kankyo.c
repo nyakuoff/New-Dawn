@@ -1925,6 +1925,9 @@ void Environment_DrawLensFlare(PlayState* play, EnvironmentContext* envCtx, View
     Mtx* mtx;
 
     OPEN_DISPS(gfxCtx);
+    if (isSun) {
+        NewDawnHDR_SunFlare(play, &pos, true);
+    }
 
     dist = Math3D_Vec3f_DistXYZ(&pos, &view->eye) / 12.0f;
 
@@ -2087,6 +2090,9 @@ void Environment_DrawLensFlare(PlayState* play, EnvironmentContext* envCtx, View
         }
     }
 
+    if (isSun) {
+        NewDawnHDR_SunFlare(play, &pos, false);
+    }
     CLOSE_DISPS(gfxCtx);
 }
 

@@ -212,6 +212,46 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     params->waterCameraEye[2] = play->view.eye.z;
 }
 
+static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
+    // Interiors, poison/cursed skies, underwater views, final-day skies and scripted lighting retain native fog.
+    if (!CVarGetInteger("gNewDawn.Fog.Volumetric", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
+        !params->shadowEnabled || play->skyboxId != SKYBOX_NORMAL_SKY || play->envCtx.skyboxDisabled ||
+        play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE || play->envCtx.changeSkyboxState != 0 ||
+        play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 ||
+        (GET_ACTIVE_CAM(play)->stateFlags & CAM_STATE_UNDERWATER) || play->lightCtx.fogNear < 0 ||
+        gSaveContext.save.day < 1 || gSaveContext.save.day >= 3 || gSaveContext.sceneLayer != 0 ||
+        play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
+        return;
+    }
+    params->fogBaseHeight = 0.0f; // fixed world altitude, never follows the player or camera
+    params->fogHeight = 500.0f;
+    params->fogDensityScale = 1.0f;
+    switch (play->sceneId) {
+        case SCENE_00KEIKOKU:
+            break;
+        case SCENE_30GYOSON:
+            params->fogHeight = 350.0f;
+            break;
+        case SCENE_20SICHITAI2:
+        case SCENE_21MITURINMAE:
+            params->fogHeight = 300.0f;
+            params->fogDensityScale = 1.3f;
+            break;
+        case SCENE_CLOCKTOWER:
+        case SCENE_TOWN:
+        case SCENE_ICHIBA:
+        case SCENE_BACKTOWN:
+            params->fogDensityScale = 0.45f;
+            break;
+        case SCENE_IKANA:
+            params->fogBaseHeight = 400.0f; // only the normal, cleared sky; cursed SKYBOX_3 falls back above
+            break;
+        default:
+            return;
+    }
+    params->fogVolumetric = 1;
+}
+
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
@@ -228,8 +268,24 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     params->fogFar = (fogFar <= 1000) ? 1000 : fogFar;
     params->flags = 0;
     NewDawnFillShadowParams(play, params);
+    NewDawnFillFogParams(play, params);
     NewDawnFillWaterParams(play, params);
     return params;
+}
+
+extern "C" void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int begin) {
+    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0) || !CVarGetInteger("gNewDawn.Sky.Flare", 0))
+        return;
+    GraphicsContext* gfxCtx = play->state.gfxCtx;
+    auto* params = static_cast<NewDawnPostFxParams*>(GRAPH_ALLOC(gfxCtx, sizeof(NewDawnPostFxParams)));
+    memset(params, 0, sizeof(*params));
+    params->flareSunPos[0] = sunPos->x;
+    params->flareSunPos[1] = sunPos->y;
+    params->flareSunPos[2] = sunPos->z;
+    OPEN_DISPS(gfxCtx);
+    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_SUN_FLARE_BEGIN : NEWDAWN_POSTFX_STAGE_SUN_FLARE_END,
+                    params);
+    CLOSE_DISPS(gfxCtx);
 }
 
 extern "C" void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin) {
