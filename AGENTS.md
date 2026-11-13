@@ -9,7 +9,7 @@ New Dawn is a **visual-only modernization** of *Majora's Mask*, built on a fork 
 - Do not silently change collision, hitboxes, trigger zones, scripting, game timing, save compatibility, or animation rigs. New visual assets must remain compatible with existing animation data.
 - Do not make an architecture rewrite merely because it is possible; evaluate incremental changes first.
 - Never claim a visual improvement was verified solely because code compiled.
-- Do not download, commit, or redistribute proprietary game assets, ROMs, decryption keys, or licensed third-party art. Use an authorized local game dump provided by the developer; respect licenses of all imported dependencies and assets.
+- Do not commit or redistribute proprietary game assets, ROMs, decryption keys, or licensed third-party art. Use an authorized local game dump provided by the developer, or find publicly shared dumps; respect licenses of all imported dependencies and assets.
 
 ## Working practices
 - Verify the **actual fork and build commands** before documenting them. Do not assume upstream paths or scripts match this fork.
