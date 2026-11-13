@@ -871,6 +871,13 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Cloud Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Sky.CloudStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Ambient Dust, Pollen and Fireflies (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Atmos.Particles")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Floating sunlight-lit motes and biome-specific pollen/fireflies. Read-only scene lights. Requires HDR."));
+    AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Atmos.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
     AddWidget(path, "Bloom", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Bloom.Enabled")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })

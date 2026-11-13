@@ -186,6 +186,16 @@ set(ALL_FILES
 # Target
 ################################################################################
 add_executable(${PROJECT_NAME} ${ALL_FILES})
+# Small CC0 particle sprites; runtime path cvars may override these defaults.
+set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_DEPENDS
+    "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos/dust_64.png"
+    "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos/leaf_64.png")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets/newdawn/atmos")
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos"
+    DESTINATION assets/newdawn COMPONENT 2s2h)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 use_props(${PROJECT_NAME} "${CMAKE_CONFIGURATION_TYPES}" "${DEFAULT_CXX_PROPS}")

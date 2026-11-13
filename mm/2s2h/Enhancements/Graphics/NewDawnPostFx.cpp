@@ -1,4 +1,5 @@
 #include "NewDawnPostFx.h"
+#include "NewDawnAtmos.h"
 
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <fast/newdawn_postfx.h>
@@ -270,6 +271,7 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnFillShadowParams(play, params);
     NewDawnFillFogParams(play, params);
     NewDawnFillWaterParams(play, params);
+    NewDawnAtmos_Fill(play, params);
     return params;
 }
 
@@ -409,12 +411,12 @@ extern "C" void NewDawnHDR_Begin(PlayState* play) {
 
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Water.Reflections", 0)) {
+        !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Atmos.Particles", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!params->shadowEnabled && !params->waterEnabled) {
+    if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome) {
         return;
     }
 
@@ -428,7 +430,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
         CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && CVarGetInteger("gNewDawn.PostFx.AO.Enabled", 1);
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!postFxAo && !params->shadowEnabled && !params->waterReflections) {
+    if (!postFxAo && !params->shadowEnabled && !params->waterReflections && !params->atmosBiome) {
         return;
     }
 
