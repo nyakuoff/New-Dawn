@@ -177,6 +177,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
+    { "gNewDawn.Lighting.Characters", false, 1.0f, 0.0f },       // rim light and metal specular on actors
     { "gNewDawn.Materials.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Materials.Strength", true, 1.5f, 1.0f },
     // Sun shadows (outdoor daytime only; the renderer disables them indoors, at night and at the horizon).
@@ -956,6 +957,17 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.0f).Tooltip(
             "0.00 reproduces the original distance stepping of point lights. Higher values smooth "
             "the falloff instead of showing rings. Requires per-pixel lighting."));
+
+    AddWidget(path, "Character Lighting", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Lighting.Characters")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Rim light from the sky or scene lights and a bounded specular on metal for Link, NPCs and enemies. "
+            "Requires HDR and per-pixel lighting."));
+    AddWidget(path, "Character Lighting Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Lighting.CharactersStrength")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
 
     AddWidget(path, "Companion Materials", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Materials.Enabled")

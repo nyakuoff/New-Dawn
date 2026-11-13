@@ -22,6 +22,7 @@
 | Hue-preserving tonemap and modern grade | `gNewDawn.HDR.*`, `gNewDawn.PostFx.Grade.*` | #38. This replaced the per-channel ACES fit and the double grade (saturation was +10–45% and shadows crushed). Identity below 0.76, then a highlight roll-off, plus an HDR split tone. Graded deliberately richer than the original: saturation -9% to +18%, clipping ≤ 0.72% over 12 points. |
 | Material maps (normal and roughness, GGX) | `gNewDawn.Materials.*` | #31, #33, #34. An offline generator covers 2,209 world textures (the archive stays local). The specular wash is fixed. The visible gain is small; strong highlights only on wet, metal and tile plus POM is future work. |
 | MM3D (3DS) room geometry, experimental | `gNewDawn.MM3D.Rooms/Path/Knee/Top/Gain` | #36, #37. A clean-room converter from the user's own dump; an OpenGL draw path keeps N64 collision. A data-driven allowlist of 19 scenes, with live N64 texture animation and a PICA highlight knee. Rooms=0 is pixel-identical to main; about 0.1 ms GPU. Not in the preset. |
+| Character lighting (rim + bounded metal specular on actors) | `gNewDawn.Lighting.Characters/CharactersStrength` | `docs/CHARACTER_LIGHTING.md`. Render-state classifier (non-identity matrix, 2+ matrix loads after the actor's lights); +0.01 ms GPU; off is pixel-identical. In the preset. |
 | New Dawn graphics preset buttons | the `sNewDawnPresetCvars` table in BenMenu.cpp | #17 |
 | Capture tool, branding, docs | `tools/newdawn/`, `docs/images` | #8, #9, #11 |
 
@@ -38,7 +39,7 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 ## Next priority
 1. ~~Sky-driven ambient / IBL~~ (C2 and D1 done, `docs/SKY_AMBIENT.md`, `docs/SKY_REFLECTIONS.md`); D2 winter overcast sky (`docs/SKY_OVERCAST.md`) done.
 2. Deeper shadows (alpha-tested foliage casters, cascades) plus SSGI and volumetric fog.
-3. Character rim and specular lighting; shoreline foam and refraction for water.
+3. Shoreline foam and refraction for water.
 4. Still owed: interactive HDR pause/pictograph, resize and scene-transition validation; motion and time-of-day checks of the #38 grade.
 
 ## Known limitations
