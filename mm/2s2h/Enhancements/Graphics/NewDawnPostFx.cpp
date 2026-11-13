@@ -275,6 +275,15 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     return params;
 }
 
+extern "C" void NewDawnHDR_WeatherScope(PlayState* play, int begin) {
+    if (!CVarGetInteger("gNewDawn.Atmos.Weather", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    auto* params = NewDawnPostFx_AllocParams(play);
+    if (!params->atmosWeather) return;
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WEATHER_BEGIN : NEWDAWN_POSTFX_STAGE_WEATHER_END, params);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 extern "C" void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int begin) {
     if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0) || !CVarGetInteger("gNewDawn.Sky.Flare", 0))
         return;
@@ -411,7 +420,7 @@ extern "C" void NewDawnHDR_Begin(PlayState* play) {
 
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Atmos.Particles", 0)) {
+        !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0)) {
         return;
     }
 

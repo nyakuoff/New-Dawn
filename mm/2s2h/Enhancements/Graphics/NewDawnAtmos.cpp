@@ -7,8 +7,10 @@ extern "C" {
 
 // Read-only scene/light bridge. No actor, environment, clock or gameplay RNG writes.
 void NewDawnAtmos_Fill(const PlayState* play, NewDawnPostFxParams* params) {
-    if (!CVarGetInteger("gNewDawn.Atmos.Particles", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
-        CVarGetFloat("gNewDawn.Atmos.Strength", 1.0f) <= 0.0f ||
+    const bool particles =
+        CVarGetInteger("gNewDawn.Atmos.Particles", 0) && CVarGetFloat("gNewDawn.Atmos.Strength", 1.0f) > 0;
+    const bool weather = CVarGetInteger("gNewDawn.Atmos.Weather", 0);
+    if ((!particles && !weather) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
         (GET_ACTIVE_CAM(play)->stateFlags & CAM_STATE_UNDERWATER)) {
         return;
     }
@@ -32,6 +34,9 @@ void NewDawnAtmos_Fill(const PlayState* play, NewDawnPostFxParams* params) {
         case SCENE_LOST_WOODS:
             params->atmosBiome = 3;
             break;
+        case SCENE_10YUKIYAMANOMURA:
+            params->atmosBiome = 5;
+            break;
         case SCENE_YADOYA:
             params->atmosBiome = 4;
             break;
@@ -39,6 +44,9 @@ void NewDawnAtmos_Fill(const PlayState* play, NewDawnPostFxParams* params) {
             return;
     }
     params->atmosScene = play->sceneId;
+    params->atmosParticles = particles && params->atmosBiome != 5;
+    params->atmosWeather = weather && params->atmosBiome != 4;
+    params->atmosSnow = std::clamp(play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f, 0.0f, 1.0f);
     // Smooth, read-only day/night weights independent of the sun shadow toggle.
     const float hour = gSaveContext.save.time * (24.0f / 65536.0f);
     params->atmosNight = std::clamp(std::max(6.0f - hour, hour - 18.0f), 0.0f, 1.0f);
@@ -47,8 +55,10 @@ void NewDawnAtmos_Fill(const PlayState* play, NewDawnPostFxParams* params) {
     params->atmosEye[1] = play->view.eye.y;
     params->atmosEye[2] = play->view.eye.z;
     const auto& sun = play->envCtx.dirLight1.params.dir;
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 3; ++i) {
         params->atmosSunColor[i] = sun.color[i] / 255.0f;
+        params->atmosSkyColor[i] = play->lightCtx.fogColor[i] / 255.0f;
+    }
     // Scene lights, including torches: bounded nearest selection so linked-list ordering cannot evict a near light.
     for (const LightNode* node = play->lightCtx.listHead; node; node = node->next) {
         if (!node->info || node->info->type == LIGHT_DIRECTIONAL)
