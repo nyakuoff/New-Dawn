@@ -10,6 +10,8 @@ from dataclasses import dataclass
 import hashlib
 import json
 import math
+import os
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 import struct
 import sys
@@ -23,7 +25,7 @@ try:
 except ImportError:
     np = None
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 TEXTURE_TYPE = 0x4F544558
 EXPANDED_TYPES = {1, 2, 5, 6, 7, 8, 9}
 DEFAULTS = {"height_scale": 0.025, "normal_strength": 1.0,
@@ -235,13 +237,34 @@ def preview(path, pixels, normal, rh, width, height):
     write_png(path, pw*4, ph, out)
 
 
-def load_manifest(path):
+def validate_recipe(recipe):
+    if set(recipe) != set(DEFAULTS):
+        raise ValueError("unknown or missing recipe keys")
+    for key in ("height_scale", "normal_strength"):
+        v = recipe[key]
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
+            raise ValueError(f"{key} must be finite and nonnegative")
+    bounds = recipe["roughness_range"]
+    if (not isinstance(bounds, list) or len(bounds) != 2 or
+            not all(isinstance(v, (int, float)) and not isinstance(v, bool) and
+                    math.isfinite(v) for v in bounds) or not 0 <= bounds[0] <= bounds[1] <= 1):
+        raise ValueError("roughness_range must be [minimum, maximum] within [0,1]")
+    if not isinstance(recipe["invert"], bool):
+        raise ValueError("invert must be boolean")
+
+
+def read_manifest(path):
     with path.open("rb") as f:
         if path.suffix == ".toml":
             import tomllib
             manifest = tomllib.load(f)
         else:
             manifest = json.load(f)
+    return manifest
+
+
+def load_manifest(path):
+    manifest = read_manifest(path)
     if not isinstance(manifest, dict) or manifest.get("version") != 1:
         raise ValueError("manifest version must be 1")
     defaults = dict(DEFAULTS)
@@ -267,18 +290,8 @@ def load_manifest(path):
             raise ValueError(f"overrides must be an object for {resource}")
         if set(defaults) - set(DEFAULTS) or set(overrides) - set(DEFAULTS):
             raise ValueError(f"unknown recipe key for {resource}")
-        recipe = defaults | overrides
-        for key in ("height_scale", "normal_strength"):
-            v = recipe[key]
-            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
-                raise ValueError(f"{key} must be finite and nonnegative")
-        bounds = recipe["roughness_range"]
-        if (not isinstance(bounds, list) or len(bounds) != 2 or
-                not all(isinstance(v, (int, float)) and not isinstance(v, bool) and
-                        math.isfinite(v) for v in bounds) or not 0 <= bounds[0] <= bounds[1] <= 1):
-            raise ValueError("roughness_range must be [minimum, maximum] within [0,1]")
-        if not isinstance(recipe["invert"], bool):
-            raise ValueError("invert must be boolean")
+        recipe = defaults | manifest.get("classes", {}).get(item.get("class"), {}) | overrides
+        validate_recipe(recipe)
         item["recipe"] = recipe
     return materials
 
@@ -335,93 +348,235 @@ def self_check():
             assert all(abs(a-b) <= 1 for left, right in zip(*results) for a, b in zip(left, right))
     finally:
         np = original_np
-    print("self-check: TextureV1 LE/BE round-trip, bump signs, wrap, flat map, roughness, overrides, backend agreement passed")
+    # Incremental provenance: unchanged content reuses, recipe/source edits miss.
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        pack = root/"synthetic.o2r"
+        cache = root/"cache"
+        cache.mkdir()
+        item = {"resource": "scenes/test/Tex", "recipe": dict(DEFAULTS)}
+        def write_source(value):
+            tex = Texture(8, 8, 1, 1, 1, 1, bytes([value, 100, 120, 255])*64)
+            with zipfile.ZipFile(pack, "w") as z:
+                z.writestr("alt/"+item["resource"], encode_texture(tex))
+        write_source(100)
+        task = (str(pack), item, 2, str(cache), np is None)
+        first = generate_one(task)
+        assert not first[2] and generate_one(task)[2]
+        item["recipe"] = DEFAULTS | {"height_scale": .001}
+        assert not generate_one(task)[2]
+        write_source(101)
+        changed = generate_one(task)
+        assert not changed[2] and first[1]["source_sha256"] != changed[1]["source_sha256"]
+    if np is not None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pack = Path(tmp)/"classification.o2r"
+            name = "alt/scenes/nonmq/Z2_TEST/GrassTex"
+            pixels = bytes(v for y in range(256) for x in range(256)
+                           for v in (30, 100+(x+y)%40, 20, 255))
+            with zipfile.ZipFile(pack, "w") as z:
+                z.writestr(name, encode_texture(Texture(256, 256, 1, 1, 1, 1, pixels)))
+                z.writestr(name+"Alpha", encode_texture(Texture(256, 256, 1, 1, 1, 1,
+                              bytes([30, 120, 20, 0])*65536)))
+            entry = classify_one((str(pack), name))
+            assert entry["excluded"] is None and entry["class"] == "grass"
+            assert classify_one((str(pack), name+"Alpha"))["excluded"] == "alpha/cutout or translucent"
+    print("self-check: TextureV1 LE/BE round-trip, bump signs, wrap, flat map, roughness, incremental source/recipe invalidation, backend agreement passed")
+
+
+def classify_one(task):
+    pack, name = task
+    with zipfile.ZipFile(pack) as source:
+        tex = decode_texture(source.read(name))
+    rgba = albedo_rgba(tex)
+    # Fixed-size sampling bounds statistics cost independently of source resolution.
+    a = np.frombuffer(rgba, dtype=np.uint8).reshape(tex.height, tex.width, 4)
+    sample = a[::max(1, tex.height//128), ::max(1, tex.width//128)] / 255.0
+    rgb = sample[:, :, :3]
+    mx, mn = rgb.max(2), rgb.min(2)
+    sat = (mx-mn) / np.maximum(mx, .001)
+    mean = rgb.mean((0, 1))
+    lum = rgb @ np.array([.2126, .7152, .0722])
+    energy = [float(np.abs(np.diff(lum, axis=i)).mean()) if lum.shape[i] > 1 else 0.0
+              for i in (0, 1)]
+    hf = sum(energy)/2
+    seam = float((np.abs(lum[0]-lum[-1]).mean()+np.abs(lum[:, 0]-lum[:, -1]).mean())/2)
+    r, g, b = mean
+    # Mean hue in degrees; saturation/energy prevent colourful murals becoming metal.
+    import colorsys
+    hue = colorsys.rgb_to_hsv(float(r), float(g), float(b))[0]*360
+    stats = {"hue": round(hue, 2), "saturation": round(float(sat.mean()), 4),
+             "luminance": round(float(lum.mean()), 4), "high_frequency": round(hf, 4),
+             "border_difference": round(seam, 4), "tileability": round(max(0, 1-seam/max(hf, .01)/8), 4)}
+    reason = None
+    if min(tex.width, tex.height) < 128 or tex.width*tex.height < 65536:
+        reason = "small/detail texture"
+    elif np.any(a[:, :, 3] < 250):
+        reason = "alpha/cutout or translucent"
+    elif float(lum.std()) < .008:
+        reason = "near-flat colour"
+    path = name.lower()
+    cls, confidence = "other", .3
+    if g > r*1.08 and g > b*1.10 and sat.mean() > .18:
+        cls, confidence = "grass", .75
+    elif b > r*1.1 and b > g*1.03 and any(x in path for x in ("gyoson", "water", "sea", "pinnacle")):
+        cls, confidence = "wet", .45
+    elif sat.mean() < .13 and hf > .13 and lum.mean() < .4:
+        cls, confidence = "metal", .35
+    elif sat.mean() < .22 and lum.mean() > .48 and hf < .075:
+        cls, confidence = "plaster", .65
+    elif r > g*1.35 and r > b*1.6 and any(x in path for x in ("clock", "town", "yado", "market")):
+        cls, confidence = "roof_tile", .45
+    elif r > b*1.3 and .15 < sat.mean() < .65:
+        directional = abs(energy[0]-energy[1])
+        if directional > .025 and any(x in path for x in ("house", "yado", "shop", "bar", "musichouse", "wood")):
+            cls, confidence = "wood", .55
+        elif any(x in path for x in ("keikoku", "sogen", "gyoson", "sabaku", "sand")):
+            cls, confidence = "dirt", .5
+        else:
+            cls, confidence = "stone", .45
+    elif hf > .025:
+        cls, confidence = "stone", .4
+    return {"resource": name.removeprefix("alt/"), "class": cls, "confidence": round(confidence * (.7 + .3*stats["tileability"]), 2),
+            "size": [tex.width, tex.height], "statistics": stats,
+            "excluded": reason}
+
+
+def classify(args):
+    if np is None:
+        raise ValueError("--classify requires installed NumPy")
+    with zipfile.ZipFile(args.pack) as source:
+        names = sorted(n for n in source.namelist() if n.startswith("alt/scenes/") and "Tex" in n.rsplit("/", 1)[-1])
+        outside = len(source.namelist())-len(names)
+    with ProcessPoolExecutor(max_workers=args.jobs) as pool:
+        entries = list(pool.map(classify_one, ((str(args.pack), n) for n in names), chunksize=8))
+    result = {"version": 1, "source_archive": args.pack.name,
+              "method": "scene/room paths only; RGB hue/saturation, luminance energy, directional grain and periodic border difference; hypotheses, not semantic recognition",
+              "excluded_non_scene_resources": outside, "textures": entries}
+    args.classify.write_text(json.dumps(result, indent=2)+"\n")
+    print(f"classified {len(entries)} scene textures; selected {sum(e['excluded'] is None for e in entries)}; excluded {outside} non-scene resources")
+
+
+def generate_one(task):
+    pack, item, divisor, cache, stdlib = task
+    global np
+    if stdlib:
+        np = None
+    resource = item["resource"]
+    with zipfile.ZipFile(pack) as source:
+        entry = "alt/"+resource
+        if source.namelist().count(entry) != 1:
+            raise ValueError(f"expected exactly one source entry: {entry}")
+        raw = source.read(entry)
+    source_hash = hashlib.sha256(raw).hexdigest()
+    key = hashlib.sha256(json.dumps([VERSION, source_hash, item["recipe"], divisor], sort_keys=True).encode()).hexdigest()
+    target = Path(cache) / (key+".zip")
+    if target.exists():
+        with zipfile.ZipFile(target) as z:
+            meta = json.loads(z.read("metadata.json"))
+        # Labels are review metadata and may change without regenerating pixels.
+        return str(target), meta | {"resource": resource, "label": item.get("label", resource)}, True
+    tex = decode_texture(raw)
+    pixels = albedo_rgba(tex)
+    fingerprint = pixel_fingerprint(pixels)
+    w, h = tex.width, tex.height
+    if divisor == 2:
+        pixels = half_rgba(pixels, w, h)
+        w, h = w//2, h//2
+    n, rh = generate(pixels, w, h, item["recipe"])
+    meta = {"resource": resource, "label": item.get("label", resource),
+            "source_sha256": source_hash, "source_pixels_fnv1a64": fingerprint,
+            "source_hash_scope": "entire uncompressed TextureV1 entry, including header",
+            "source_size": [tex.width, tex.height], "output_size": [w, h],
+            "source_type": tex.kind, "source_flags": tex.flags,
+            "source_h_byte_scale": tex.h_byte_scale, "source_v_pixel_scale": tex.v_pixel_scale,
+            "crop_pixels": [0, 0, tex.width, tex.height], "uv_scale": [1, 1], "uv_offset": [0, 0],
+            "recipe": item["recipe"]}
+    temporary = target.with_suffix(f".{os.getpid()}.tmp")
+    with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=3) as z:
+        for suffix, data in (("_n", n), ("_r", rh)):
+            z.writestr(suffix, encode_texture(Texture(w, h, 9, 0, 1, 1, data)))
+        z.writestr("metadata.json", json.dumps(meta))
+    temporary.replace(target)
+    return str(target), meta, False
 
 
 def run(args):
-    if np is None:
-        print("NumPy unavailable; using slow stdlib path (no packages installed).", file=sys.stderr)
     if args.self_check:
         self_check()
         return
+    if args.jobs < 1:
+        raise ValueError("--jobs must be positive")
     if args.pack is None:
-        raise ValueError("--pack is required unless using --self-check")
-    materials = load_manifest(args.manifest)
-    # Keep derived assets private and out of source control. Output is always new.
+        raise ValueError("--pack is required")
+    if args.classify:
+        classify(args)
+        return
     if args.out is None:
-        raise ValueError("--out DIR is required unless using --self-check")
+        raise ValueError("--out DIR is required")
     root = args.out.resolve()
     repo = Path(__file__).resolve().parents[2]
     if root == repo or repo in root.parents:
         raise ValueError("--out must be outside this repository; derived textures must stay private")
-    output = root / "newdawn-materials.o2r"
     root.mkdir(parents=True, exist_ok=True)
-    if output.exists():
-        raise ValueError(f"output already exists; choose a new --out directory: {output}")
-    preview_dir = root / "preview"
-    if preview_dir.exists():
-        raise ValueError(f"preview directory already exists: {preview_dir}")
+    cache = root / "cache"
+    cache.mkdir(exist_ok=True)
+    materials = load_manifest(args.manifest)
+    if args.classification:
+        manifest = read_manifest(args.manifest)
+        overrides = {i["resource"]: i for i in materials}
+        classification = json.loads(args.classification.read_text())
+        if classification.get("version") != 1:
+            raise ValueError("classification version must be 1")
+        entries = classification["textures"]
+        if len({e["resource"] for e in entries}) != len(entries):
+            raise ValueError("duplicate resource in classification")
+        selected = []
+        for entry in entries:
+            if entry["excluded"] is not None:
+                continue
+            item = overrides.pop(entry["resource"], dict(resource=entry["resource"]))
+            item["recipe"] = (DEFAULTS | manifest.get("defaults", {}) |
+                              manifest["classes"][entry["class"]] | item.get("overrides", {}))
+            validate_recipe(item["recipe"])
+            selected.append(item)
+        materials = selected + list(overrides.values())
     started = time.monotonic()
     metadata = {"generator": "newdawn-materials", "version": VERSION,
                 "source_archive": args.pack.name, "resolution_divisor": args.resolution,
-                "channels": {"_n": ["normal_x", "normal_y"], "_r": ["roughness", "height"]},
-                "normal_convention": "+X right, +Y up, +Z out; image rows down; decode RG/255*2-1",
-                "storage": "TextureV1 type=9 (IA16 container), flags=0, tightly packed linear RG8",
-                "height_recipe": "linear luminance; periodic boxes 1/512,1/128,1/32 of short axis; "
-                                 "weights .6,.3,.1; subtract 1/8-axis box, add .5, clamp; invert about .5",
-                "roughness_recipe": "lo+(hi-lo)*clamp(4*sqrt(local variance),0,1); radius short axis/128",
                 "materials": []}
-    # Stage privately, publishing only after every selected resource succeeds.
-    with tempfile.TemporaryDirectory(prefix=".generate-", dir=root) as staging:
-        stage = Path(staging)
-        (stage / "preview").mkdir()
-        with zipfile.ZipFile(args.pack) as source, zipfile.ZipFile(
-                stage / "companion.o2r", "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as dest:
-            names = source.namelist()
-            for index, item in enumerate(materials):
-                tick = time.monotonic()
-                resource = item["resource"]
-                entry = "alt/" + resource
-                if names.count(entry) != 1:
-                    raise ValueError(f"expected exactly one source entry: {entry}")
-                raw = source.read(entry)
-                try:
-                    tex = decode_texture(raw)
-                    pixels = albedo_rgba(tex)
-                except ValueError as exc:
-                    raise ValueError(f"{entry}: {exc}") from exc
-                pixel_hash = pixel_fingerprint(pixels)
-                w, h = tex.width, tex.height
-                if args.resolution == 2:
-                    pixels = half_rgba(pixels, w, h)
-                    w, h = w//2, h//2
-                n, rh = generate(pixels, w, h, item["recipe"])
-                for suffix, data in (("_n", n), ("_r", rh)):
-                    dest.writestr(entry+suffix, encode_texture(Texture(w, h, 9, 0, 1, 1, data)))
-                name = f"{index+1:02}-{resource.rsplit('/', 1)[-1]}.png"
-                preview(stage / "preview" / name, pixels, n, rh, w, h)
-                metadata["materials"].append({
-                    "resource": resource, "label": item.get("label", resource),
-                    "source_sha256": hashlib.sha256(raw).hexdigest(),
-                    "source_pixels_fnv1a64": pixel_hash,
-                    "source_hash_scope": "entire uncompressed TextureV1 entry, including header",
-                    "source_size": [tex.width, tex.height], "output_size": [w, h],
-                    "source_type": tex.kind, "source_flags": tex.flags,
-                    "source_h_byte_scale": tex.h_byte_scale, "source_v_pixel_scale": tex.v_pixel_scale,
-                    "crop_pixels": [0, 0, tex.width, tex.height],
-                    "uv_scale": [1, 1], "uv_offset": [0, 0],
-                    "recipe": item["recipe"], "preview": name})
-                print(f"{index+1}/{len(materials)} {resource}: {tex.width}x{tex.height} -> "
-                      f"{w}x{h}, {time.monotonic()-tick:.2f}s", flush=True)
-            dest.writestr("newdawn-materials.json", json.dumps(metadata, indent=2)+"\n")
-        # Exclusive creation also protects against another concurrent generator.
-        with output.open("xb") as out, (stage / "companion.o2r").open("rb") as src:
-            import shutil
-            shutil.copyfileobj(src, out)
-        preview_dir.parent.mkdir(exist_ok=True)
-        (stage / "preview").rename(preview_dir)
-    print(f"wrote {output} ({output.stat().st_size / 1048576:.2f} MiB) in {time.monotonic()-started:.2f}s")
-    print(f"previews: {preview_dir} (albedo | normal | roughness | height)")
+    hits = 0
+    results = []
+    with ProcessPoolExecutor(max_workers=args.jobs) as pool:
+        tasks = ((str(args.pack), item, args.resolution, str(cache), args.stdlib) for item in materials)
+        for index, result in enumerate(pool.map(generate_one, tasks, chunksize=1)):
+            results.append(result)
+            hits += result[2]
+            metadata["materials"].append(result[1])
+            if (index+1) % 50 == 0:
+                print(f"{index+1}/{len(materials)} ({hits} reused), {time.monotonic()-started:.1f}s", flush=True)
+    output = root/"newdawn-materials.o2r"
+    previous = None
+    if output.exists():
+        with zipfile.ZipFile(output) as z:
+            previous = json.loads(z.read("newdawn-materials.json"))
+    if previous != metadata:
+        with tempfile.TemporaryDirectory(prefix=".generate-", dir=root) as staging:
+            staged = Path(staging)/"companion.o2r"
+            with zipfile.ZipFile(staged, "w") as dest:
+                for cached, meta, _ in results:
+                    with zipfile.ZipFile(cached) as z:
+                        for suffix in ("_n", "_r"):
+                            dest.writestr("alt/"+meta["resource"]+suffix, z.read(suffix),
+                                          compress_type=zipfile.ZIP_DEFLATED, compresslevel=3)
+                dest.writestr("newdawn-materials.json", json.dumps(metadata, indent=2)+"\n")
+            staged.replace(output)
+    report = {"count": len(materials), "reused": hits, "generated": len(materials)-hits,
+              "seconds": round(time.monotonic()-started, 2),
+              "archive_bytes": (root/"newdawn-materials.o2r").stat().st_size,
+              "resolution_divisor": args.resolution}
+    (root/"generation-report.json").write_text(json.dumps(report, indent=2)+"\n")
+    print(json.dumps(report))
 
 
 def main():
@@ -430,6 +585,9 @@ def main():
     parser.add_argument("--manifest", type=Path, default=Path(__file__).with_name("materials.json"))
     parser.add_argument("--out", type=Path, help="private output directory outside the repository (required)")
     parser.add_argument("--resolution", type=int, choices=(1, 2), default=2, help="axis divisor; default half axes")
+    parser.add_argument("--classify", type=Path, help="write reviewable scene classification JSON and exit")
+    parser.add_argument("--classification", type=Path, help="generate selected scene entries using manifest classes")
+    parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1), help="bounded worker count (default <=4)")
     parser.add_argument("--stdlib", action="store_true", help="force slow fallback, also for validation")
     parser.add_argument("--self-check", action="store_true", help="synthetic checks; no pack or outputs needed")
     args = parser.parse_args()
