@@ -167,6 +167,11 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.HDR.AmbientFill", true, 0.72f, 0.4f },
     { "gNewDawn.HDR.SkyIntensity", true, 0.85f, 1.0f },
     { "gNewDawn.HDR.FogIntensity", true, 0.85f, 1.0f },
+    { "gNewDawn.Sky.Physical", false, 1.0f, 0.0f },
+    { "gNewDawn.Sky.Strength", true, 1.0f, 1.0f },
+    { "gNewDawn.Sky.Clouds", false, 1.0f, 0.0f },
+    { "gNewDawn.Sky.Coverage", true, 0.55f, 0.55f },
+    { "gNewDawn.Sky.CloudStrength", true, 1.0f, 1.0f },
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
@@ -830,6 +835,24 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.HDR.Exposure")
         .Options(FloatSliderOptions().Min(-2.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(-0.2f).Tooltip(
             "Brightness of the HDR world before the display transform."));
+    AddWidget(path, "Physical Sky (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Sky.Physical")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Atmospheric scattering in normal outdoor skies. Requires HDR. Special skies and the final day retain "
+            "their original look."));
+    AddWidget(path, "Sky Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Sky.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Volumetric Clouds (Physical Sky)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Sky.Clouds")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Sunlit cumulus clouds with shaded bodies and steady wind. Requires Physical Sky and HDR."));
+    AddWidget(path, "Cloud Coverage: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Sky.Coverage")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(0.55f));
+    AddWidget(path, "Cloud Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Sky.CloudStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
     AddWidget(path, "Bloom", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Bloom.Enabled")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })

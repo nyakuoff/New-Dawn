@@ -13,6 +13,7 @@ extern "C" {
 // Start recording opaque world/actor shadow casters. Call just before Scene_Draw.
 void NewDawnHDR_Begin(PlayState* play);
 void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin);
+void NewDawnSky_Draw(PlayState* play);
 
 void NewDawnShadows_Begin(PlayState* play);
 
