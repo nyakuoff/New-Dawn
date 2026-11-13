@@ -22,3 +22,5 @@ snow 0.010 / 0.010 ms.
 Limits: roof map is vertical (rain slant ignored) and single-layer; streak/flake colour is a heuristic from the
 fog colour; snow is only checked in one Mountain Village view; exact-main byte identity of the off path is not
 proven (same open fixture gate as A1); lingering wetness and heavy-rain night scenes not captured.
+
+Merged onto main 99bdb022d / renderer 4deaa8c2: the wet layer skips pixels under any water-plane box (the water pass owns foam and ripples there), so splashes/puddles are not doubled on water. Verified in Clock Town rain with Water.Foam/Refraction/Enabled, Wind and Particles all on: 0 GL errors; stage 12 0.17 ms, 13 0.03 ms.
