@@ -170,6 +170,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Sky.Physical", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Strength", true, 1.0f, 1.0f },
     { "gNewDawn.Sky.Ambient", false, 1.0f, 0.0f },
+    { "gNewDawn.Sky.Reflections", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Clouds", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Coverage", true, 0.55f, 0.55f },
     { "gNewDawn.Sky.CloudStrength", true, 1.0f, 1.0f },
@@ -850,6 +851,10 @@ void BenMenu::AddSettings() {
         .Options(
             CheckboxOptions().DefaultValue(false).Tooltip("Outdoor surfaces and actors receive directional sky colour "
                                                           "and ground bounce. Requires Physical Sky and HDR."));
+    AddWidget(path, "Sky Reflections", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Sky.Reflections")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Sky and clouds reflected in outdoor water and glossy materials. Requires Physical Sky and HDR."));
     AddWidget(path, "Volumetric Clouds (Physical Sky)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Clouds")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(

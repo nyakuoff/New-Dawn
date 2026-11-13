@@ -25,6 +25,7 @@ typedef struct {
 #include "global.h"
 #include "sys_cfb.h"
 #include "BenPort.h"
+#include "2s2h/Enhancements/Graphics/NewDawnPostFx.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 
@@ -2264,6 +2265,11 @@ void Environment_DrawSkyboxFilters(PlayState* play) {
         gSPDisplayList(POLY_OPA_DISP++, D_0E000000_TO_SEGMENTED(clearFillRect));
 
         CLOSE_DISPS(play->state.gfxCtx);
+
+        if (play->skyboxId == SKYBOX_2) {
+            // New Dawn: physical overcast deck over the fog fill (no-op unless Physical Sky and HDR are on).
+            NewDawnSky_DrawOvercast(play);
+        }
     }
 
     if (play->envCtx.customSkyboxFilter) {
