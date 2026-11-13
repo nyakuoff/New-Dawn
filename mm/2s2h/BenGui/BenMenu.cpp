@@ -169,6 +169,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.HDR.FogIntensity", true, 0.85f, 1.0f },
     { "gNewDawn.Sky.Physical", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Strength", true, 1.0f, 1.0f },
+    { "gNewDawn.Sky.Ambient", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Clouds", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Coverage", true, 0.55f, 0.55f },
     { "gNewDawn.Sky.CloudStrength", true, 1.0f, 1.0f },
@@ -843,6 +844,11 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Sky Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Sky.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Sky Ambient Lighting", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Sky.Ambient")
+        .Options(
+            CheckboxOptions().DefaultValue(false).Tooltip("Outdoor surfaces and actors receive directional sky colour "
+                                                          "and ground bounce. Requires Physical Sky and HDR."));
     AddWidget(path, "Volumetric Clouds (Physical Sky)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Clouds")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
