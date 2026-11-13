@@ -298,6 +298,16 @@ extern "C" void NewDawnSky_Draw(PlayState* play) {
     for (int i = 0; i < 3; ++i) {
         params->skyFogColor[i] = play->lightCtx.fogColor[i] / 255.0f;
     }
+    params->skyPaletteColor[0] = play->skyboxCtx.prim.r / 255.0f;
+    params->skyPaletteColor[1] = play->skyboxCtx.prim.g / 255.0f;
+    params->skyPaletteColor[2] = play->skyboxCtx.prim.b / 255.0f;
+    // Representative render-only ground albedo, used for the lower-hemisphere sky bounce.
+    const bool grass = play->sceneId == SCENE_00KEIKOKU || play->sceneId == SCENE_F01 ||
+                       play->sceneId == SCENE_20SICHITAI2 || play->sceneId == SCENE_22DEKUCITY;
+    params->skyGroundAlbedo[0] = grass ? 0.24f : 0.42f;
+    params->skyGroundAlbedo[1] = grass ? 0.30f : 0.32f;
+    params->skyGroundAlbedo[2] = grass ? 0.10f : 0.18f;
+    params->skySceneId = play->sceneId;
     params->skyWeather = NewDawnClampF(play->envCtx.precipitation[PRECIP_RAIN_CUR] / 40.0f +
                                            play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f,
                                        0.0f, 1.0f);
