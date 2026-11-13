@@ -168,7 +168,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.HDR.SkyIntensity", true, 0.85f, 1.0f },
     { "gNewDawn.HDR.FogIntensity", true, 0.85f, 1.0f },
     { "gNewDawn.Sky.Physical", false, 1.0f, 0.0f },
-    { "gNewDawn.Sky.Flare", false, 0.0f, 0.0f },
+    { "gNewDawn.Sky.Flare", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Strength", true, 1.0f, 1.0f },
     { "gNewDawn.Sky.Ambient", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Reflections", false, 1.0f, 0.0f },
@@ -846,9 +846,9 @@ void BenMenu::AddSettings() {
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Atmospheric scattering in normal outdoor skies. Requires HDR. Special skies and the final day retain "
             "their original look."));
-    AddWidget(path, "HDR Sun Diffraction Flare", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "HDR Lens Flare (VFX Textures)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Flare")
-        .Options(CheckboxOptions().Tooltip("Replace native sun flare sprites and screen wash with a depth-occluded diffraction flare. Requires HDR."));
+        .Options(CheckboxOptions().Tooltip("Downloaded glow and iris ghosts, occluded by geometry and clouds. Requires HDR and the flare pack under gNewDawn.Assets.Path (default assets/newdawn)."));
     AddWidget(path, "Sky Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Sky.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
