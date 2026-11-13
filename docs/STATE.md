@@ -37,7 +37,7 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 - MM3D polish: floor banding, an on-screen check of re-admitted scenes, sunlit shadows, then the opt-in `gNewDawn.MM3D.Collision` trial on South Clock Town.
 
 ## Next priority
-1. Sky-driven ambient / IBL, after the physical sky.
+1. ~~Sky-driven ambient / IBL~~ (C2 and D1 done, `docs/SKY_AMBIENT.md`, `docs/SKY_REFLECTIONS.md`); D2 winter overcast sky (`docs/SKY_OVERCAST.md`) done.
 2. Deeper shadows (alpha-tested foliage casters, cascades) plus SSGI and volumetric fog.
 3. Shoreline foam and refraction for water.
 4. Still owed: interactive HDR pause/pictograph, resize and scene-transition validation; motion and time-of-day checks of the #38 grade.

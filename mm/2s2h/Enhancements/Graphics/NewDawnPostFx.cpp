@@ -242,12 +242,23 @@ extern "C" void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin) {
     CLOSE_DISPS(gfxCtx);
 }
 
+static void NewDawnSky_Emit(PlayState* play, bool winterPass);
+
 extern "C" void NewDawnSky_Draw(PlayState* play) {
+    NewDawnSky_Emit(play, false);
+}
+
+// Winter Mountain Village has no skybox (SKYBOX_2): the game paints an opaque fog-colour fill. The overcast deck is
+// emitted right after that fill and blends over it, so the fill stays as the fallback if the pass cannot run.
+extern "C" void NewDawnSky_DrawOvercast(PlayState* play) {
+    NewDawnSky_Emit(play, true);
+}
+
+static void NewDawnSky_Emit(PlayState* play, bool winterPass) {
     static u32 lastLogFrame = UINT32_MAX;
     static s16 lastLogScene = -1;
     if (CVarGetInteger("gNewDawn.Sky.Physical", 0) && CVarGetInteger("gNewDawn.PostFx.Debug.Stats", 0) &&
-        play->gameplayFrames % 120 == 0 &&
-        (lastLogFrame != play->gameplayFrames || lastLogScene != play->sceneId)) {
+        play->gameplayFrames % 120 == 0 && (lastLogFrame != play->gameplayFrames || lastLogScene != play->sceneId)) {
         lastLogFrame = play->gameplayFrames;
         lastLogScene = play->sceneId;
         SPDLOG_INFO("NewDawnSky: scene {} sky {} config {} layer {} day {} mode {} sunDisabled {} lateSky {} override "
@@ -256,11 +267,13 @@ extern "C" void NewDawnSky_Draw(PlayState* play) {
                     gSaveContext.save.day, play->envCtx.lightMode, play->envCtx.sunDisabled, play->skyboxCtx.shouldDraw,
                     play->envCtx.lightSettingOverride, Play_InCsMode(play));
     }
+    const bool winter = winterPass && play->skyboxId == SKYBOX_2 && play->sceneId == SCENE_10YUKIYAMANOMURA;
     if (!CVarGetInteger("gNewDawn.Sky.Physical", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
-        CVarGetFloat("gNewDawn.Sky.Strength", 1.0f) <= 0.0f || play->skyboxId != SKYBOX_NORMAL_SKY ||
-        play->skyboxCtx.shouldDraw || play->envCtx.skyboxDisabled || play->envCtx.sunDisabled ||
-        play->envCtx.lightMode != LIGHT_MODE_TIME || play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE ||
-        play->envCtx.changeSkyboxState != 0 || play->envCtx.skyboxConfig != play->envCtx.changeSkyboxNextConfig ||
+        CVarGetFloat("gNewDawn.Sky.Strength", 1.0f) <= 0.0f ||
+        (winterPass ? !winter : play->skyboxId != SKYBOX_NORMAL_SKY) || play->skyboxCtx.shouldDraw ||
+        play->envCtx.skyboxDisabled || play->envCtx.sunDisabled || play->envCtx.lightMode != LIGHT_MODE_TIME ||
+        play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE || play->envCtx.changeSkyboxState != 0 ||
+        play->envCtx.skyboxConfig != play->envCtx.changeSkyboxNextConfig ||
         play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 ||
         gSaveContext.save.day < 1 || gSaveContext.save.day >= 3 || gSaveContext.sceneLayer != 0 ||
         play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
@@ -298,15 +311,17 @@ extern "C" void NewDawnSky_Draw(PlayState* play) {
     for (int i = 0; i < 3; ++i) {
         params->skyFogColor[i] = play->lightCtx.fogColor[i] / 255.0f;
     }
-    params->skyPaletteColor[0] = play->skyboxCtx.prim.r / 255.0f;
-    params->skyPaletteColor[1] = play->skyboxCtx.prim.g / 255.0f;
-    params->skyPaletteColor[2] = play->skyboxCtx.prim.b / 255.0f;
+    // SKYBOX_2 never loads a palette; the overcast deck takes its hue from the fog.
+    params->skyPaletteColor[0] = winter ? params->skyFogColor[0] : play->skyboxCtx.prim.r / 255.0f;
+    params->skyPaletteColor[1] = winter ? params->skyFogColor[1] : play->skyboxCtx.prim.g / 255.0f;
+    params->skyPaletteColor[2] = winter ? params->skyFogColor[2] : play->skyboxCtx.prim.b / 255.0f;
+    params->skyOvercast = winter ? 1.0f : 0.0f;
     // Representative render-only ground albedo, used for the lower-hemisphere sky bounce.
     const bool grass = play->sceneId == SCENE_00KEIKOKU || play->sceneId == SCENE_F01 ||
                        play->sceneId == SCENE_20SICHITAI2 || play->sceneId == SCENE_22DEKUCITY;
-    params->skyGroundAlbedo[0] = grass ? 0.24f : 0.42f;
-    params->skyGroundAlbedo[1] = grass ? 0.30f : 0.32f;
-    params->skyGroundAlbedo[2] = grass ? 0.10f : 0.18f;
+    params->skyGroundAlbedo[0] = winter ? 0.70f : grass ? 0.24f : 0.42f;
+    params->skyGroundAlbedo[1] = winter ? 0.74f : grass ? 0.30f : 0.32f;
+    params->skyGroundAlbedo[2] = winter ? 0.80f : grass ? 0.10f : 0.18f; // fresh snow
     params->skySceneId = play->sceneId;
     params->skyWeather = NewDawnClampF(play->envCtx.precipitation[PRECIP_RAIN_CUR] / 40.0f +
                                            play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f,
