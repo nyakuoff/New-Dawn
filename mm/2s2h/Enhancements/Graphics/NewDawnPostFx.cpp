@@ -298,6 +298,9 @@ extern "C" void NewDawnSky_Draw(PlayState* play) {
     for (int i = 0; i < 3; ++i) {
         params->skyFogColor[i] = play->lightCtx.fogColor[i] / 255.0f;
     }
+    params->skyPaletteColor[0] = play->skyboxCtx.prim.r / 255.0f;
+    params->skyPaletteColor[1] = play->skyboxCtx.prim.g / 255.0f;
+    params->skyPaletteColor[2] = play->skyboxCtx.prim.b / 255.0f;
     params->skyWeather = NewDawnClampF(play->envCtx.precipitation[PRECIP_RAIN_CUR] / 40.0f +
                                            play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f,
                                        0.0f, 1.0f);
