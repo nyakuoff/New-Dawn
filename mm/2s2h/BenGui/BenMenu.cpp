@@ -195,6 +195,11 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Water.Strength", true, 0.5f, 0.5f },
     { "gNewDawn.Water.Reflections", false, 1.0f, 0.0f },
     { "gNewDawn.Water.ReflectionStrength", true, 0.7f, 0.7f },
+    { "gNewDawn.Water.Foam", false, 1.0f, 0.0f },
+    { "gNewDawn.Water.FoamStrength", true, 1.0f, 1.0f },
+    { "gNewDawn.Water.Refraction", false, 1.0f, 0.0f },
+    { "gNewDawn.Water.RefractionStrength", true, 1.0f, 1.0f },
+    { "gNewDawn.Water.Restyle", false, 1.0f, 0.0f },
 };
 
 // Applies the preset (or returns the same cvars to their defaults) and persists the config.
@@ -1076,6 +1081,37 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Water.ReflectionStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.7f).Tooltip(
             "How visible the water reflections are. The poisoned swamp gets a weaker reflection."));
+
+    AddWidget(path, "Water Foam", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Foam")
+        .Options(
+            CheckboxOptions()
+                .Tooltip("Animated foam along shorelines and around anything standing in the water, lit by the sun "
+                         "and sky. OpenGL only.")
+                .DefaultValue(false));
+    AddWidget(path, "Foam Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.FoamStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How visible the foam is."));
+    AddWidget(path, "Water Restyle", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Restyle")
+        .Options(
+            CheckboxOptions()
+                .Tooltip("Replaces the painted water colour with a physical one: clear shallows that show the bed, "
+                         "deeper blue-teal further out, per-area palettes (the poisoned swamp stays sickly). "
+                         "Keeps the original ripple pattern as detail. Needs HDR. OpenGL only.")
+                .DefaultValue(false));
+    AddWidget(path, "Water Refraction", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Refraction")
+        .Options(
+            CheckboxOptions()
+                .Tooltip("A gently wobbling sea bed near the shore that fades into deeper, richer water. Needs HDR. "
+                         "The poisoned swamp stays murky. OpenGL only.")
+                .DefaultValue(false));
+    AddWidget(path, "Refraction Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.RefractionStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How strong the refraction and depth absorption are."));
 
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
