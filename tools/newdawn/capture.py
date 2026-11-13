@@ -37,6 +37,8 @@ def point(name, entrance, room, pos, rot, src, intro=False):
 # POINTS-TABLE-BEGIN
 point('south_clock_town', 0x1c00, 0, (-279, 0, 627), 23040, 'Z2_CLOCKTOWER spawn 1 (entrance 0xd810); entrance id replaced, see INTRO', intro=True)
 point('termina_field', 0x54d0, 0, (2044, 48, -477), 3460, 'Z2_00KEIKOKU spawn 13 (entrance 0x54d0)')
+point('southern_swamp_cleared', 0x0c00, 0, (-191, 61, -1410), 0, 'Z2_20SICHITAI2 spawn 0 (entrance 0x0c00)')
+point('woodfall_exterior', 0x8600, 0, (-41, 12, -1353), 0, 'Z2_21MITURINMAE spawn 0 (entrance 0x8600)')
 point('southern_swamp', 0x8400, 0, (-191, 61, -1410), 0, 'Z2_20SICHITAI spawn 0 (entrance 0x8400)')
 point('mountain_village_winter', 0x9a80, 0, (-649, 8, -196), 14336, 'Z2_10YUKIYAMANOMURA spawn 8 (entrance 0x9a80)')
 point('great_bay_coast', 0x6890, 0, (-305, 80, 4756), 0, 'Z2_30GYOSON spawn 9 (entrance 0x6890)')

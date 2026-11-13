@@ -15,7 +15,7 @@ Coast stage means before/after (ms, 300 runs): AO .392/.307, HDR .178/.155, shad
 shafts .316/.250, water .180/.141, opaque copy .134/.122, sky .218/.169, clouds .349/.273,
 cube .075/.059. GPU clock/load variation affects every stage; these numbers do not establish a speedup.
 
-Evidence: `/tmp/nd/glare-fog/e1-{before,after}-coast/` and
+Evidence: `~/dev/ghm-mods/work/glare-fog/session/e1-{before,after}-coast/` and
 `~/dev/ghm-mods/showcase/glare-fog/e1/coast/` (split.py, left off/right on).
 Termina pond before/after: `e1-field-{0,1}`, split in `e1/field`. This view is occluded from the sun;
 **Termina sun-facing glare remains unverified**. Three framing failures were stopped per instruction.

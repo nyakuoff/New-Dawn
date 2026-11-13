@@ -32,6 +32,10 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 - With the preset and the full mods set: no magenta or missing textures, 0 null-texture and 0 GL errors in the logs. The image is slightly darker overall (AO plus contrast).
 
 ## In progress
+- Glare/fog branch `feature/glare-fog`: E1 local commits `cc14182f6` / renderer `d037e4bf`;
+  E2 HDR height fog implemented and validated over the requested static matrix (0.305–0.351 ms GPU).
+  Both toggles remain default/preset off: exact-main frozen Inn byte identity is not established;
+  Termina sun framing stopped after 3 failures. See `docs/SUN_GLARE.md`, `docs/VOLUMETRIC_FOG.md`.
 - Physical sky (A), then volumetric clouds (B): `gNewDawn.Sky.Physical/Clouds`.
 - MM3D polish: floor banding, an on-screen check of re-admitted scenes, sunlit shadows, then the opt-in `gNewDawn.MM3D.Collision` trial on South Clock Town.
 
