@@ -984,6 +984,13 @@ void BenMenu::AddSettings() {
                      .Tooltip("Shadow map resolution. Higher is sharper but costs more GPU time.")
                      .ComboMap(&shadowMapSizeOptions)
                      .DefaultIndex(4096));
+    AddWidget(path, "Foliage Shadows", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Shadows.Foliage")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(CheckboxOptions()
+                     .Tooltip("Tree leaves, fences and other cut-out geometry cast shadows in their real shape, "
+                              "instead of casting none.")
+                     .DefaultValue(false));
 
     AddWidget(path, "Sun Shafts", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Sun Shafts", WIDGET_CVAR_CHECKBOX)
