@@ -17,9 +17,9 @@ import scene
 from texture import ctxb, decode, etc_block, textures
 from preview import render
 
-DEFAULT_ROMFS = Path('/home/loganp/dev/ghm-mods/mm3d/romfs')
-DEFAULT_OUT = Path('/home/loganp/dev/ghm-mods/mm3d/out')
-DEFAULT_O2R = Path('/home/loganp/dev/2ship2harkinian/build-cmake/mm/mm.o2r')
+DEFAULT_ROMFS = Path.home() / 'dev/ghm-mods/mm3d/romfs'
+DEFAULT_OUT = Path.home() / 'dev/ghm-mods/mm3d/out'
+DEFAULT_O2R = Path.home() / 'dev/2ship2harkinian/build-cmake/mm/mm.o2r'
 REPO = Path(__file__).resolve().parents[3]
 
 

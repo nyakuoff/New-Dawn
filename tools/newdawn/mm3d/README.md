@@ -253,7 +253,7 @@ Primary references were read from **noclip.website**, MIT licensed, revision
 The license was checked before reading source. It includes a notice that some
 implementations were reverse engineered; the reference remains MIT licensed.
 Python implementation here was written independently. The permitted markdown
-`/home/loganp/dev/ext-research/zelda3d-coop/docs/mm3d_asset_parity.md` supplied
+zelda3d-coop document `docs/mm3d_asset_parity.md` supplied
 LzS/GAR/version-delta format facts. No code from that unlicensed project was read,
 copied or paraphrased. Native ZSI collision layout was inferred from authorized
 local bytes and checked against index bounds and plane equations.

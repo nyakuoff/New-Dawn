@@ -65,7 +65,7 @@ def generate(report, output, o2r):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--report', type=Path, default=Path('/home/loganp/dev/ghm-mods/mm3d/out/collision-report.md'))
+    parser.add_argument('--report', type=Path, default=Path.home() / 'dev/ghm-mods/mm3d/out/collision-report.md')
     parser.add_argument('--out', type=Path, default=Path(__file__).resolve().parents[3]/'mm/2s2h/Enhancements/Graphics/MM3DAllowlist.inc')
     parser.add_argument('--o2r', type=Path, default=DEFAULT_O2R)
     args = parser.parse_args()
