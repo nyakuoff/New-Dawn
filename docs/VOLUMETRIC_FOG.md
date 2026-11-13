@@ -66,4 +66,5 @@ within the +.8 ms budget. Raw per-scene data: `~/dev/ghm-mods/work/glare-fog/ses
 Evidence: `~/dev/ghm-mods/work/glare-fog/session/e2-{before,after-fixed}/`, `e2-crops.png`, `e2-turn/`, `e2-turn-full/`,
 and `e2-coast-sun/`. Splits from `/tmp/nd/showcase/split.py`:
 `~/dev/ghm-mods/showcase/glare-fog/e2/{before,after,split,coast-sun}/` (left fog off/right on;
-both sides already use the New Dawn preset/mods and glare fix).
+both sides already use the New Dawn preset/mods and the initial glare-wash fix; this matrix predates
+the modern flare replacement).

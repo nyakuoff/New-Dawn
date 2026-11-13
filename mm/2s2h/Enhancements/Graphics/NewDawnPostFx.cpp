@@ -273,13 +273,17 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     return params;
 }
 
-extern "C" void NewDawnHDR_SunGlare(GraphicsContext* gfxCtx, int begin) {
-    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0) || !CVarGetInteger("gNewDawn.Sky.GlareFix", 0))
+extern "C" void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int begin) {
+    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0) || !CVarGetInteger("gNewDawn.Sky.Flare", 0))
         return;
+    GraphicsContext* gfxCtx = play->state.gfxCtx;
     auto* params = static_cast<NewDawnPostFxParams*>(GRAPH_ALLOC(gfxCtx, sizeof(NewDawnPostFxParams)));
     memset(params, 0, sizeof(*params));
+    params->flareSunPos[0] = sunPos->x;
+    params->flareSunPos[1] = sunPos->y;
+    params->flareSunPos[2] = sunPos->z;
     OPEN_DISPS(gfxCtx);
-    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_SUN_GLARE_BEGIN : NEWDAWN_POSTFX_STAGE_SUN_GLARE_END,
+    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_SUN_FLARE_BEGIN : NEWDAWN_POSTFX_STAGE_SUN_FLARE_END,
                     params);
     CLOSE_DISPS(gfxCtx);
 }

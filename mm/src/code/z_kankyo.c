@@ -1925,6 +1925,9 @@ void Environment_DrawLensFlare(PlayState* play, EnvironmentContext* envCtx, View
     Mtx* mtx;
 
     OPEN_DISPS(gfxCtx);
+    if (isSun) {
+        NewDawnHDR_SunFlare(play, &pos, true);
+    }
 
     dist = Math3D_Vec3f_DistXYZ(&pos, &view->eye) / 12.0f;
 
@@ -2080,20 +2083,16 @@ void Environment_DrawLensFlare(PlayState* play, EnvironmentContext* envCtx, View
 
                 gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, (u8)(weight * 75.0f) + 180, (u8)(weight * 155.0f) + 100,
                                 (u8)envCtx->glareAlpha);
-                // Mark only the sun wash; all glare visibility/alpha state and custom flares stay native.
-                if (isSun) {
-                    NewDawnHDR_SunGlare(gfxCtx, true);
-                }
                 gSPDisplayList(POLY_XLU_DISP++, D_0E000000_TO_SEGMENTED(clearFillRect));
-                if (isSun) {
-                    NewDawnHDR_SunGlare(gfxCtx, false);
-                }
             } else {
                 envCtx->glareAlpha = 0.0f;
             }
         }
     }
 
+    if (isSun) {
+        NewDawnHDR_SunFlare(play, &pos, false);
+    }
     CLOSE_DISPS(gfxCtx);
 }
 

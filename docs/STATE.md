@@ -32,10 +32,12 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 - With the preset and the full mods set: no magenta or missing textures, 0 null-texture and 0 GL errors in the logs. The image is slightly darker overall (AO plus contrast).
 
 ## In progress
-- Glare/fog branch `feature/glare-fog`: E1 local commits `cc14182f6` / renderer `d037e4bf`;
-  E2 HDR height fog implemented and validated over the requested static matrix (0.305–0.351 ms GPU).
+- Glare/fog on `feature/glare-fog` (local only): E2 `1c93a00a9` / renderer `b8553b83`;
+  E1 replacement renderer `30e63e37`. `gNewDawn.Sky.Flare` replaces sun sprites/wash with depth-occluded
+  diffraction (~0.164 ms GPU); height fog is 0.305–0.351 ms over the requested static matrix.
   Both toggles remain default/preset off: exact-main frozen Inn byte identity is not established;
-  Termina sun framing stopped after 3 failures. See `docs/SUN_GLARE.md`, `docs/VOLUMETRIC_FOG.md`.
+  Termina sun framing stopped after 3 failures; dramatic dusk fog shafts remain undemonstrated.
+  See `docs/SUN_GLARE.md`, `docs/VOLUMETRIC_FOG.md`.
 - Physical sky (A), then volumetric clouds (B): `gNewDawn.Sky.Physical/Clouds`.
 - MM3D polish: floor banding, an on-screen check of re-admitted scenes, sunlit shadows, then the opt-in `gNewDawn.MM3D.Collision` trial on South Clock Town.
 
@@ -55,4 +57,5 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 - None.
 
 ## Session handoff
+- Large glare/fog scratch: `~/dev/ghm-mods/work/glare-fog/`; old sky capture directories moved from tmpfs to `~/dev/ghm-mods/work/sky-archive/`.
 - Settings note: the cvar prefix was renamed from `gGhm.` to `gNewDawn.`. Old config keys are simply ignored.
