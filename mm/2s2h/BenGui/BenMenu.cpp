@@ -185,6 +185,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Shadows.Floor", true, 0.30f, 0.55f },
     { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
+    { "gNewDawn.Shadows.Foliage", false, 1.0f, 0.0f }, // leaves, fences and grass cast cut-out shadows
     { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f }, // needs shadows
     { "gNewDawn.SunShafts.Strength", true, 0.18f, 0.4f },
     { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
@@ -995,6 +996,13 @@ void BenMenu::AddSettings() {
                      .Tooltip("Shadow map resolution. Higher is sharper but costs more GPU time.")
                      .ComboMap(&shadowMapSizeOptions)
                      .DefaultIndex(4096));
+    AddWidget(path, "Foliage Shadows", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Shadows.Foliage")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(CheckboxOptions()
+                     .Tooltip("Tree leaves, fences and other cut-out geometry cast shadows in their real shape, "
+                              "instead of casting none.")
+                     .DefaultValue(false));
 
     AddWidget(path, "Sun Shafts", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Sun Shafts", WIDGET_CVAR_CHECKBOX)
