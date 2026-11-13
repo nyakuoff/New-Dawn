@@ -221,21 +221,19 @@ All 12 points were captured with materials off and on, then on again after tunin
 Comparisons: `/tmp/nd/matcov/final-compare/<point>.png` (off left, on right).
 The first-pass pairs remain in `/tmp/nd/matcov/compare/`.
 
-**Visual acceptance is blocked.** Relief/highlights are visible, especially on
-Ikana ground and Clock Town masonry; plaster and grass get gentler treatment.
-However, some dark surfaces become pale and shiny (Clock Town doorway/masonry,
-Termina grass/path transitions, Ikana lower wall). This persists with constant
-flat normals and roughness=1 (`/tmp/nd/matcov/flat/`) and disappears at strength
-0.0001 (`/tmp/nd/matcov/tiny/`). The current RG8 contract supplies roughness but no
-independent specular amplitude. This isolates the regression to the existing
-material specular treatment rather than inferred height. In particular, the shader's
-back-facing N·V clamp merits investigation; that specific cause is not yet proven.
-No engine or shader files were changed. Lowering relief cannot correct this response.
+**Pale-patch regression fixed (shader).** The grey/white wash had two causes in
+`materialSpecular`: a negative N·V was clamped positive (specular on back-facing
+perturbed normals), and a broad GGX lobe was added over dark painted albedo. The shader
+now returns no specular for back-facing N·V/N·L, fades the lobe by smoothness squared, and bounds it per
+channel relative to the lit texel. Stone relief was reduced (class `height_scale` 0.001,
+Clock Town paving 0.003). `gNewDawn.Materials.Debug.View` (1 specular, 2 roughness, 3 N·V sign,
+4 diffuse only) aids diagnosis. Over all 12 points x 32 regions, materials on stays within
+1.9% mean luminance and 1.3% RMS contrast of off. Comparisons: `/tmp/nd/matcov/attempt2-compare/`.
 
 Walking bursts (`--burst 8,0.35`) at Clock Town and Ikana are in
 `/tmp/nd/matcov/motion-{on,off}/`: the private Xwayland display receives W for five
 seconds to produce real player/camera motion, without changing gameplay code or saves.
-The first-pass bursts expose the same view-dependent pale patches. Full video,
+The first-pass bursts exposed the pale patches fixed above; the fixed bursts (`motion-a2on`) show none. Full video,
 all-texture normal orientation and every source tile border are not certified by this
 limited sample. Painted shadows, ambiguous classes, opaque foliage, unsupported
 runtime draw combiners and alpha-bearing texture atlases remain limitations.

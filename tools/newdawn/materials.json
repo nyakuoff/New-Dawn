@@ -42,7 +42,7 @@
       "resource": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00CB40",
       "label": "South Clock Town brown stone paving",
       "overrides": {
-        "height_scale": 0.012,
+        "height_scale": 0.003,
         "normal_strength": 1.0,
         "invert": false,
         "roughness_range": [
@@ -97,7 +97,7 @@
   ],
   "classes": {
     "stone": {
-      "height_scale": 0.004,
+      "height_scale": 0.001,
       "normal_strength": 1.0,
       "invert": false,
       "roughness_range": [
