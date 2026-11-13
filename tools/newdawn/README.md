@@ -18,7 +18,7 @@ tools/newdawn/capture.py --compare /tmp/newdawn/before /tmp/newdawn/after --out 
 ```
 
 `--rot DEG` overrides a point's yaw (0 = +Z, 90 = +X; the camera starts behind the player), e.g. to look towards the sun. `--burst N,INTERVAL` takes N screenshots per point INTERVAL seconds apart (`<point>_00.png` ...), for motion checks. `--list` shows the points; `--points a,b` selects some; `--wait N` is the seconds from launch to the screenshot
-(default 10; the scene is fully faded in after about 3). `--cvar name=value` is repeatable and wins over everything.
+(default 10; the scene is fully faded in after about 3). `--cvar name=value` is repeatable and wins over everything. `--preset` applies the New Dawn graphics preset read from `sNewDawnPresetCvars` in BenMenu.cpp, with the right int or float types; `--cvar` overrides it.
 
 How it works / things to know:
 

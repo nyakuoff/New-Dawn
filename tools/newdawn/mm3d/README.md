@@ -9,6 +9,11 @@ textures, previews, manifests, collision samples, or reports. The output directo
 must be outside this repository and outside the input RomFS. No game data is
 included here. The scene table is generated from this fork's source table.
 
+## Collision trial
+
+`collisionpack.py <scene>` packs the ZSI collision into `<out>/<scene>/collision.ndcol` for the opt-in
+`gNewDawn.MM3D.Collision` trial; see `docs/MM3D_COLLISION_TRIAL.md` for format, probes and findings.
+
 ## Usage
 
 From the superproject root:

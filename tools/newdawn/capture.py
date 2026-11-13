@@ -159,6 +159,19 @@ def parse_cvar(s):
     return k, v
 
 
+def preset_cvars():
+    """The New Dawn preset, read from the sNewDawnPresetCvars table so captures can't drift from the menu.
+    Entries flagged as floats stay floats; on/off and integer settings must be ints or the game ignores them."""
+    src = (Path(__file__).resolve().parents[2] / "mm/2s2h/BenGui/BenMenu.cpp").read_text()
+    table = src[src.index("sNewDawnPresetCvars[] = {"):]
+    table = table[:table.index("};")]
+    out = []
+    for name, is_float, value in re.findall(r'\{\s*"([^"]+)",\s*(true|false),\s*([-0-9.]+)f', table):
+        if not name.endswith("Debug.View"):
+            out.append((name, float(value) if is_float == "true" else int(float(value))))
+    return out
+
+
 # ---------------------------------------------------------------- one game launch
 def png_size(path):
     with open(path, "rb") as f:
@@ -265,10 +278,13 @@ def main():
     ap.add_argument("--height", type=int, default=1080)
     ap.add_argument("--cvar", action="append", default=[], type=parse_cvar, metavar="NAME=VALUE",
                     help="console variable merged into the generated config, e.g. gEnhancements.Graphics.DisableBlackBars=1 (repeatable)")
+    ap.add_argument("--preset", action="store_true", help="apply the New Dawn graphics preset from BenMenu.cpp (later --cvar options override it)")
     ap.add_argument("--mods", metavar="DIR", help="link the .o2r/.otr archives of DIR into each run's mods/ and enable them (sorted by filename). Default: no mods, even if <bin-dir>/mods has some")
     ap.add_argument("--list", action="store_true", help="list capture points and exit")
     ap.add_argument("--compare", nargs=2, metavar=("DIR_A", "DIR_B"), help="write labelled side-by-side images of two capture directories into --out")
     a = ap.parse_args()
+    if a.preset:
+        a.cvar = preset_cvars() + a.cvar
 
     if a.list:
         for n, (w, src, _) in POINTS.items():

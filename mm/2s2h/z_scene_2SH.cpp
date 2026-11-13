@@ -8,6 +8,7 @@
 #include <libultraship/bridge/resourcebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/resource/type/Scene.h"
+#include "2s2h/Enhancements/Graphics/NewDawnMM3D.h"
 #include "2s2h/resource/type/CollisionHeader.h"
 #include "2s2h/resource/type/Path.h"
 #include "2s2h/resource/type/scenecommand/SetCameraSettings.h"
@@ -84,7 +85,8 @@ void Scene_CommandActorCutsceneCamList(PlayState* play, SOH::ISceneCommand* cmd)
 
 void Scene_CommandCollisionHeader(PlayState* play, SOH::ISceneCommand* cmd) {
     SOH::SetCollisionHeader* colHeader = (SOH::SetCollisionHeader*)cmd;
-    BgCheck_Allocate(&play->colCtx, play, (CollisionHeader*)colHeader->GetRawPointer());
+    BgCheck_Allocate(&play->colCtx, play,
+                     NewDawnMM3D_CollisionOverride(play, (CollisionHeader*)colHeader->GetRawPointer()));
 }
 
 void Scene_CommandRoomList(PlayState* play, SOH::ISceneCommand* cmd) {
