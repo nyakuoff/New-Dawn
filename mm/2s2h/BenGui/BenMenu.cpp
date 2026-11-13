@@ -879,6 +879,10 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Atmos.Weather")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Soft rain/flakes, roof shelter, splashes and wet reflections driven by existing weather. Requires HDR."));
+    AddWidget(path, "Wind: Foliage Sway and Rain Slant (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Atmos.Wind")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Render-only gusting wind swaying cut-out foliage in the scene (shadows follow) and slanting new rain."));
     AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Atmos.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));

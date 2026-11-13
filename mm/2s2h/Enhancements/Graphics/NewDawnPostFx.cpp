@@ -284,6 +284,15 @@ extern "C" void NewDawnHDR_WeatherScope(PlayState* play, int begin) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+extern "C" void NewDawnHDR_WindScope(PlayState* play, int begin) {
+    if (!CVarGetInteger("gNewDawn.Atmos.Wind", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    static NewDawnPostFxParams sUnused; // the command only needs a non-null pointer
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END, &sUnused);
+    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END, &sUnused);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 extern "C" void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int begin) {
     if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0) || !CVarGetInteger("gNewDawn.Sky.Flare", 0))
         return;
