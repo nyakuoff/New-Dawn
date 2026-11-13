@@ -242,6 +242,70 @@ extern "C" void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin) {
     CLOSE_DISPS(gfxCtx);
 }
 
+extern "C" void NewDawnSky_Draw(PlayState* play) {
+    static u32 lastLogFrame = UINT32_MAX;
+    static s16 lastLogScene = -1;
+    if (CVarGetInteger("gNewDawn.Sky.Physical", 0) && CVarGetInteger("gNewDawn.PostFx.Debug.Stats", 0) &&
+        play->gameplayFrames % 120 == 0 &&
+        (lastLogFrame != play->gameplayFrames || lastLogScene != play->sceneId)) {
+        lastLogFrame = play->gameplayFrames;
+        lastLogScene = play->sceneId;
+        SPDLOG_INFO("NewDawnSky: scene {} sky {} config {} layer {} day {} mode {} sunDisabled {} lateSky {} override "
+                    "{} cutscene {}",
+                    play->sceneId, play->skyboxId, play->envCtx.skyboxConfig, gSaveContext.sceneLayer,
+                    gSaveContext.save.day, play->envCtx.lightMode, play->envCtx.sunDisabled, play->skyboxCtx.shouldDraw,
+                    play->envCtx.lightSettingOverride, Play_InCsMode(play));
+    }
+    if (!CVarGetInteger("gNewDawn.Sky.Physical", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
+        CVarGetFloat("gNewDawn.Sky.Strength", 1.0f) <= 0.0f || play->skyboxId != SKYBOX_NORMAL_SKY ||
+        play->skyboxCtx.shouldDraw || play->envCtx.skyboxDisabled || play->envCtx.sunDisabled ||
+        play->envCtx.lightMode != LIGHT_MODE_TIME || play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE ||
+        play->envCtx.changeSkyboxState != 0 || play->envCtx.skyboxConfig != play->envCtx.changeSkyboxNextConfig ||
+        play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 ||
+        gSaveContext.save.day < 1 || gSaveContext.save.day >= 3 || gSaveContext.sceneLayer != 0 ||
+        play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
+        return;
+    }
+
+    // Explicitly known normal outdoor locations. Special skies (notably cursed Ikana's SKYBOX_3),
+    // dungeons, cutscenes, the final day and unclassified scenes retain the original skybox.
+    switch (play->sceneId) {
+        case SCENE_00KEIKOKU:
+        case SCENE_CLOCKTOWER:
+        case SCENE_TOWN:
+        case SCENE_ICHIBA:
+        case SCENE_BACKTOWN:
+        case SCENE_30GYOSON:
+        case SCENE_IKANA:
+        case SCENE_10YUKIYAMANOMURA:
+        case SCENE_10YUKIYAMANOMURA2:
+        case SCENE_20SICHITAI2:
+        case SCENE_22DEKUCITY:
+        case SCENE_F01:
+            break;
+        default:
+            return;
+    }
+    const auto& sun = play->envCtx.dirLight1.params.dir;
+    float len = sqrtf((float)(sun.x * sun.x + sun.y * sun.y + sun.z * sun.z));
+    if (len < 0.001f) {
+        return;
+    }
+    auto* params = NewDawnPostFx_AllocParams(play);
+    params->skySunDir[0] = sun.x / len;
+    params->skySunDir[1] = sun.y / len;
+    params->skySunDir[2] = sun.z / len;
+    for (int i = 0; i < 3; ++i) {
+        params->skyFogColor[i] = play->lightCtx.fogColor[i] / 255.0f;
+    }
+    params->skyWeather = NewDawnClampF(play->envCtx.precipitation[PRECIP_RAIN_CUR] / 40.0f +
+                                           play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f,
+                                       0.0f, 1.0f);
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_PHYSICAL_SKY, params);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 extern "C" void NewDawnHDR_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
         return;

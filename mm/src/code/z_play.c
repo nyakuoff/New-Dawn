@@ -1383,6 +1383,7 @@ void Play_DrawMain(PlayState* this) {
                         }
                     }
 
+                    NewDawnSky_Draw(this);
                     NewDawnShadows_Begin(this);
                     Environment_Draw(this);
                 }
