@@ -92,9 +92,46 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
 struct NewDawnWaterScene {
     s16 sceneId;
     float strength;
+    float foam;
+    float refraction;
 };
 static const NewDawnWaterScene sNewDawnWaterScenes[] = {
-    { SCENE_20SICHITAI, 0.30f }, // Southern Swamp (poisoned)
+    { SCENE_20SICHITAI, 0.30f, 0.50f, 0.10f }, // Southern Swamp (poisoned): murky, almost opaque
+};
+
+// Water colour palettes for the Restyle option: linear in-scatter colour of deep water and per-channel absorption
+// (1/world units; red goes first). Scenes not listed get the generic clear blue-green.
+struct NewDawnWaterPalette {
+    s16 sceneId;
+    float scatter[3];
+    float absorb[3];
+};
+static const NewDawnWaterPalette sNewDawnWaterGeneric = { -1,
+                                                          { 0.020f, 0.100f, 0.140f },
+                                                          { 1 / 80.0f, 1 / 240.0f, 1 / 320.0f } };
+static const NewDawnWaterPalette sNewDawnWaterPalettes[] = {
+    // Great Bay: clear tropical shallows into deep blue-teal.
+    { SCENE_30GYOSON, { 0.015f, 0.130f, 0.190f }, { 1 / 110.0f, 1 / 300.0f, 1 / 520.0f } },
+    // Termina Field, Clock Town, ranch: clear, slightly green.
+    { SCENE_00KEIKOKU, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
+    { SCENE_CLOCKTOWER, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
+    { SCENE_ICHIBA, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
+    { SCENE_BACKTOWN, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
+    { SCENE_TOWN, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
+    { SCENE_ALLEY, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
+    { SCENE_F01, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
+    // Cleared swamp: tannin brown-green, clear near the surface.
+    { SCENE_20SICHITAI2, { 0.075f, 0.110f, 0.040f }, { 1 / 220.0f, 1 / 170.0f, 1 / 60.0f } },
+    // Poisoned swamp (and the poison water in Woodfall Temple): sickly purple-magenta, nearly opaque.
+    { SCENE_20SICHITAI, { 0.130f, 0.030f, 0.160f }, { 1 / 130.0f, 1 / 70.0f, 1 / 110.0f } },
+    { SCENE_MITURIN, { 0.130f, 0.030f, 0.160f }, { 1 / 130.0f, 1 / 70.0f, 1 / 110.0f } },
+    // Zora Hall: crystal blue.
+    { SCENE_33ZORACITY, { 0.035f, 0.160f, 0.210f }, { 1 / 160.0f, 1 / 380.0f, 1 / 500.0f } },
+    // Temples by theme: Great Bay green-teal, Snowhead icy blue, Stone Tower slate.
+    { SCENE_SEA, { 0.020f, 0.150f, 0.170f }, { 1 / 90.0f, 1 / 200.0f, 1 / 170.0f } },
+    { SCENE_HAKUGIN, { 0.040f, 0.220f, 0.360f }, { 1 / 90.0f, 1 / 300.0f, 1 / 600.0f } },
+    { SCENE_INISIE_N, { 0.030f, 0.130f, 0.170f }, { 1 / 90.0f, 1 / 210.0f, 1 / 260.0f } },
+    { SCENE_INISIE_R, { 0.030f, 0.130f, 0.170f }, { 1 / 90.0f, 1 / 210.0f, 1 / 260.0f } },
 };
 
 static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params) {
@@ -102,10 +139,18 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     const bool glints = CVarGetInteger("gNewDawn.Water.Enabled", 0) != 0;
     const bool reflections = CVarGetInteger("gNewDawn.Water.Reflections", 0) != 0 &&
                              CVarGetFloat("gNewDawn.Water.ReflectionStrength", 0.7f) > 0.0f;
+    // Screen fades are drawn after the opaque capture. Do not replace them with an unfaded bed.
+    const bool surfaceVisible = play->transitionMode == TRANS_MODE_OFF &&
+                                play->transitionTrigger == TRANS_TRIGGER_OFF &&
+                                !(play->envCtx.fillScreen && play->envCtx.screenFillColor[3] != 0) &&
+                                play->worldCoverAlpha == 0 && !R_PLAY_FILL_SCREEN_ON;
+    const bool foam = surfaceVisible && CVarGetInteger("gNewDawn.Water.Foam", 0) != 0;
+    const bool refraction = surfaceVisible && CVarGetInteger("gNewDawn.Water.Refraction", 0) != 0;
+    const bool restyle = surfaceVisible && CVarGetInteger("gNewDawn.Water.Restyle", 0) != 0;
     // Without a time of day there is no sun or moon, so glints alone would only add the faint sky tint: interiors
-    // skip the pass unless reflections are on.
-    if ((!glints && !reflections) || play->colCtx.colHeader == NULL ||
-        (play->envCtx.lightMode != LIGHT_MODE_TIME && !reflections)) {
+    // skip the pass unless reflections, foam or refraction are on.
+    if ((!glints && !reflections && !foam && !refraction && !restyle) || play->colCtx.colHeader == NULL ||
+        (play->envCtx.lightMode != LIGHT_MODE_TIME && !reflections && !foam && !refraction && !restyle)) {
         return;
     }
     const CollisionHeader* col = play->colCtx.colHeader;
@@ -154,10 +199,12 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
         return;
     }
 
-    float sceneFactor = 1.0f;
+    float sceneFactor = 1.0f, foamFactor = 1.0f, refractionFactor = 1.0f;
     for (const auto& entry : sNewDawnWaterScenes) {
         if (entry.sceneId == play->sceneId) {
             sceneFactor = entry.strength;
+            foamFactor = entry.foam;
+            refractionFactor = entry.refraction;
         }
     }
 
@@ -200,6 +247,28 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     params->waterDebug = CVarGetInteger("gNewDawn.Water.Debug", 0);
     params->waterStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Water.Strength", 0.5f), 0.0f, 1.0f) * sceneFactor *
                             skyScale * (glints ? 1.0f : 0.0f);
+    params->waterFoam =
+        foam ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.FoamStrength", 1.0f), 0.0f, 1.0f) * foamFactor : 0.0f;
+    params->waterRefraction =
+        refraction
+            ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.RefractionStrength", 1.0f), 0.0f, 1.0f) * refractionFactor
+            : 0.0f;
+    if (restyle) {
+        const NewDawnWaterPalette* palette = &sNewDawnWaterGeneric;
+        for (const auto& entry : sNewDawnWaterPalettes) {
+            if (entry.sceneId == play->sceneId) {
+                palette = &entry;
+            }
+        }
+        params->waterRestyle = 1.0f;
+        for (int i = 0; i < 3; i++) {
+            params->waterScatter[i] = palette->scatter[i];
+            params->waterAbsorb[i] = palette->absorb[i];
+        }
+    }
+    // The native glare is a full-screen XLU fill after the bed capture. Attenuate only our replacement by its
+    // transmission so looking into the sun cannot reveal an unglared rectangle of water.
+    params->waterSurfaceVisibility = 1.0f - NewDawnClampF(play->envCtx.glareAlpha, 0.0f, 255.0f) / 255.0f;
     params->waterTime = (float)play->gameplayFrames * (1.0f / 20.0f);
     params->waterBoxCount = count;
     for (int i = 0; i < 3; i++) {
@@ -409,7 +478,8 @@ extern "C" void NewDawnHDR_Begin(PlayState* play) {
 
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Water.Reflections", 0)) {
+        !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
+        !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0)) {
         return;
     }
 
@@ -428,7 +498,8 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
         CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && CVarGetInteger("gNewDawn.PostFx.AO.Enabled", 1);
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!postFxAo && !params->shadowEnabled && !params->waterReflections) {
+    if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
+        params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f) {
         return;
     }
 
@@ -439,7 +510,9 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
 
 extern "C" void NewDawnPostFx_SceneEnd(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
+        !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
+        !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
+        !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
         return;
     }
 
