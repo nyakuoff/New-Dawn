@@ -183,6 +183,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Shadows.Floor", true, 0.30f, 0.55f },
     { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
+    { "gNewDawn.Shadows.Foliage", false, 1.0f, 0.0f }, // leaves, fences and grass cast cut-out shadows
     { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f }, // needs shadows
     { "gNewDawn.SunShafts.Strength", true, 0.18f, 0.4f },
     { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
