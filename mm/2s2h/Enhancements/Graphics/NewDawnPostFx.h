@@ -14,6 +14,7 @@ extern "C" {
 void NewDawnHDR_Begin(PlayState* play);
 void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin);
 void NewDawnSky_Draw(PlayState* play);
+void NewDawnSky_DrawOvercast(PlayState* play);
 
 void NewDawnShadows_Begin(PlayState* play);
 
