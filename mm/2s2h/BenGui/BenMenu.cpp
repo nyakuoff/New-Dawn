@@ -188,7 +188,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
     { "gNewDawn.Shadows.Foliage", false, 1.0f, 0.0f }, // leaves, fences and grass cast cut-out shadows
-    { "gNewDawn.Fog.Volumetric", false, 0.0f, 0.0f }, // pending the full visual acceptance gates
+    { "gNewDawn.Fog.Volumetric", false, 1.0f, 0.0f }, // replaces Sun Shafts in eligible scenes
     { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f }, // needs shadows
     { "gNewDawn.SunShafts.Strength", true, 0.18f, 0.4f },
     { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
@@ -1023,7 +1023,7 @@ void BenMenu::AddSettings() {
 
     AddWidget(path, "Volumetric Height Fog (HDR)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Fog.Volumetric")
-        .Options(CheckboxOptions().Tooltip("Height haze lit by sun shadows and the sky. Requires HDR and Sun Shadows. Replaces Sun Shafts in eligible outdoor scenes; special skies and interiors keep native fog."));
+        .Options(CheckboxOptions().Tooltip("Height haze and shafts outdoors (HDR + Sun Shadows), ambient/point-lit depth fog in Woodfall Temple (HDR). Special skies and underwater views retain native fog."));
     AddWidget(path, "Sun Shafts", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Sun Shafts", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.SunShafts.Enabled")

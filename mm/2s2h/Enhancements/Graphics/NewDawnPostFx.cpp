@@ -213,43 +213,87 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
 }
 
 static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
-    // Interiors, poison/cursed skies, underwater views, final-day skies and scripted lighting retain native fog.
     if (!CVarGetInteger("gNewDawn.Fog.Volumetric", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
-        !params->shadowEnabled || play->skyboxId != SKYBOX_NORMAL_SKY || play->envCtx.skyboxDisabled ||
-        play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE || play->envCtx.changeSkyboxState != 0 ||
-        play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 ||
         (GET_ACTIVE_CAM(play)->stateFlags & CAM_STATE_UNDERWATER) || play->lightCtx.fogNear < 0 ||
-        gSaveContext.save.day < 1 || gSaveContext.save.day >= 3 || gSaveContext.sceneLayer != 0 ||
         play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
         return;
     }
-    params->fogBaseHeight = 0.0f; // fixed world altitude, never follows the player or camera
-    params->fogHeight = 500.0f;
-    params->fogDensityScale = 1.0f;
-    switch (play->sceneId) {
-        case SCENE_00KEIKOKU:
-            break;
-        case SCENE_30GYOSON:
-            params->fogHeight = 350.0f;
-            break;
-        case SCENE_20SICHITAI2:
-        case SCENE_21MITURINMAE:
-            params->fogHeight = 300.0f;
-            params->fogDensityScale = 1.3f;
-            break;
-        case SCENE_CLOCKTOWER:
-        case SCENE_TOWN:
-        case SCENE_ICHIBA:
-        case SCENE_BACKTOWN:
-            params->fogDensityScale = 0.45f;
-            break;
-        case SCENE_IKANA:
-            params->fogBaseHeight = 400.0f; // only the normal, cleared sky; cursed SKYBOX_3 falls back above
-            break;
-        default:
+    const bool temple = play->sceneId == SCENE_MITURIN && play->envCtx.lightMode == LIGHT_MODE_SETTINGS;
+    if (temple) {
+        params->fogVolumetric = 2;
+        params->fogBaseHeight = -1200.0f;
+        params->fogHeight = 800.0f;
+        params->fogDensityScale = 1.6f;
+        float scores[NEWDAWN_FOG_POINT_LIGHTS];
+        for (auto& score : scores)
+            score = 1e30f;
+        for (LightNode* node = play->lightCtx.listHead; node; node = node->next) {
+            const LightInfo* info = node->info;
+            if (!info || (info->type != LIGHT_POINT_NOGLOW && info->type != LIGHT_POINT_GLOW) ||
+                info->params.point.radius <= 0)
+                continue;
+            const auto& light = info->params.point;
+            const float dx = light.x - play->view.eye.x, dy = light.y - play->view.eye.y,
+                        dz = light.z - play->view.eye.z;
+            const float score = (dx * dx + dy * dy + dz * dz) / (float)(light.radius * light.radius);
+            int slot = 0;
+            for (int i = 1; i < NEWDAWN_FOG_POINT_LIGHTS; ++i)
+                if (scores[i] > scores[slot])
+                    slot = i;
+            if (score >= scores[slot])
+                continue;
+            scores[slot] = score;
+            params->fogPointPosRadius[slot][0] = light.x;
+            params->fogPointPosRadius[slot][1] = light.y;
+            params->fogPointPosRadius[slot][2] = light.z;
+            params->fogPointPosRadius[slot][3] = light.radius;
+            for (int i = 0; i < 3; ++i)
+                params->fogPointColor[slot][i] = light.color[i] / 255.0f;
+            params->fogPointCount = (params->fogPointCount > slot) ? params->fogPointCount : slot + 1;
+        }
+    } else {
+        // Scripted/poison/cursed/final-day skies retain their native fog.
+        if (!params->shadowEnabled || play->skyboxId != SKYBOX_NORMAL_SKY || play->envCtx.skyboxDisabled ||
+            play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE || play->envCtx.changeSkyboxState != 0 ||
+            play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 ||
+            gSaveContext.save.day < 1 || gSaveContext.save.day >= 3 || gSaveContext.sceneLayer != 0)
             return;
+        params->fogBaseHeight = 0.0f;
+        params->fogHeight = 700.0f;
+        params->fogDensityScale = 1.0f;
+        switch (play->sceneId) {
+            case SCENE_00KEIKOKU:
+                break;
+            case SCENE_30GYOSON:
+                params->fogHeight = 450.0f;
+                params->fogDensityScale = 0.7f;
+                break;
+            case SCENE_20SICHITAI2:
+            case SCENE_21MITURINMAE:
+                params->fogHeight = 420.0f;
+                params->fogDensityScale = 1.3f;
+                break;
+            case SCENE_CLOCKTOWER:
+            case SCENE_TOWN:
+            case SCENE_ICHIBA:
+            case SCENE_BACKTOWN:
+                params->fogDensityScale = 0.35f;
+                break;
+            case SCENE_IKANA:
+                params->fogBaseHeight = 400.0f;
+                break;
+            default:
+                return;
+        }
+        params->fogVolumetric = 1;
     }
-    params->fogVolumetric = 1;
+    for (int i = 0; i < 3; ++i) {
+        params->fogAmbient[i] = play->lightCtx.ambientColor[i] / 255.0f;
+        params->fogColor[i] = play->lightCtx.fogColor[i] / 255.0f;
+    }
+    params->shadowCameraEye[0] = play->view.eye.x;
+    params->shadowCameraEye[1] = play->view.eye.y;
+    params->shadowCameraEye[2] = play->view.eye.z;
 }
 
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
@@ -409,12 +453,12 @@ extern "C" void NewDawnHDR_Begin(PlayState* play) {
 
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Water.Reflections", 0)) {
+        !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Fog.Volumetric", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!params->shadowEnabled && !params->waterEnabled) {
+    if (!params->shadowEnabled && !params->waterEnabled && !params->fogVolumetric) {
         return;
     }
 
@@ -428,7 +472,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
         CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && CVarGetInteger("gNewDawn.PostFx.AO.Enabled", 1);
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!postFxAo && !params->shadowEnabled && !params->waterReflections) {
+    if (!postFxAo && !params->shadowEnabled && !params->waterReflections && !params->fogVolumetric) {
         return;
     }
 
