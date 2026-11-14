@@ -1,88 +1,120 @@
 <p align="center"><img src="docs/images/new-dawn-wordmark.png" width="600"></p>
 
-**New Dawn** is a visual-only modernization of *The Legend of Zelda: Majora's Mask*, built on top of [2 Ship 2 Harkinian](https://github.com/2ship2harkinian/2ship2harkinian). Gameplay, story, and mechanics are untouched — only the visuals have been reimagined. See [docs/NEW_DAWN.md](docs/NEW_DAWN.md) for more about the project.
+<p align="center"><b>A modern visual remaster of <i>The Legend of Zelda: Majora's Mask</i>, built on 2 Ship 2 Harkinian.</b></p>
 
-The original 2 Ship 2 Harkinian readme follows.
+**New Dawn** makes Termina look reborn, the way a current-generation remake would, while the game plays exactly
+like the original. Gameplay, physics, timing, AI, schedules, cutscene sequencing and save data are untouched. Only
+the rendering changes, and every effect can be switched off to get back the original code path.
 
-[comment]: <> (Todo: Make Light Mode Image)
-[comment]: <> (Todo: Make Dark Mode Image)
+New Dawn is a fork of [2 Ship 2 Harkinian](https://github.com/2ship2harkinian/2ship2harkinian) (2Ship), the PC port
+of Majora's Mask, and of its renderer [libultraship](https://github.com/Kenix3/libultraship). See
+[docs/NEW_DAWN.md](docs/NEW_DAWN.md) for the project's ground rules and layout, and
+[ROADMAP.md](ROADMAP.md) for what's done and what's next.
 
-# 2 Ship 2 Harkinian
+> New Dawn includes no copyrighted game assets. You need your own supported copy of the game, exactly as with 2Ship.
 
-## Discord
+## What New Dawn changes
 
-Official Discord: https://discord.com/invite/sxrPyuh697
+Everything below is on in the **New Dawn preset** (**Esc** → Settings → Graphics → New Dawn → *Apply New Dawn
+Preset*). Each feature has its own toggle in the same menu.
 
-If you're having any trouble after reading through this `README`, feel free ask for help in the 2 Ship 2 Harkinian Support text channels. Please keep in mind that we do not condone piracy.
+| Area | What you get |
+|---|---|
+| **HDR and colour** | A linear HDR pipeline with a hue-preserving tonemap and filmic grade, an art-directed colour grade per area and time of day, and an optional texture recolour pass for muddy or garish textures. |
+| **Sky** | A physical sky with volumetric clouds that follow the in-game clock; warm dawns and dusks; special skies for the final day, cursed Ikana and the poisoned swamp; and an overcast snow sky. Sky-driven ambient light and reflections keep the world consistent with the sky. |
+| **Lighting** | Real-time sun shadows with 4 cascades out to about 7,000 units; shadows from foliage, fences and grass; screen-space bounce light (GI) with colour bleeding; per-pixel lighting with character rim and specular light; and dynamic flickering light from torches, lamps and flames, with darker, moodier nights and interiors. |
+| **Atmosphere** | Volumetric fog and haze, screen-space sun rays through trees, a textured lens flare, sunlit dust motes, pollen, fireflies and drifting leaves, plus a shared gusting wind that sways foliage and drives clouds and particles. |
+| **Weather** | Soft sky-lit rain sheltered under roofs, splash rings, wet reflective ground that lingers after rain, and softer snow. |
+| **Water** | Per-area art-directed water colour, sharp reflections of geometry and the sky, Fresnel and sun glints, shoreline foam, refraction with depth absorption, caustics on seabeds, and an underwater view with fog, light shafts and particles. |
+| **Materials** | Generated normal, roughness and height maps for about 2,200 world textures, with GGX highlights and parallax occlusion mapping, so brick, cobble and stone have real depth. |
+| **Effects** | Redrawn fire (an animated flipbook rendered from a fluid simulation) with embers and light, soft glows, dust, sparks, bomb explosions and candles. |
+| **Image quality** | 4× MSAA with alpha-to-coverage for foliage edges, mipmaps with 16× anisotropic filtering, and async HD texture loading. |
+| **3DS geometry (experimental)** | An optional switch that draws the *Majora's Mask 3D* room geometry in 18 scenes, converted from your own 3DS dump with a clean-room tool. Off by default and not part of the preset. |
 
-# Quick Start
+The renderer work is OpenGL-only for now. On Windows, choose OpenGL in *Settings → Graphics backend*.
 
-2Ship does not include any copyrighted assets.  You are required to provide a supported copy of the game.
+## Getting started
 
-### 1. Verify your ROM dump
-You can verify you have dumped a supported copy of the game by using the compatibility checker at https://2ship.equipment/. If you'd prefer to manually validate your ROM dump, you can cross-reference its `sha1` hash with the hashes [here](docs/supportedHashes.json).
+### 1. Build
+New Dawn has no prebuilt releases yet. Build it the same way as 2Ship; see [docs/BUILDING.md](docs/BUILDING.md).
+On Linux:
 
-### 2. Download 2 Ship 2 Harkinian from [Releases](https://github.com/2ship2harkinian/2ship2harkinian/releases)
+```sh
+git clone --recursive https://github.com/nyakuoff/New-Dawn.git
+cd New-Dawn
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build -j$(nproc)
+cmake --build build --target Generate2ShipOtr
+```
 
-### 3. Launch the Game!
-#### Windows
-* Extract the zip
-* Launch `2ship.exe`
+The game is `build/mm/2s2h.elf`. On first launch it asks for your ROM and extracts the game data, exactly like
+2Ship. You can check that your dump is supported at <https://2ship.equipment/> or against
+[docs/supportedHashes.json](docs/supportedHashes.json).
 
-#### Linux
-* Place your supported copy of the game in the same folder as the appimage.
-* Execute `2ship.appimage`. You may have to `chmod +x` the appimage via terminal.
+### 2. Turn on the New Dawn look
+Press **Esc** to open the settings menu, go to **Settings → Graphics → New Dawn**, and click **Apply New Dawn
+Preset**. *Restore Defaults* returns those settings to the original look.
 
-#### macOS
-* Run `2ship.app`.
-* When prompted, select your supported copy of the game.
+### 3. Optional: HD textures and models
+New Dawn is built and tuned around these community mods. They can't be redistributed here, so download them
+yourself, put the files in the game's `mods/` folder, and turn on **Use Alternate Assets** (**Tab**).
 
-### 4. Play!
+| Mod | Source |
+|---|---|
+| MM Reloaded 4K (2Ship O2R) | [evilgames.eu](https://evilgames.eu/texture-packs/mm-reloaded.htm) |
+| 3DS Link and 3DS Equipment | [GameBanana 644553](https://gamebanana.com/mods/644553) |
+| HD Moon | [GameBanana 640438](https://gamebanana.com/mods/640438) |
 
-Congratulations, you are now sailing with 2 Ship 2 Harkinian! Have fun!
+The material maps, texture recolour and effect textures are generated locally with the tools in
+[`tools/newdawn/`](tools/newdawn/README.md); they aren't shipped either.
 
-# Configuration
+## Controls
 
-### Default keyboard configuration
+These are 2Ship's defaults.
+
 | N64 | A | B | Z | Start | Analog stick | C buttons | D-Pad |
 | - | - | - | - | - | - | - | - |
 | Keyboard | X | C | Z | Space | WASD | Arrow keys | TFGH |
 
-### Other shortcuts
 | Keys | Action |
 | - | - |
-| F1 | Toggle menubar |
+| Esc | Settings menu (New Dawn options are under Settings → Graphics) |
+| F1 | Toggle the menu bar |
 | F11 | Fullscreen |
-| Tab | Toggle Alternate assets |
+| Tab | Toggle alternate assets |
 | Ctrl+R | Reset |
 
-### Graphics Backends
-Currently, there are three rendering APIs supported: DirectX 11 (Windows), OpenGL (all platforms), and Metal (macOS). You can change which API to use in the `Settings` menu of the menubar, which requires a restart.
+## Documentation
 
-If you're having an issue with crashing, you can also change the API manually in the `2ship2harkinian.json` file by finding the `"Backend": {` section and updating the backend ID and name. Be sure to use one of the valid values:
+| Document | Contents |
+|---|---|
+| [ROADMAP.md](ROADMAP.md) | Finished, current and planned work |
+| [docs/NEW_DAWN.md](docs/NEW_DAWN.md) | Ground rules, repository layout, workflow |
+| [docs/STATE.md](docs/STATE.md) | Feature status, the settings behind each feature and how it was verified |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/DECISIONS.md](docs/DECISIONS.md) | How the renderer is extended, and why |
+| [docs/VALIDATION.md](docs/VALIDATION.md) | How visual changes are tested |
+| Feature notes | One file per feature in [docs/](docs/), e.g. [PHYSICAL_SKY](docs/PHYSICAL_SKY.md), [CASCADED_SHADOWS](docs/CASCADED_SHADOWS.md), [LOCAL_LIGHTS](docs/LOCAL_LIGHTS.md), [WATER_FOAM](docs/WATER_FOAM.md), [VFX](docs/VFX.md) |
+| [tools/newdawn/](tools/newdawn/README.md) | Capture and comparison tooling, material and recolour generators |
 
-- `0` = DirectX 11 (default on Windows)
-- `1` = OpenGL
-- `2` = Metal (default on macOS)
+## Contributing
 
-# Custom Assets
+`main` always builds. Work goes on `feature/*` or `fix/*` branches and lands through pull requests. A renderer
+change is two pull requests: one into `new-dawn` on
+[New-Dawn-libultraship](https://github.com/nyakuoff/New-Dawn-libultraship), merged first, then one here that
+moves the submodule pointer. Visual changes need before/after captures, and switching a feature off must give
+output identical to `main`. Details are in [docs/NEW_DAWN.md](docs/NEW_DAWN.md) and
+[docs/VALIDATION.md](docs/VALIDATION.md).
 
-Custom assets are packed in `.o2r` or `.otr` files. To use custom assets, place them in the `mods` folder.
+## Credits and license
 
-If you're interested in creating and/or packing your own custom asset `.o2r`/`.otr` files, check out the following tools:
-* [**retro - OTR and O2R generator**](https://github.com/HarbourMasters/retro/releases/latest)
-* [**fast64 - Blender plugin**](https://github.com/HarbourMasters/fast64)
+New Dawn stands on [2 Ship 2 Harkinian](https://github.com/2ship2harkinian/2ship2harkinian) by HarbourMasters and
+its contributors ([Discord](https://discord.com/invite/sxrPyuh697)), the
+[Majora's Mask decompilation](https://github.com/zeldaret/mm), and
+[libultraship](https://github.com/Kenix3/libultraship). Please direct New Dawn issues to this repository, not to
+2Ship. Third-party assets used locally are credited in their own manifests.
 
-# Development
-
-If you want to manually compile 2S2H, please consult the [building instructions](docs/BUILDING.md).
-
-# Nightly Builds
-If you want to playtest a continuous integration build, you can find them at the links below. Keep in mind that these are for playtesting only, and you will likely encounter bugs and possibly crashes. 
-
-* [Windows](https://nightly.link/2ship2harkinian/2ship2harkinian/workflows/main/develop/2ship-windows.zip)
-* [Linux](https://nightly.link/2ship2harkinian/2ship2harkinian/workflows/main/develop/2ship-linux.zip)
-* [Mac](https://nightly.link/2ship2harkinian/2ship2harkinian/workflows/main/develop/2ship-mac.zip)
+The code is released under [CC0 1.0](LICENSE), the same as 2Ship. *The Legend of Zelda: Majora's Mask* is © Nintendo;
+New Dawn is not affiliated with or endorsed by Nintendo. We do not condone piracy.
 
 <a href="https://github.com/Kenix3/libultraship/">
   <picture>
@@ -90,4 +122,3 @@ If you want to playtest a continuous integration build, you can find them at the
     <img alt="Powered by libultraship" src="./docs/poweredbylus.lightmode.png">
   </picture>
 </a>
-
