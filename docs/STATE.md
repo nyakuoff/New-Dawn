@@ -50,6 +50,7 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 4. Still owed: interactive HDR pause/pictograph, resize and scene-transition validation; motion and time-of-day checks of the #38 grade.
 
 ## Known limitations
+- Volumetric fog (`docs/VOLUMETRIC_FOG.md`) is in the preset: morning haze and Woodfall Temple light fog are verified; distinct dusk sun shafts are **not** demonstrated (Field has too few casters near the low sun). Textured lens flare (`Sky.Flare`) is in the preset and was checked with Water Restyle at the dusk Coast (no double attenuation seen).
 - Shadows: casters the game culls itself (room meshes beyond camera distance or FOV, distant actors) are missing. Cut-out foliage casts only when `gNewDawn.Shadows.Foliage` is on (texture-edge draws whose alpha is the tile-0 texel; xlu/decal/particles and masked or blended textures still do not cast).
 - MM3D rooms: 14 animated scenes stay N64 (their animated surfaces aren't modelled in MM3D at the same place); remodelled outdoor scenes need MM3D collision first.
 - Post-fx and mipmaps are OpenGL only. With MSAA, AO uses resolved depth; HDR AO and sun attenuation still approximate indirect/direct separation.
