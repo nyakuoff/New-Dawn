@@ -618,6 +618,69 @@ static void NewDawnFillArtParams(PlayState* play, NewDawnPostFxParams* params) {
     params->artGreen[1] = look.greenSat;
 }
 
+// Read-only snapshot of the game's point lights for the renderer's HDR local lighting. Nearest-first by distance over
+// radius so linked-list order cannot evict a close light; nothing here writes game state.
+static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* params) {
+    if (!CVarGetInteger("gNewDawn.Lighting.Local", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
+        return;
+    }
+    params->localEnabled = 1;
+    params->localStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalStrength", 1.0f), 0.0f, 3.0f);
+    params->localFlicker = NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalFlicker", 1.0f), 0.0f, 1.0f);
+    // Darkening of the unlit scene, from the game's own clock and light mode (read only). Outdoors (time-of-day
+    // lighting) it follows a smooth dusk/dawn ramp; interiors and dungeons (fixed light settings) get a milder, constant
+    // pull so their lamps shape the room. Cutscenes keep their authored look.
+    {
+        const float hour = gSaveContext.save.time * (24.0f / 65536.0f);
+        const auto smooth = [](float a, float b, float x) {
+            const float t = NewDawnClampF((x - a) / (b - a), 0.0f, 1.0f);
+            return t * t * (3.0f - 2.0f * t);
+        };
+        const float night = hour >= 12.0f ? smooth(17.5f, 19.5f, hour) : 1.0f - smooth(4.5f, 6.5f, hour);
+        float darken = play->envCtx.lightMode == LIGHT_MODE_TIME ? 0.62f * night : 0.35f;
+        if (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
+            darken = 0.0f;
+        }
+        params->localDarken = darken * NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalContrast", 1.0f), 0.0f, 1.5f);
+        const Player* player = GET_PLAYER(play);
+        if (player) {
+            params->localPlayerValid = 1;
+            params->localPlayer[0] = player->actor.world.pos.x;
+            params->localPlayer[1] = player->actor.world.pos.y;
+            params->localPlayer[2] = player->actor.world.pos.z;
+        }
+    }
+    float scores[NEWDAWN_LOCAL_LIGHTS];
+    for (float& score : scores)
+        score = 1e30f;
+    for (const LightNode* node = play->lightCtx.listHead; node; node = node->next) {
+        const LightInfo* info = node->info;
+        if (!info || (info->type != LIGHT_POINT_NOGLOW && info->type != LIGHT_POINT_GLOW) ||
+            info->params.point.radius <= 0)
+            continue;
+        const auto& light = info->params.point;
+        if (light.color[0] + light.color[1] + light.color[2] == 0)
+            continue;
+        const float dx = light.x - play->view.eye.x, dy = light.y - play->view.eye.y, dz = light.z - play->view.eye.z;
+        const float score = (dx * dx + dy * dy + dz * dz) / (float)(light.radius * light.radius);
+        int slot = 0;
+        for (int i = 1; i < NEWDAWN_LOCAL_LIGHTS; ++i)
+            if (scores[i] > scores[slot])
+                slot = i;
+        if (score >= scores[slot])
+            continue;
+        scores[slot] = score;
+        params->localLights[slot][0] = light.x;
+        params->localLights[slot][1] = light.y;
+        params->localLights[slot][2] = light.z;
+        params->localLights[slot][3] = light.radius;
+        for (int i = 0; i < 3; ++i)
+            params->localColors[slot][i] = light.color[i] / 255.0f;
+        if (slot >= params->localCount)
+            params->localCount = slot + 1;
+    }
+}
+
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
@@ -644,6 +707,7 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnFillWaterParams(play, params);
     NewDawnFillArtParams(play, params);
     NewDawnAtmos_Fill(play, params);
+    NewDawnFillLocalLightParams(play, params);
     params->vfxEnabled = CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
     params->vfxStrength = CVarGetFloat("gNewDawn.Vfx.Strength", 1.0f);
     params->vfxEmbers = CVarGetFloat("gNewDawn.Vfx.Embers", 1.0f);
@@ -849,7 +913,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
         params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && !params->fogVolumetric &&
-        !params->atmosBiome && !params->giEnabled) {
+        !params->atmosBiome && !params->giEnabled && !params->localEnabled) {
         return;
     }
 
