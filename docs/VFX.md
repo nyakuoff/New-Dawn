@@ -28,7 +28,7 @@ Render-only OpenGL feature, HDR required. `gNewDawn.Vfx.Enabled` defaults to **0
 | bomb | `gEffBombExplosion1-8` | HDR fireball (`fire_01/02`) cooling to a dark smoke layer (`smoke_01`) + flash. Verified with a real thrown bomb (fixture below) |
 | hit | `gEffHitmarkRed/WhiteMetal1-8` | HDR spark + star (`spark_01`, `star_01`) |
 | spark | `gElectricSpark1-4` | blue-white HDR spark |
-| sparkle | `gameplay_keep_Tex_054AF0` (`gEffSparklesDL`, `EffectSsKirakira`: fairy sparkles, Tatl/Navi trail, rupee/item glitter, warp sparkles) | crisp HDR four-point star (`star_01`, 2.9x the native quad) plus a small halo, twinkling with the game's env alpha. Verified with a spawned fairy (`En_Elf`) |
+| sparkle | `gameplay_keep_Tex_054AF0` (`gEffSparklesDL`) | **not replaced** (native stays). The sparkle path exists in the shader but the class is not in `VfxClassify`: three tuning rounds with Kenney `star_01` + halo still looked softer and blobbier than the native small, crisp pink four-point stars, so it is not an improvement. Re-add the table entry with a sharper sprite to enable |
 | magic arrows | `gFireArrow*`, `gIceArrow*`, `gLightArrow*` (Tex and MaskTex of the 43-vertex glow model) | the whole model is accumulated into **one instance** (`RecordVfxArrow`) holding its screen-space axis; the renderer draws 24 HDR sprites along it (`fire_01/02` fire plume, `smoke_01`/`spark_01`/`star_01` ice, `light_01`/`star_01` light) plus a tip star and halo. The native `EffectBlure` ribbon still draws the streak. When the game scales the model up on impact (axis shorter than its width) the sprites fill a disc instead: fire ball, frost burst, light flash |
 
 Art: smoke/spark/star/halo sprites from the Kenney Particle Pack (CC0, https://kenney.nl/assets/particle-pack), unmodified, and
@@ -51,7 +51,7 @@ native effects. Art is not committed (only the authoring scripts are).
 - Ikana Graveyard: the first room has no fire/light actors, so no graveyard fire was found.
 - Screen-aligned sprites approximate the native camera-facing quads; no lighting from the flame onto the world (the game's
   own point light is untouched).
-- Rupee glints use the same `gEffSparklesDL`; a spawned rupee was captured (the draw is recorded), but the glints are small and the evidence images are fairy sparkles.
+- Rupee glints and fairy sparkles share `gEffSparklesDL` and stay native (see the class table).
 
 ## Extras evidence (2026-11-14, `feature/vfx-extras`)
 Images: `~/dev/ghm-mods/showcase/vfx/extras/`.
@@ -64,10 +64,10 @@ Images: `~/dev/ghm-mods/showcase/vfx/extras/`.
 - Private fixtures (not committed; `~/dev/ghm-mods/work/vfx2/`): `run.py` wraps `capture.py` with an actor dump (reads `gPlayState` actor lists via /proc/pid/mem), timed XTest key presses (C-up first person, C-left bomb, A/WASD run and roll) and timed memory pokes (inventory/button items); `bombs.sh`, `roll.sh`, `arrow.sh`. No game code is changed.
 
 ## Magic arrows and sparkles evidence (2026-11-14, `feature/vfx-magic`)
-Images: `~/dev/ghm-mods/showcase/vfx-magic/` (1:1 crops, left = `Vfx.Enabled=0`, right = on; same scene, frame timing differs by a few ms).
+Images: `~/dev/ghm-mods/showcase/vfx-magic/` (1:1 crops, left = `Vfx.Enabled=0`, right = on; same capture index, impact frames paired from 30-frame bursts on each side).
 - **Fixture (private, not committed)**: `En_Arrow` (actor 0x0F) spawned with params 3/4/5 (fire/ice/light) spawns its own `Arrow_Fire/Ice/Light` child and flies free with no parent, so no nocking, magic or input is needed. A test-only `OnActorUpdate` hook (`mm/2s2h/DeveloperTools/NdTestSpawn.cpp`, env `ND_ARROW` / `ND_ACTOR`, a no-op when unset) spawns them; `~/dev/ghm-mods/work/vfx3/arrow.sh`. Earlier agents failed to nock an arrow with timed key presses; spawning removes the dependency on game input.
-- Fire, ice and light arrows each captured in flight and on impact (`{fire,ice,light}_arrow_{2,7}_off_on.png`). Fairy sparkles: `sparkles_off_on.png` (`En_Fairy` type 1).
-- GPU stage 15 (`gNewDawn.PostFx.Debug.Stats=1`): fire 0.022 ms, ice 0.027 ms, light 0.057 ms, sparkles 0.014 ms (Termina Field). 0 GL errors (`MESA_DEBUG=context`).
-- Off identity: frozen Stock Pot Inn (12:00, frame 30, `gMatchRefreshRate=0`, `gInterpolationFPS=20`) with the AGENT-RULES recipe plus `Fog.Volumetric=0 SunShafts.Enabled=0 Sky.Physical=0 Sky.Flare=0 Lighting.Local=0 Water.Enabled=0` (without these the Inn's window region still differs run to run, so the recipe is not enough there). A build of the base commit `5b986cedd` x2, this branch with `Vfx.Enabled=0` x3 and with VFX on (no effects in view): all six PNGs share SHA-256 `e458ebe3…`. Run before the final sparkle tuning and the merge onto main `7cd5eb65c`; renderer code runs only when VFX is recording.
+- Fire, ice and light arrows each captured in flight and on impact (`{fire,ice,light}_arrow_{flight,impact}_off_on.png`). Fairy sparkles were captured and compared (spawned `En_Elf` type 1) but not shipped, see the class table.
+- GPU stage 15 (`gNewDawn.PostFx.Debug.Stats=1`): fire 0.022 ms, ice 0.027 ms, light 0.057 ms, sparkles (not shipped) 0.014 ms. 0 GL errors (`MESA_DEBUG=context`).
+- Off identity: frozen Stock Pot Inn (12:00, frame 30, `gMatchRefreshRate=0`, `gInterpolationFPS=20`) with the AGENT-RULES recipe plus `Fog.Volumetric=0 SunShafts.Enabled=0 Sky.Physical=0 Sky.Flare=0 Lighting.Local=0 Water.Enabled=0` (without these the Inn's window region still differs run to run, so the recipe is not enough there). A build of main `7cd5eb65c` x2, this branch (merged onto it, final code) with `Vfx.Enabled=0` x2 and with VFX on (no effects in view): all five PNGs share SHA-256 `e458ebe3…` (same hash on the earlier `5b986cedd` base).
 - Not done (item 4): hookshot, magic-meter, Deku-bubble and mask-transformation effects; `gEffLightning*`, `gEffIce*`, `gEffPoppedDekuBubble*` are candidate textures for the same classifier but were not captured.
 - Not found: Tatl's trail in a frame (the intro cutscene is skipped in the capture saves); Tatl/Navi use the same `EffectSsKirakira` sparkle that the spawned fairy shows.
