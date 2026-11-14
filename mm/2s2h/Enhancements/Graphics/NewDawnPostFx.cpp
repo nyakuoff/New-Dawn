@@ -387,7 +387,10 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
 }
 
 extern "C" void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int begin) {
-    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0) || !CVarGetInteger("gNewDawn.Sky.Flare", 0))
+    const bool screenShafts = CVarGetInteger("gNewDawn.SunShafts.Enabled", 0) &&
+                               CVarGetInteger("gNewDawn.SunShafts.Mode", 0) == 1;
+    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
+        (!CVarGetInteger("gNewDawn.Sky.Flare", 0) && !screenShafts))
         return;
     GraphicsContext* gfxCtx = play->state.gfxCtx;
     auto* params = static_cast<NewDawnPostFxParams*>(GRAPH_ALLOC(gfxCtx, sizeof(NewDawnPostFxParams)));
@@ -395,6 +398,22 @@ extern "C" void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int be
     params->flareSunPos[0] = sunPos->x;
     params->flareSunPos[1] = sunPos->y;
     params->flareSunPos[2] = sunPos->z;
+    if (screenShafts && !play->envCtx.sunDisabled && play->envCtx.lightMode == LIGHT_MODE_TIME &&
+        play->skyboxId == SKYBOX_NORMAL_SKY && !play->envCtx.skyboxDisabled &&
+        play->envCtx.lightSettingOverride == LIGHT_SETTING_OVERRIDE_NONE &&
+        play->envCtx.skyboxFilterColor[3] == 0 && play->envCtx.sandstormState == SANDSTORM_OFF &&
+        !(GET_ACTIVE_CAM(play)->stateFlags & CAM_STATE_UNDERWATER)) {
+        const Vec3f& sun = play->envCtx.sunPos;
+        const float len = sqrtf(sun.x * sun.x + sun.y * sun.y + sun.z * sun.z);
+        float elevation = sun.y / ((len > 0.001f) ? len : 1.0f);
+        float horizon = NewDawnClampF(elevation / 0.08f, 0.0f, 1.0f);
+        float lowSun = 1.0f - NewDawnClampF(elevation / 0.65f, 0.0f, 1.0f);
+        params->screenShaftStrength = NewDawnClampF(CVarGetFloat("gNewDawn.SunShafts.Strength", 0.4f), 0.0f, 1.0f) *
+                                     horizon * (0.15f + 0.85f * lowSun * lowSun);
+        for (int i = 0; i < 3; ++i)
+            params->screenShaftColor[i] = (0.75f * play->envCtx.dirLight1.params.dir.color[i] +
+                                           0.25f * play->lightCtx.fogColor[i]) / 255.0f;
+    }
     OPEN_DISPS(gfxCtx);
     gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_SUN_FLARE_BEGIN : NEWDAWN_POSTFX_STAGE_SUN_FLARE_END,
                     params);

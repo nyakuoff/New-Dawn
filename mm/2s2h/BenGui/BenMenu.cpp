@@ -121,6 +121,8 @@ static const std::unordered_map<int32_t, const char*> anisotropyOptions = {
     { 0, "Off (1x)" }, { 2, "2x" }, { 4, "4x" }, { 8, "8x" }, { 16, "16x" },
 };
 
+static const std::vector<const char*> sunShaftModeOptions = { "Shadow march", "Screen-space rays (HDR)" };
+
 static const std::unordered_map<int32_t, const char*> shadowMapSizeOptions = {
     { 512, "512" }, { 1024, "1024" }, { 2048, "2048" }, { 4096, "4096" },
 };
@@ -188,9 +190,10 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
     { "gNewDawn.Shadows.Foliage", false, 1.0f, 0.0f }, // leaves, fences and grass cast cut-out shadows
-    { "gNewDawn.Fog.Volumetric", false, 1.0f, 0.0f }, // replaces Sun Shafts in eligible scenes
-    { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f }, // needs shadows
-    { "gNewDawn.SunShafts.Strength", true, 0.18f, 0.4f },
+    { "gNewDawn.Fog.Volumetric", false, 1.0f, 0.0f }, // replaces shadow-marched shafts in eligible scenes
+    { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f },
+    { "gNewDawn.SunShafts.Mode", false, 1.0f, 0.0f },
+    { "gNewDawn.SunShafts.Strength", true, 0.30f, 0.4f },
     { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Water.Strength", true, 0.5f, 0.5f },
     { "gNewDawn.Water.Reflections", false, 1.0f, 0.0f },
@@ -1032,14 +1035,14 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Sun Shafts", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Sun Shafts", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.SunShafts.Enabled")
-        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
         .Options(CheckboxOptions()
-                     .Tooltip("Light shafts through the shadow map, tinted by the scene's fog. Strongest when looking "
-                              "towards the sun. Requires Real-time Shadows.")
+                     .Tooltip("Light shafts toward the sun. Shadow march needs Real-time Shadows; screen-space rays need HDR and Physical Sky at full strength.")
                      .DefaultValue(false));
+    AddWidget(path, "Sun Shaft Mode", WIDGET_CVAR_COMBOBOX)
+        .CVar("gNewDawn.SunShafts.Mode")
+        .Options(ComboboxOptions().ComboVec(&sunShaftModeOptions).DefaultIndex(0));
     AddWidget(path, "Sun Shaft Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.SunShafts.Strength")
-        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.4f).Tooltip(
             "How visible the shafts and the sun haze are."));
 
