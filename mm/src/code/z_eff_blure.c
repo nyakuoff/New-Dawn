@@ -307,7 +307,7 @@ void EffectBlure_UpdateFlags(EffectBlureElement* elem) {
 // New Dawn: restyle the player's sword trail (purely cosmetic, draw-side; the swing, hitboxes and timing are untouched).
 // A thin, bright arc hugging the blade tip: the hilt-side edge is pulled toward the tip and faded, the alpha falls off
 // faster than linear with the trail's age, and the colour is a per-sword tint (Kokiri cool white, Razor silver-blue, Gilded pale
-// gold) instead of the flat white/grey ribbon. The magical spin attack keeps its own blue colours.
+// gold) instead of the flat white/grey ribbon. Spin attacks (curved native arc) are left untouched.
 static void EffectBlure_RestylePlayerSword(EffectBlure* this, Vec3s* hilt, Vec3s* tip, Color_RGBA8* tipColor,
                                            Color_RGBA8* hiltColor) {
     static const u8 sTint[3][3] = { { 232, 242, 255 }, { 190, 212, 245 }, { 255, 238, 185 } };
@@ -323,15 +323,15 @@ static void EffectBlure_RestylePlayerSword(EffectBlure* this, Vec3s* hilt, Vec3s
         return;
     }
     sword = player->heldItemAction - PLAYER_IA_SWORD_KOKIRI;
-    if (sword < 0 || sword > 2) {
-        return;
+    if (sword < 0 || sword > 2 || player->meleeWeaponAnimation >= PLAYER_MWA_SPIN_ATTACK_1H) {
+        return; // not a sword, or a (great) spin attack: those keep the native curved arc
     }
     hilt->x = tip->x + (hilt->x - tip->x) * 3 / 5;
     hilt->y = tip->y + (hilt->y - tip->y) * 3 / 5;
     hilt->z = tip->z + (hilt->z - tip->z) * 3 / 5;
     tipColor->a = (tipColor->a * (tipColor->a + 255)) / 510;
     hiltColor->a = (hiltColor->a * hiltColor->a) / 255 / 2;
-    if (tipColor->r > 250) { // the plain trail is white; the spin attack's own blue override is kept
+    {
         tipColor->r = hiltColor->r = sTint[sword][0];
         tipColor->g = hiltColor->g = sTint[sword][1];
         tipColor->b = hiltColor->b = sTint[sword][2];
