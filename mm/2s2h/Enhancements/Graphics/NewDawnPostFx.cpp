@@ -635,6 +635,9 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnFillWaterParams(play, params);
     NewDawnFillArtParams(play, params);
     NewDawnAtmos_Fill(play, params);
+    params->vfxEnabled = CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
+    params->vfxStrength = CVarGetFloat("gNewDawn.Vfx.Strength", 1.0f);
+    params->vfxEmbers = CVarGetFloat("gNewDawn.Vfx.Embers", 1.0f);
     return params;
 }
 
@@ -795,12 +798,13 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
-        !CVarGetInteger("gNewDawn.Fog.Volumetric", 0)) {
+        !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.Vfx.Enabled", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric) {
+    if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric &&
+        !params->vfxEnabled) {
         return;
     }
 
