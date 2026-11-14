@@ -27,7 +27,7 @@ Status: ✅ done (in the New Dawn preset unless noted) · 🚧 in progress · �
 | Art-directed grade per area and time of day | #51 |
 | Offline texture recolour for muddy or garish textures | #51 |
 
-## Phase 3: Sky ✅ / 🚧
+## Phase 3: Sky ✅
 | Feature | Status | PRs |
 |---|---|---|
 | Physical sky with volumetric clouds, driven by the game clock | ✅ | #42 |
@@ -35,7 +35,7 @@ Status: ✅ done (in the New Dawn preset unless noted) · 🚧 in progress · �
 | Sky reflections on water and glossy materials; overcast snow sky | ✅ | #45 |
 | Textured lens flare replacing the native sun wash | ✅ | #49 |
 | Screen-space sun rays through trees | ✅ | #52 |
-| Special skies: an apocalyptic final day, cursed Ikana, poisoned swamp, and upgraded cutscene skies | 🚧 | |
+| Special skies: an apocalyptic final day, cursed Ikana, poisoned swamp, and upgraded cutscene skies | ✅ | #63 |
 
 ## Phase 4: Lighting and shadows ✅ / 🚧
 | Feature | Status | PRs |
@@ -54,7 +54,7 @@ Status: ✅ done (in the New Dawn preset unless noted) · 🚧 in progress · �
 | Generated normal, roughness and height maps for about 2,200 world textures | #31, #33, #34 |
 | Parallax occlusion mapping: real depth on brick, cobble and stone | #57 |
 
-## Phase 6: Water ✅ / 🚧 / 📋
+## Phase 6: Water ✅ / 📋
 | Feature | Status | PRs |
 |---|---|---|
 | Fresnel, sun glints and screen-space reflections | ✅ | #26, #29 |
@@ -62,7 +62,7 @@ Status: ✅ done (in the New Dawn preset unless noted) · 🚧 in progress · �
 | Caustics on seabeds and an underwater view (fog, light shafts, particles) | ✅ | #61 |
 | **Water simulation:** real ocean waves (Gerstner or FFT displaced surface) with crest foam and shoreline swash; interactive ripples and wakes from Link, actors and splashes; better rivers and waterfalls. Render-only: the game's water height stays authoritative for swimming and collision. | 📋 | |
 
-## Phase 7: Atmosphere and effects ✅ / 🚧
+## Phase 7: Atmosphere and effects ✅
 | Feature | Status | PRs |
 |---|---|---|
 | Ambient particles: sunlit dust motes, pollen, fireflies, drifting leaves | ✅ | #50 |
@@ -70,8 +70,9 @@ Status: ✅ done (in the New Dawn preset unless noted) · 🚧 in progress · �
 | Shared wind with render-only foliage sway | ✅ | #50 |
 | Fire, embers, glows, dust and sparks from real assets | ✅ | #54 |
 | Candles, fireplace, bomb explosions, run dust | ✅ | #58 |
-| Render-only 3D grass on grassy ground | 🚧 | |
-| Magic arrows, fairy sparkles, rupee glints and remaining low-res effects | 🚧 | |
+| Render-only 3D grass on grassy ground | ✅ | #64 |
+| Fire, ice and light arrows (HDR trails and impacts) | ✅ | #65 |
+| Fairy sparkles, rupee glints, hookshot, Deku bubble and mask flashes | 📋 (sparkles kept native for now) | |
 
 ## Phase 8: Geometry 🧪
 | Feature | Status | PRs |
