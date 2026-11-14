@@ -43,10 +43,13 @@ start and end of the checked cutscenes. 22 matched captures (Special 0 vs 1): ze
   Ikana day/night, swamp noon/dusk, Woodfall exterior. `cloud_motion_burst_finalhours.png`: four frames 1.5 s apart.
 - GPU (300-run means): sky 0.17 ms, clouds 0.22 ms (Ikana, thin) to 0.84 ms (swamp dusk, low deck), cube 0.05 ms:
   at most about 1.1 ms for the sky, inside the 1.5 ms budget. Native fallbacks run none of these.
-- Frozen Stock Pot Inn: this fixture is not deterministic on this machine (repeated runs of the *same* build differ by
-  11k-60k pixels, max 3-194 code values, a window light patch and particles), so byte-identity could **not** be
-  demonstrated. The closest main-vs-branch pair differs in 14.9k pixels (max 3), inside the same-build spread, and
-  Special 0 vs 1 behave the same in the interior (no sky stage runs there). All Special code is behind the cvar.
+- Frozen Stock Pot Inn (off identity): **not demonstrated.** Recipe from AGENT-RULES (frame 30, `gMatchRefreshRate=0`,
+  `gInterpolationFPS=20`, GI/Wind/Particles/Weather/LocalFlicker/Embers/Clouds/Dither off) against an exact-base build
+  (`5b986cedd` + libultraship `bb286b7b`, `~/dev/ghm-mods/work/skies/ref-base`). Two repeats of the *reference* differ in
+  27k pixels (a window patch, max 8); two repeats of the branch differ in 47k-207k pixels (max 18-22), and branch vs
+  reference differ everywhere (677k pixels) because the freeze lands on a different game frame (Link's pose differs),
+  so the hashes never match even within one build. Three attempts, then stopped. Special 0/1 do not touch the
+  interior (no sky stage runs there, all new code is behind the cvar).
 
 ## Limits
 - The native Moon, sun and stars are still world draws in front of the sky; dense storm clouds do not occlude them.
