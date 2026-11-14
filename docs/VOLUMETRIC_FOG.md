@@ -1,7 +1,6 @@
 # Volumetric height fog (E2)
 
-`gNewDawn.Fog.Volumetric`: default **0**, preset **0** pending the exact-main off gate recorded in
-[SUN_GLARE.md](SUN_GLARE.md). Requires active HDR and Sun Shadows. No gameplay/environment state is written.
+`gNewDawn.Fog.Volumetric`: default **0**, preset **1**. Outdoor fog requires active HDR and Sun Shadows; the Woodfall Temple path requires HDR only. No gameplay/environment state is written.
 
 The opaque-end HDR pass integrates Beer–Lambert extinction and single scattering over 24 jittered steps at
 half resolution. Density falls with fixed world altitude (300–500 units); the game's fog colour and exact
@@ -68,3 +67,20 @@ and `e2-coast-sun/`. Splits from `/tmp/nd/showcase/split.py`:
 `~/dev/ghm-mods/showcase/glare-fog/e2/{before,after,split,coast-sun}/` (left fog off/right on;
 both sides already use the New Dawn preset/mods and the initial glare-wash fix; this matrix predates
 the modern flare replacement).
+
+## F2 update, 2026-11-13: stronger haze and Woodfall Temple depth fog
+
+- Outdoor: density x2, 32 steps, HG g=0.68, fog height 700 (Field), per-scene scales retuned; ambient and fog colour now come
+  from `lightCtx` (`fogAmbient`/`fogColor`) instead of the shaft params. Preset enabled.
+- Woodfall Temple (`SCENE_MITURIN`, `LIGHT_MODE_SETTINGS`): `fogVolumetric == 2` needs no sun shadow map. The march lights the
+  medium with ambient plus up to four nearest game point lights (`fogPointPosRadius/Color`, `uPointCount`); sun term is off.
+  Near surfaces stay clear, distant roots/lights gain teal depth fog. The shadow-record stage is also enabled when only fog is on.
+- Validation (same build, camera pinned with the private fixture, fog off/on, `MESA_DEBUG=context`): Field/Swamp 08:00, Field and
+  Coast 17:30, Woodfall Temple (3 angles) inspected; 0 GL errors in all captures. Fog GPU 0.28-0.50 ms (Clock Town .28, Field .37-.38,
+  Swamp .39, Woodfall exterior .40, Temple .50), inside the +0.8 ms budget (outdoors it replaces Sun Shafts, so net cost is lower).
+- Frozen Inn with fog off is byte-identical to the main baseline capture (sha256 c6b90c3e...). A short turning burst in the Field
+  showed no visible flicker or popping; this is a coarse check, not proof of high-frame-rate motion safety.
+- **Not demonstrated:** distinct dusk sun shafts. Termina Field has few shadow casters between eye and the low sun; even with
+  `HDR.SunIntensity=8` at the best found view no shaft structure appears, so the integration contributes haze, not shafts.
+  A view with dense canopy near a low sun (and a shadow map covering it) is still needed.
+- Splits: `~/dev/ghm-mods/showcase/glare-fog/f2/` (left half fog off, right half fog on, identical pinned camera).

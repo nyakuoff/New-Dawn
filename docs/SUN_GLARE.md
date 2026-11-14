@@ -1,55 +1,57 @@
-# HDR sun diffraction flare (E1)
+# Textured HDR lens flare (F1)
 
-`gNewDawn.Sky.Flare`: default **0**, New Dawn preset **0** pending the exact-main and Termina sun-facing gates.
-It replaces the earlier `GlareFix` setting; old keys are ignored.
+`gNewDawn.Sky.Flare`: default **0**, New Dawn preset **1**. Requires active HDR and the local VFX pack.
+The rejected procedural diffraction star is removed. All flare shapes now sample downloaded glow, soft bloom,
+hexagon, iris and ring PNGs. Small, tinted ghosts follow the sun–screen-centre axis. Their separation fades
+near screen centre; the entire flare fades at frame edges. There are no generated spikes or full-screen wash.
 
-The full native sun-flare draw scope is tagged, including all ten ring/circle sprites and the screen wash.
-OpenGL suppresses those draws only in an active HDR framebuffer. Native visibility/alpha state updates still
-execute unchanged. Custom non-sun flares, LDR frames (including runtime HDR fallback) and screen fades retain
-their original draws. No gameplay, camera, animation or environment state is written.
+The existing 48-sample sun-disc integration supplies HDR energy and geometry visibility. It now also samples
+this frame's rendered cloud opacity toward the sun, including the cloud/sky strength blend. Opaque clouds
+suppress the flare. Native sun flare sprites/wash stay suppressed only in HDR; all environment-state updates,
+non-sun flares and LDR/runtime fallback behavior remain native. No gameplay/animation/camera state is written.
 
-A 48-sample integration across the projected sun disc reads resolved world depth and HDR colour into a 1×1
-RGBA16F emitter. Geometry progressively masks its visibility and energy; no CPU depth readback or temporal
-history is used. A pixel-filtered six-ray aperture approximation, soft central halo and compact support scatter
-that energy locally into HDR, followed by the established bloom and display transform. Optical scatter is
-mostly white to avoid an orange veil. There are no offset ghosts, dirt masks, external textures or new dependencies.
-The native sun disc and physical atmosphere remain. This is an analytic diffraction approximation, not a full
-wave-optics lens simulation.
+## Downloaded assets and installation
 
-The exact interpolated projection is captured before the native flare scope. The new `uFlareEmitter` sampler
-owns unit **15**, assigned at program creation; a complete transparent dummy remains bound when idle.
-Colour/depth reuse existing units 8/9. Stats stage **10** includes depth/colour resolve, emitter and diffraction.
+Source: [Lens-Flares and Particles, hackcraft.de](https://opengameart.org/content/lens-flares-and-particles).
+[Archive](https://opengameart.org/sites/default/files/flare_20120324.zip), downloaded 2026-11-13.
+The archive's `flare/LICENSE` says **CC0 – Public Domain Donation by hackcraft.de**; the OGA listing also
+advertises CC-BY 3.0. The local manifest preserves attribution and both notices. No art is committed.
 
-## Validation, 2026-11-13
+Installed pack: `~/dev/ghm-mods/assets/oga-lens-flares/`; provenance, file hashes and licence information:
+`MANIFEST.md`. Runtime files under its `flare/`: `star.png` (soft bloom, despite its filename), `extend.png`
+(halo), `hexangle.png`, `iris.png`, `sun.png`, `ring.png`. Original downloads are retained unchanged.
+Kenney's CC0 particle pack was also downloaded/inspected, with its own manifest; it is not loaded.
 
-Main base `51c57581e`, renderer base `6221f142`; Linux Mesa OpenGL, RX 7800 XT, 1920×1080, MSAA 4,
-canonical capture tool with `--preset --mods ~/dev/ghm-mods/sets/full`, `MESA_DEBUG=context`.
-`cmake --build build -j6` and GLSL 330 validation of both new programs pass. Default shader asset copies are
-byte-identical (the initial renderer checkout's CRLF was normalised; the shader archive was repacked).
+`gNewDawn.Assets.Path` is the directory **containing** `oga-lens-flares`, default `assets/newdawn` relative
+to the executable's working directory. This machine's `build/mm/assets/newdawn` links to
+`~/dev/ghm-mods/assets`. Alternatively set the cvar to `/home/loganp/dev/ghm-mods/assets` in the config.
+For another installation, extract the linked archive into `<asset-root>/oga-lens-flares/` and preserve
+its LICENSE and attribution. Missing/invalid files log once per path and leave only the normal HDR sun/bloom.
+Changing the path reloads the pack. Six unchanged masks upload into a 256² texture array with mips;
+128² hexagon art is centred without resampling and uses a matching UV rectangle. About 2 MiB VRAM.
 
-Coast 17:30 sun-facing image and 1:1 crop inspected: native sprites/wash removed, sun-local starburst retained,
-terrain/water colours visible. Stage 10 is **.164 ms GPU** over 300 runs. Zero GL/shader/framebuffer errors.
-At the same 17:48 time, the starburst is visible from the original beach position and absent with the sun
-behind the pier building (`flare-visible-coast-17.8`, `flare-occluded-coast-2`). An eight-frame Coast turn
-was inspected, including 1:1 crops: no obvious discontinuity at sampled angles. HDR-off retains native
-sprites/wash and executes no stage 10; the Inn also executes no flare stage. The latest Inn pair has different
-idle-animation poses, so it is not a byte-identity proof.
-Evidence: `~/dev/ghm-mods/work/glare-fog/flare-first-coast/`, `flare-first-crop.png`;
-split: `~/dev/ghm-mods/showcase/glare-fog/flare/coast/` (left native/right modern).
+Sampler assignments happen at program creation: emitter **15**, sprite array **16**, cloud opacity **17**.
+Complete neutral textures remain bound when idle or disabled. Colour/depth reuse 8/9. GL 3.3 guarantees
+48 combined texture units; the shader uses only two fragment samplers in its apply pass. Stats stage **10**
+includes depth/colour resolve, emitter and textured flare. The default shader files were not edited.
 
-**Exact-main byte identity remains unproven**: the initial frozen Inn comparison differed in sparse render noise
-(1,213 changed pixels at matched 14-second timing; another timing changed 22,642). Three attempts were stopped.
-The prior implementation's same-build frozen Inn toggle pair was byte-identical; this does not satisfy the main gate.
-No markers are emitted with Flare off. **Termina sun-facing glare remains unverified**: three position/framing
-failures were stopped. A normal Termina dusk view is included separately; it does not substitute for that gate.
+## Validation
 
-Historical initial attenuation evidence remains in `~/dev/ghm-mods/work/glare-fog/session/e1-*` and showcase `e1/`;
-those images retained stock sprites and do not represent the current replacement mode.
+Base main `dd4c4a108`, renderer `d2ae82aa`; Linux Mesa OpenGL, RX 7800 XT, 1920×1080, MSAA 4,
+canonical `capture.py --bin-dir build/mm --preset --mods /home/loganp/dev/ghm-mods/sets/full`.
+`MESA_DEBUG=context`, `cmake --build build -j6`, both new GLSL 330 programs pass validation.
 
-Coast sun-facing GPU stage means, ms (300-run averages): AO .411, HDR bloom/display .192,
-shadows .279, shafts .335, water .193, opaque copy .135, sky .223, clouds .355, cube .077,
-diffraction .164. The turning view diffraction stage averages .166 ms. Fog is disabled for these isolated
-E1 measurements. All final flare validation captures have 0 GL/shader/framebuffer errors.
+- Coast and Termina facing the sun at 12:00 and 17:30: all images inspected. No procedural spikes.
+  The private camera fixture supplies a fixed view; Termina dusk's second angle avoids the foreground pillar.
+- Preset clouded views attenuate ghosts as intended. A separate clear-sun Coast capture (`Sky.Clouds=0`)
+  visibly shows the downloaded iris/hexagon/ring ghosts and local glow, with no frame-wide veil.
+- Frozen Stock Pot Inn frame 120, Flare=0/Fog=0: **PNG byte-identical to exact main**.
+  Both SHA-256: `c6b90c3e69c85f732f5eaebf40f409007399f0316192e5f386030cb078e54a82`.
+- Missing-pack and clear-sky geometry-occlusion checks also have zero GL errors. Missing art falls back
+  to normal sun/bloom; an occluded sun produces no ghosts. Independent F1 diff review found no issues.
+- Validated captures: zero GL/shader/framebuffer errors; stage 10 Coast dusk **0.174–0.175 ms GPU** (300 runs).
 
-Both final toggles together were also exercised at Coast dusk with zero GL errors (`combined-coast/`);
-the combined split is in `~/dev/ghm-mods/showcase/glare-fog/combined/`. No E3 sky replacement is included.
+Raw captures/logs: `~/dev/ghm-mods/work/flare-textures/{base-*,f1-*}`.
+Splits made with `/tmp/nd/showcase/split.py`: `~/dev/ghm-mods/showcase/flare-textures/f1/`.
+Left is the merged procedural flare; right is the textured replacement, same preset/mods. Clear-sun control
+is labelled separately; it does not isolate the cloud change against those before images.
