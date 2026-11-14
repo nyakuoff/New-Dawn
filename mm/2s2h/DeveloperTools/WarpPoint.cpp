@@ -108,7 +108,93 @@ void Warp(WarpPoint& warpPoint) {
     gSaveContext.respawnFlag = -8;
 }
 
+// Warp to a scene entrance with a quick fade. Only touches the transition state; no respawn/save/time changes.
+static void WarpToEntrance(s32 entrance) {
+    gPlayState->nextEntrance = entrance;
+    gPlayState->transitionTrigger = TRANS_TRIGGER_START;
+    gPlayState->transitionType = TRANS_TYPE_FADE_BLACK_FAST;
+    gSaveContext.nextTransitionType = TRANS_TYPE_FADE_BLACK_FAST;
+}
+
 static std::string warpNameInput = "";
+
+struct KeyLocation {
+    const char* name;
+    s32 entrance;
+};
+struct KeyRegion {
+    const char* name;
+    std::vector<KeyLocation> locations;
+};
+
+void RenderWarpMenu() {
+    static const std::vector<KeyRegion> regions = {
+        { "Opening",
+          { { "Lost Woods", ENTRANCE(LOST_WOODS, 0) },
+            { "Clock Tower Interior", ENTRANCE(CLOCK_TOWER_INTERIOR, 0) } } },
+        { "Clock Town",
+          { { "South", ENTRANCE(SOUTH_CLOCK_TOWN, 0) },
+            { "North", ENTRANCE(NORTH_CLOCK_TOWN, 0) },
+            { "East", ENTRANCE(EAST_CLOCK_TOWN, 0) },
+            { "West", ENTRANCE(WEST_CLOCK_TOWN, 0) },
+            { "Clock Tower Rooftop", ENTRANCE(CLOCK_TOWER_ROOFTOP, 0) },
+            { "Stock Pot Inn", ENTRANCE(STOCK_POT_INN, 0) },
+            { "Mayor's Residence", ENTRANCE(MAYORS_RESIDENCE, 0) },
+            { "Milk Bar", ENTRANCE(MILK_BAR, 0) },
+            { "Laundry Pool", ENTRANCE(LAUNDRY_POOL, 0) } } },
+        { "Termina Field", { { "Termina Field", ENTRANCE(TERMINA_FIELD, 0) } } },
+        { "South",
+          { { "Southern Swamp", ENTRANCE(SOUTHERN_SWAMP_POISONED, 0) },
+            { "Deku Palace", ENTRANCE(DEKU_PALACE, 0) },
+            { "Woodfall", ENTRANCE(WOODFALL, 0) },
+            { "Woodfall Temple", ENTRANCE(WOODFALL_TEMPLE, 0) } } },
+        { "North",
+          { { "Mountain Village", ENTRANCE(MOUNTAIN_VILLAGE_WINTER, 0) },
+            { "Goron Village", ENTRANCE(GORON_VILLAGE_WINTER, 0) },
+            { "Snowhead", ENTRANCE(SNOWHEAD, 0) },
+            { "Snowhead Temple", ENTRANCE(SNOWHEAD_TEMPLE, 0) } } },
+        { "West",
+          { { "Great Bay Coast", ENTRANCE(GREAT_BAY_COAST, 0) },
+            { "Zora Hall", ENTRANCE(ZORA_HALL, 0) },
+            { "Pirates' Fortress", ENTRANCE(PIRATES_FORTRESS_EXTERIOR, 0) },
+            { "Great Bay Temple", ENTRANCE(GREAT_BAY_TEMPLE, 0) } } },
+        { "East",
+          { { "Ikana Canyon", ENTRANCE(IKANA_CANYON, 0) },
+            { "Ikana Graveyard", ENTRANCE(IKANA_GRAVEYARD, 0) },
+            { "Stone Tower", ENTRANCE(STONE_TOWER, 0) },
+            { "Stone Tower Temple", ENTRANCE(STONE_TOWER_TEMPLE, 0) } } },
+        { "Ranch", { { "Romani Ranch", ENTRANCE(ROMANI_RANCH, 0) } } },
+    };
+
+    bool canWarp = gPlayState != NULL && gPlayState->csCtx.state == CS_STATE_IDLE &&
+                   gPlayState->transitionTrigger == TRANS_TRIGGER_OFF && gPlayState->transitionMode == TRANS_MODE_OFF;
+    if (!canWarp) {
+        ImGui::TextDisabled("Warping is available in game, outside cutscenes and transitions.");
+    }
+    ImGui::BeginDisabled(!canWarp);
+    for (auto& region : regions) {
+        ImGui::SeparatorText(region.name);
+        float maxX = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+        for (size_t i = 0; i < region.locations.size(); i++) {
+            auto& loc = region.locations[i];
+            ImGui::PushID(loc.name);
+            if (i > 0) {
+                float w = ImGui::CalcTextSize(loc.name).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+                if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + w < maxX) {
+                    ImGui::SameLine();
+                }
+            }
+            if (UIWidgets::Button(loc.name, { .size = UIWidgets::Sizes::Inline })) {
+                WarpToEntrance(loc.entrance);
+            }
+            ImGui::PopID();
+        }
+    }
+    ImGui::EndDisabled();
+
+    ImGui::Spacing();
+    RenderWarpPointSection(); // "Warp Points": the user's saved positions
+}
 
 void RenderWarpPointSection() {
     ImGui::SeparatorText("Warp Points");

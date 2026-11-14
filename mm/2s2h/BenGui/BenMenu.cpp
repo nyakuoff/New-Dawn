@@ -1684,6 +1684,10 @@ void BenMenu::AddEnhancements() {
                      .Min(0.1f)
                      .Max(3.0f));
 
+    path = { "Enhancements", "Warp", SECTION_COLUMN_1 };
+    AddSidebarEntry("Enhancements", "Warp", 1);
+    AddWidget(path, "Warp Menu", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) { RenderWarpMenu(); });
+
     path = { "Enhancements", "Cheats", SECTION_COLUMN_1 };
     AddSidebarEntry("Enhancements", "Cheats", 2);
     AddWidget(path, "Infinite Health", WIDGET_CVAR_CHECKBOX)
@@ -3228,7 +3232,8 @@ void BenMenu::AddPages() {
                 { "Fixes", "Enhancements", "Fixes" },
                 { "Restorations", "Enhancements", "Restorations" },
                 { "Difficulty", "Enhancements", "Difficulty Options" } } });
-    AddPage({ "cheats", "Cheats", ICON_FA_KEY, { { "Cheats", "Enhancements", "Cheats" } } });
+    AddPage({ "cheats", "Cheats", ICON_FA_KEY,
+              { { "Cheats", "Enhancements", "Cheats" }, { "Warp", "Enhancements", "Warp" } } });
     AddPage({ "interface", "Interface", ICON_FA_TH_LARGE,
               { { "Menu", "Settings", "General" },
                 { "HUD", "Enhancements", "HUD Editor" },
