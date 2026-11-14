@@ -10,12 +10,20 @@ void NewDawnAtmos_Fill(const PlayState* play, NewDawnPostFxParams* params) {
     const bool particles =
         CVarGetInteger("gNewDawn.Atmos.Particles", 0) && CVarGetFloat("gNewDawn.Atmos.Strength", 1.0f) > 0;
     const bool weather = CVarGetInteger("gNewDawn.Atmos.Weather", 0);
-    if ((!particles && !weather) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
-        (GET_ACTIVE_CAM(play)->stateFlags & CAM_STATE_UNDERWATER)) {
+    // The water pass reports a camera below a WaterBox surface; the particle system then draws floating particulates
+    // (biome 6) instead of its scene biome, when the Underwater look is on.
+    const bool underwater = params->waterUnderwater > 0.0f && params->waterUnderwaterState >= 1.0f;
+    if (!underwater && ((!particles && !weather) || (GET_ACTIVE_CAM(play)->stateFlags & CAM_STATE_UNDERWATER))) {
         return;
     }
-    // 1: courtyard dust, 2: grass/pollen, 3: woodland, 4: interior light-local dust.
-    switch (play->sceneId) {
+    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
+        return;
+    }
+    // 1: courtyard dust, 2: grass/pollen, 3: woodland, 4: interior light-local dust, 6: underwater particulates.
+    switch (underwater ? -1 : play->sceneId) {
+        case -1:
+            params->atmosBiome = 6;
+            break;
         case SCENE_CLOCKTOWER:
         case SCENE_TOWN:
         case SCENE_ICHIBA:
@@ -44,8 +52,8 @@ void NewDawnAtmos_Fill(const PlayState* play, NewDawnPostFxParams* params) {
             return;
     }
     params->atmosScene = play->sceneId;
-    params->atmosParticles = particles && params->atmosBiome != 5;
-    params->atmosWeather = weather && params->atmosBiome != 4;
+    params->atmosParticles = (particles || underwater) && params->atmosBiome != 5;
+    params->atmosWeather = weather && params->atmosBiome != 4 && !underwater;
     params->atmosSnow = std::clamp(play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f, 0.0f, 1.0f);
     // Smooth, read-only day/night weights independent of the sun shadow toggle.
     const float hour = gSaveContext.save.time * (24.0f / 65536.0f);

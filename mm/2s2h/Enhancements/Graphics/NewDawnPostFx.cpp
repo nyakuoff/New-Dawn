@@ -151,10 +151,23 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     const bool foam = surfaceVisible && CVarGetInteger("gNewDawn.Water.Foam", 0) != 0;
     const bool refraction = surfaceVisible && CVarGetInteger("gNewDawn.Water.Refraction", 0) != 0;
     const bool restyle = surfaceVisible && CVarGetInteger("gNewDawn.Water.Restyle", 0) != 0;
+    const bool caustics = CVarGetInteger("gNewDawn.Water.Caustics", 0) != 0 &&
+                          CVarGetFloat("gNewDawn.Water.CausticsStrength", 1.0f) > 0.0f;
+    const bool underwater = surfaceVisible && CVarGetInteger("gNewDawn.Water.Underwater", 0) != 0 &&
+                            CVarGetFloat("gNewDawn.Water.UnderwaterStrength", 1.0f) > 0.0f;
+    // Smoothed camera-in-water state: snaps in when the camera dips below a surface and relaxes over a few frames
+    // after leaving it, so crossing the surface never pops.
+    static float sUnderwaterState = 0.0f;
+    static float sUnderwaterSurfaceY = 0.0f;
+    static float sUnderwaterRect[4] = {};
+    static uint32_t sUnderwaterFrame = UINT32_MAX;
     // Without a time of day there is no sun or moon, so glints alone would only add the faint sky tint: interiors
     // skip the pass unless reflections, foam or refraction are on.
-    if ((!glints && !reflections && !foam && !refraction && !restyle) || play->colCtx.colHeader == NULL ||
-        (play->envCtx.lightMode != LIGHT_MODE_TIME && !reflections && !foam && !refraction && !restyle)) {
+    if ((!glints && !reflections && !foam && !refraction && !restyle && !caustics && !underwater) ||
+        play->colCtx.colHeader == NULL ||
+        (play->envCtx.lightMode != LIGHT_MODE_TIME && !reflections && !foam && !refraction && !restyle && !caustics &&
+         !underwater)) {
+        sUnderwaterState = 0.0f;
         return;
     }
     const CollisionHeader* col = play->colCtx.colHeader;
@@ -199,7 +212,36 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
         out[3] = box->minPos.z + box->zLength;
         out[4] = box->minPos.y;
     }
-    if (count == 0) {
+    // Camera below a plane whose XZ rectangle contains it (the highest such surface nearest above the eye).
+    bool eyeUnder = false;
+    {
+        float best = 1.0e9f;
+        for (int i = 0; i < count; i++) {
+            const float* box = params->waterBoxes[i];
+            const float gap = box[4] - play->view.eye.y;
+            if (gap > 0.0f && gap < 1500.0f && gap < best && play->view.eye.x >= box[0] && play->view.eye.x <= box[2] &&
+                play->view.eye.z >= box[1] && play->view.eye.z <= box[3]) {
+                best = gap;
+                eyeUnder = true;
+                sUnderwaterSurfaceY = box[4];
+                for (int j = 0; j < 4; j++) {
+                    sUnderwaterRect[j] = box[j];
+                }
+            }
+        }
+    }
+    if (underwater) {
+        // Advance once per game frame so fade-out time does not depend on how often the display list is rebuilt.
+        if (sUnderwaterFrame != play->gameplayFrames) {
+            sUnderwaterFrame = play->gameplayFrames;
+            sUnderwaterState = eyeUnder ? 1.0f : std::max(sUnderwaterState - 0.25f, 0.0f);
+        } else if (eyeUnder) {
+            sUnderwaterState = 1.0f;
+        }
+    } else {
+        sUnderwaterState = 0.0f;
+    }
+    if (count == 0 && sUnderwaterState <= 0.0f) {
         return;
     }
 
@@ -257,18 +299,54 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
         refraction
             ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.RefractionStrength", 1.0f), 0.0f, 1.0f) * refractionFactor
             : 0.0f;
-    if (restyle) {
+    if (restyle || caustics || underwater) {
         const NewDawnWaterPalette* palette = &sNewDawnWaterGeneric;
         for (const auto& entry : sNewDawnWaterPalettes) {
             if (entry.sceneId == play->sceneId) {
                 palette = &entry;
             }
         }
-        params->waterRestyle = 1.0f;
+        params->waterRestyle = restyle ? 1.0f : 0.0f;
         for (int i = 0; i < 3; i++) {
             params->waterScatter[i] = palette->scatter[i];
             params->waterAbsorb[i] = palette->absorb[i];
         }
+    }
+    // Caustic light: the sun (or moon) outdoors, where the sun shadow map applies. Interiors fall back to the scene's
+    // first directional light, tilted towards the vertical so a pool still receives a pattern.
+    {
+        float causticDir[3] = { light[0], light[1], light[2] };
+        float causticColor[3] = { lightColor[0], lightColor[1], lightColor[2] };
+        params->waterCausticSun = 1;
+        if (lightColor[0] + lightColor[1] + lightColor[2] <= 0.0f) {
+            params->waterCausticSun = 0;
+            const LightDirectional* dir = &play->envCtx.dirLight1.params.dir;
+            float len = sqrtf((f32)(dir->x * dir->x + dir->y * dir->y + dir->z * dir->z));
+            if (len > 0.001f) {
+                float d[3] = { dir->x / len, dir->y / len, dir->z / len };
+                d[1] = fabsf(d[1]) * 0.5f + 0.6f;
+                float l2 = sqrtf(d[0] * d[0] * 0.25f + d[1] * d[1] + d[2] * d[2] * 0.25f);
+                causticDir[0] = d[0] * 0.5f / l2;
+                causticDir[1] = d[1] / l2;
+                causticDir[2] = d[2] * 0.5f / l2;
+                for (int i = 0; i < 3; i++) {
+                    causticColor[i] = (dir->color[i] / 255.0f) * 0.6f;
+                }
+            }
+        }
+        for (int i = 0; i < 3; i++) {
+            params->waterCausticDir[i] = causticDir[i];
+            params->waterCausticColor[i] = causticColor[i];
+        }
+    }
+    params->waterCaustics =
+        caustics ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.CausticsStrength", 1.0f), 0.0f, 2.0f) : 0.0f;
+    params->waterUnderwater =
+        underwater ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.UnderwaterStrength", 1.0f), 0.0f, 1.0f) : 0.0f;
+    params->waterUnderwaterState = sUnderwaterState;
+    params->waterEyeSurfaceY = sUnderwaterSurfaceY;
+    for (int i = 0; i < 4; i++) {
+        params->waterEyeRect[i] = sUnderwaterRect[i];
     }
     // The native glare is a full-screen XLU fill after the bed capture. Attenuate only our replacement by its
     // transmission so looking into the sun cannot reveal an unglared rectangle of water.
@@ -929,6 +1007,7 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
+        !CVarGetInteger("gNewDawn.Water.Caustics", 0) && !CVarGetInteger("gNewDawn.Water.Underwater", 0) &&
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
         !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.GI.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Vfx.Enabled", 0)) {
@@ -952,7 +1031,8 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
-        params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && !params->fogVolumetric &&
+        params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && params->waterCaustics <= 0.0f &&
+        !params->fogVolumetric &&
         !params->atmosBiome && !params->giEnabled && !params->localEnabled) {
         return;
     }
@@ -966,6 +1046,7 @@ extern "C" void NewDawnPostFx_SceneEnd(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
+        !CVarGetInteger("gNewDawn.Water.Caustics", 0) && !CVarGetInteger("gNewDawn.Water.Underwater", 0) &&
         !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
         return;
     }
