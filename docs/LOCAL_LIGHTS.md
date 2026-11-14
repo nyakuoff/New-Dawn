@@ -26,7 +26,7 @@ Other cvars: `.LocalStrength` (0–3, 1), `.LocalContrast` (0–1.5, 1; 0 only a
 ## Evidence (2026-11-14, RX 7800 XT, 1080p, MSAA 4, preset + full mods; `~/dev/ghm-mods/showcase/lights/`)
 - **Off = main.** Frozen Stock Pot Inn (clock 12, frame 30, `gMatchRefreshRate=0`, `gInterpolationFPS=20`, GI and wind off
   because their jitter is wall-clock keyed): main build (`17a6cedf4` sources) and this branch with Local=0 have the same
-  PNG SHA-256 `247b7072…`; Local=1 differs (`3a52655f…`, before the contrast work). 0 GL errors under `MESA_DEBUG=context`.
+  PNG SHA-256 `247b7072…`; Local=1 differs (`3a52655f…`, before the contrast work). 0 GL errors under `MESA_DEBUG=context`. Re-checked after merging main `cae7c2b6b` / new-dawn `6c3edb2e` (POM): Local=0 still `247b7072…` in two runs, Local=1 `97c1e82a…`, 0 GL errors. That comparison is against the earlier main build; a fresh build of the POM main was not made.
 - **GPU** (`PostFx.Debug.Stats`, stage 16, 300-run average, two stencil-split draws): 0.17 ms Inn, 0.24 ms South Clock Town, 0.31 ms Great Bay Temple.
 - **Luminance, round 2** (linear, scene area without HUD; mean / p5 / p95, off → on):
 
