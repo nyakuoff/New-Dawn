@@ -637,18 +637,13 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
             return t * t * (3.0f - 2.0f * t);
         };
         const float night = hour >= 12.0f ? smooth(17.5f, 19.5f, hour) : 1.0f - smooth(4.5f, 6.5f, hour);
-        float darken = play->envCtx.lightMode == LIGHT_MODE_TIME ? 0.62f * night : 0.35f;
+        const bool outdoor = play->envCtx.lightMode == LIGHT_MODE_TIME;
+        float darken = outdoor ? 0.62f * night : 0.70f;
+        params->localGain = outdoor ? 1.0f : 1.5f;
         if (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
             darken = 0.0f;
         }
         params->localDarken = darken * NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalContrast", 1.0f), 0.0f, 1.5f);
-        const Player* player = GET_PLAYER(play);
-        if (player) {
-            params->localPlayerValid = 1;
-            params->localPlayer[0] = player->actor.world.pos.x;
-            params->localPlayer[1] = player->actor.world.pos.y;
-            params->localPlayer[2] = player->actor.world.pos.z;
-        }
     }
     float scores[NEWDAWN_LOCAL_LIGHTS];
     for (float& score : scores)
