@@ -26,6 +26,7 @@
 | MM3D (3DS) room geometry, experimental | `gNewDawn.MM3D.Rooms/Path/Knee/Top/Gain` | #36, #37. A clean-room converter from the user's own dump; an OpenGL draw path keeps N64 collision. A data-driven allowlist of 19 scenes, with live N64 texture animation and a PICA highlight knee. Rooms=0 is pixel-identical to main; about 0.1 ms GPU. Not in the preset. |
 | Character lighting (rim + bounded metal specular on actors) | `gNewDawn.Lighting.Characters/CharactersStrength` | `docs/CHARACTER_LIGHTING.md`. Render-state classifier (non-identity matrix, 2+ matrix loads after the actor's lights); +0.01 ms GPU; off is pixel-identical. In the preset. |
 | Screen-space bounce light (SSGI) | `gNewDawn.GI.Enabled/Strength/Debug` | `docs/SSGI.md`. One-bounce screen-space diffuse gather from this frame's opaque colour, bilateral + history filter, additive composite; 0.56-0.88 ms; off byte-identical to main (frozen Inn). In the preset. Local branch `feature/ssgi`, not pushed. |
+| Local lights and night contrast | `gNewDawn.Lighting.Local/LocalStrength/LocalContrast/LocalFlicker` | `docs/LOCAL_LIGHTS.md`. Screen-space HDR pass at opaque-end: game point lights + VFX flames, inverse-square, flicker, contact shadow; darkens unlit night/interior. 0.13-0.29 ms; off byte-identical to main (frozen Inn). In the preset. Local branch `feature/local-lights`, not pushed. |
 | New Dawn graphics preset buttons | the `sNewDawnPresetCvars` table in BenMenu.cpp | #17 |
 | Capture tool, branding, docs | `tools/newdawn/`, `docs/images` | #8, #9, #11 |
 
