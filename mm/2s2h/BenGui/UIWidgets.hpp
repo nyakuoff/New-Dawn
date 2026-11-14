@@ -67,7 +67,8 @@ enum Colors {
     Black,
     LightGray,
     White,
-    NoColor
+    NoColor,
+    NewDawn // moon amber, the default menu accent (appended so saved theme indices stay valid)
 };
 
 enum InputTypes { String, Scalar };
@@ -84,6 +85,7 @@ const std::unordered_map<Colors, ImVec4> ColorValues = {
     { Colors::Gray, ImVec4(0.45f, 0.45f, 0.45f, 1.0f) },    { Colors::DarkGray, ImVec4(0.15f, 0.15f, 0.15f, 1.0f) },
     { Colors::Black, ImVec4(0.0f, 0.0f, 0.0f, 1.0f) },      { Colors::White, ImVec4(1.0f, 1.0f, 1.0f, 1.0f) },
     { Colors::NoColor, ImVec4(0.0f, 0.0f, 0.0f, 0.0f) },
+    { Colors::NewDawn, ImVec4(0.93f, 0.74f, 0.34f, 1.0f) },
 };
 
 namespace Sizes {
@@ -383,7 +385,7 @@ struct IntSliderOptions : WidgetOptions {
 struct FloatSliderOptions : WidgetOptions {
     bool showAdjustmentButtons = true;
     bool showResetButton = true;
-    const char* format = "%f";
+    const char* format = "%.2f";
     float step = 0.01f;
     float min = 0.01f;
     float max = 10.0f;
