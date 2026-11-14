@@ -1,4 +1,5 @@
 #include "BenPort.h"
+#include "BenGui/NewDawnPresets.h"
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
@@ -154,6 +155,9 @@ OTRGlobals::OTRGlobals() {
 
     context->InitConfiguration();
     context->InitConsoleVariables();
+    // No config file, or one that holds no settings, means this is a fresh install (see NewDawn::InitFirstRun).
+    const auto savedConfig = context->GetConfig()->GetNestedJson();
+    const bool configExisted = savedConfig.contains("CVars") && !savedConfig["CVars"].empty();
 
     auto controlDeck = std::make_shared<LUS::ControlDeck>(std::vector<CONTROLLERBUTTONS_T>({
         BTN_CUSTOM_MODIFIER1,
@@ -171,12 +175,15 @@ OTRGlobals::OTRGlobals() {
     context->InitResourceManager({ portArchivePath }, {}, 3, true);
     context->InitConsole();
 
-    auto benInputEditorWindow = std::make_shared<BenInputEditorWindow>("gWindows.BenInputEditor", "2S2H Input Editor");
+    auto benInputEditorWindow = std::make_shared<BenInputEditorWindow>("gWindows.BenInputEditor", "Input Editor");
     benFast3dWindow =
         std::make_shared<Fast::Fast3dWindow>(std::vector<std::shared_ptr<Ship::GuiWindow>>({ benInputEditorWindow }));
     context->InitWindow(benFast3dWindow);
 
     BenGui::SetupMenu();
+    if (shipArchiveVersionMatch) {
+        NewDawn::InitFirstRun(configExisted);
+    }
 
     if (shipArchiveVersionMatch) {
 
@@ -191,6 +198,9 @@ OTRGlobals::OTRGlobals() {
         fontStandard = CreateFontWithSize(16.0f, "fonts/Montserrat-Regular.ttf");
         fontStandardLarger = CreateFontWithSize(20.0f, "fonts/Montserrat-Regular.ttf");
         fontStandardLargest = CreateFontWithSize(24.0f, "fonts/Montserrat-Regular.ttf");
+        fontHeadingSmall = CreateFontWithSize(21.0f, "fonts/Cinzel-Regular.ttf");
+        fontHeading = CreateFontWithSize(25.0f, "fonts/Cinzel-Regular.ttf");
+        fontHeadingLarge = CreateFontWithSize(38.0f, "fonts/Cinzel-Regular.ttf");
         ImGui::GetIO().FontDefault = fontStandardLarger;
     }
 
@@ -299,13 +309,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 
 #if defined(__SWITCH__)
     BenGui::RegisterPopup("Outdated ROM Archives",
-                          "\x1b[2;2HYou've launched 2Ship with an old ROM O2R file."
+                          "\x1b[2;2HYou've launched New Dawn with an old ROM O2R file."
                           "\x1b[4;2HPlease regenerate a new ROM O2R and relaunch."
                           "\x1b[6;2HPress the Home button to exit...",
                           "OK", "", [&]() { exit(1); });
 #elif defined(__WIIU__)
     BenGui::RegisterPopup("Outdated ROM Archives",
-                          "You've launched 2Ship with an old a ROM O2R file.\n\n"
+                          "You've launched New Dawn with an old a ROM O2R file.\n\n"
                           "Please generate a ROM O2R and relaunch.\n\n"
                           "Press and hold the Power button to shutdown...",
                           "OK", "", [&]() { exit(1); });
@@ -320,11 +330,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
     } else if (shouldRegen) {
         if (RemoveArchiveAcrossAppDirs("mm.o2r")) {
             BenGui::RegisterPopup("Outdated ROM Archive",
-                                  "Your mm.o2r was created with incompatible versions of 2Ship.\nYou will "
+                                  "Your mm.o2r was created with incompatible versions of New Dawn.\nYou will "
                                   "now be redirected to re-extract them.");
         } else {
             BenGui::RegisterPopup("Outdated ROM Archive",
-                                  "Your mm.o2r was created with incompatible versions of 2Ship, but it\n"
+                                  "Your mm.o2r was created with incompatible versions of New Dawn, but it\n"
                                   "could not be removed automatically. Please delete it and relaunch.\n\nExiting...",
                                   "OK", "", [&]() { exit(1); });
         }
@@ -358,11 +368,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                     msg = "\x1b[4;2HPlease re-extract it from the download.\n"
                           "\x1b[6;2HPress the Home button to exit...";
 #elif defined(__WIIU__)
-                    msg = "Please extract the 2ship.o2r from the 2 Ship 2 Harkinian download\nto your folder.\n\nPress "
+                    msg = "Please extract the 2ship.o2r from the New Dawn download\nto your folder.\n\nPress "
                           "and hold the power\n"
                           "button to shutdown...";
 #else
-                    msg = "Please extract the 2ship.o2r from the 2 Ship 2 Harkinian download to your "
+                    msg = "Please extract the 2ship.o2r from the New Dawn download to your "
                           "folder.\n\nExiting...";
 #endif
                     std::string title =
@@ -388,8 +398,8 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                         GetModuleFileName(NULL, buffer, _countof(buffer));
                         ownPath = std::filesystem::canonical(buffer).parent_path();
                         if (IsSubpath(ownPath, tempPath)) {
-                            BenGui::RegisterPopup("2S2H Path Error",
-                                                  "2S2H is running in a temp folder.\nExtract the .zip and run again.",
+                            BenGui::RegisterPopup("New Dawn Path Error",
+                                                  "New Dawn is running in a temp folder.\nExtract the .zip and run again.",
                                                   "OK", "", [&]() { exit(0); });
                         } else {
                             windowsStep = WS_PERMS;
@@ -405,8 +415,8 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                             create_directories(tfolder);
                         } catch (std::filesystem::filesystem_error const& ex) { error = true; }
                         if (tfile == NULL || error) {
-                            BenGui::RegisterPopup("2S2H Permissions Error",
-                                                  "2S2H does not have proper file permissions.\nPlease move it to a "
+                            BenGui::RegisterPopup("New Dawn Permissions Error",
+                                                  "New Dawn does not have proper file permissions.\nPlease move it to a "
                                                   "folder that does and run again.",
                                                   "OK", "", [&]() {
                                                       fclose(tfile);
@@ -417,8 +427,8 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                             fclose(tfile);
                             if (!PathTestCleanup(tfile)) {
                                 BenGui::RegisterPopup(
-                                    "2S2H Permissions Error",
-                                    "2S2H does not have proper file permissions.\nPlease move it to a "
+                                    "New Dawn Permissions Error",
+                                    "New Dawn does not have proper file permissions.\nPlease move it to a "
                                     "folder that does and run again.",
                                     "OK", "", [&]() { exit(0); });
                             }
@@ -428,10 +438,10 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                     }
                     case WS_ONEDRIVE: {
                         if (ownPath.string().find("OneDrive") != std::string::npos) {
-                            BenGui::RegisterPopup("2S2H Path Error",
-                                                  "2S2H appears to be in a OneDrive folder, which will cause issues.\n"
+                            BenGui::RegisterPopup("New Dawn Path Error",
+                                                  "New Dawn appears to be in a OneDrive folder, which will cause issues.\n"
                                                   "Please move it to a folder outside of OneDrive, like the root of a\n"
-                                                  "drive (e.g. \"C:\\Games\\2S2H\").",
+                                                  "drive (e.g. \"C:\\Games\\New Dawn\").",
                                                   "OK", "", [&]() { exit(0); });
                         } else {
                             windowsStep = WS_DONE;
@@ -473,7 +483,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                 } else {
                     bool open = true;
                     std::string msg = "File\n" + std::string(file) + "\nis not a ROM or does not match supported ROMs.";
-                    BenGui::RegisterPopup("2S2H ROM Error", msg.c_str());
+                    BenGui::RegisterPopup("New Dawn ROM Error", msg.c_str());
                 }
 #else
                 extractStep = ES_VERIFY;
@@ -637,13 +647,14 @@ void OTRGlobals::Initialize() {
 
     context->InitCrashHandler();
 
-    context->GetWindow()->SetAutoCaptureMouse(CVarGetInteger("gSettings.EnableMouse", 0) &&
-                                              CVarGetInteger("gSettings.AutoCaptureMouse", 1));
+    context->GetWindow()->SetAutoCaptureMouse((CVarGetInteger("gSettings.EnableMouse", 0) &&
+                                               CVarGetInteger("gSettings.AutoCaptureMouse", 1)) ||
+                                              CVarGetInteger("gEnhancements.Camera.MouseLook.Enable", 0));
     context->GetWindow()->SetForceCursorVisibility(CVarGetInteger("gSettings.CursorVisibility", 0));
 
     context->InitAudio({ .SampleRate = 32000, .SampleLength = 1024, .DesiredBuffered = 1680 });
 
-    SPDLOG_INFO("Starting 2 Ship 2 Harkinian version {} (Branch: {} | Commit: {})", (char*)gBuildVersion,
+    SPDLOG_INFO("Starting New Dawn (a 2 Ship 2 Harkinian fork) version {} (Branch: {} | Commit: {})", (char*)gBuildVersion,
                 (char*)gGitBranch, (char*)gGitCommitHash);
 
     auto loader = context->GetResourceManager()->GetResourceLoader();
@@ -1899,6 +1910,10 @@ ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath) {
         initData->Path = fontPath;
         std::shared_ptr<Ship::Font> fontData = std::static_pointer_cast<Ship::Font>(
             Ship::Context::GetRawInstance()->GetResourceManager()->LoadResource(fontPath, false, initData));
+        if (fontData == nullptr || fontData->Data == nullptr) {
+            // An older 2ship.o2r without this font: fall back to the built-in one instead of crashing.
+            return CreateFontWithSize(size, "");
+        }
         ImFontConfig fontConf;
         fontConf.FontDataOwnedByAtlas = false;
         font = mImGuiIo->Fonts->AddFontFromMemoryTTF(fontData->Data, fontData->DataSize, size, &fontConf, nullptr);
@@ -2115,7 +2130,7 @@ extern "C" void OTRControllerCallback(uint8_t rumble) {
     static std::shared_ptr<BenInputEditorWindow> controllerConfigWindow = nullptr;
     if (controllerConfigWindow == nullptr) {
         controllerConfigWindow = std::dynamic_pointer_cast<BenInputEditorWindow>(
-            Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetGuiWindow("2S2H Input Editor"));
+            Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetGuiWindow("Input Editor"));
         // note: the current implementation may not be desired in LUS, as "true" rumble support
         //    using osMotor calls is planned: https://github.com/Kenix3/libultraship/issues/9
     }

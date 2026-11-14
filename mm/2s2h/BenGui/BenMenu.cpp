@@ -10,6 +10,8 @@
 #include "2s2h/PresetManager/PresetManager.h"
 #include "HudEditor.h"
 #include "Notification.h"
+#include "NewDawnPresets.h"
+#include "NewDawnTheme.h"
 #include "2s2h/Enhancements/Trackers/DisplayOverlay.h"
 #include <variant>
 #include <ship/utils/StringHelper.h>
@@ -42,6 +44,7 @@ static std::unordered_map<int32_t, const char*> imguiScaleOptions = {
 };
 
 static const std::unordered_map<int32_t, const char*> menuThemeOptions = {
+    { UIWidgets::Colors::NewDawn, "New Dawn (moon amber)" },
     { UIWidgets::Colors::Red, "Red" },
     { UIWidgets::Colors::DarkRed, "Dark Red" },
     { UIWidgets::Colors::Orange, "Orange" },
@@ -121,123 +124,11 @@ static const std::unordered_map<int32_t, const char*> anisotropyOptions = {
     { 0, "Off (1x)" }, { 2, "2x" }, { 4, "4x" }, { 8, "8x" }, { 16, "16x" },
 };
 
-static const std::vector<const char*> sunShaftModeOptions = { "Shadow march", "Screen-space rays (HDR)" };
+static const std::vector<const char*> sunShaftModeOptions = { "Shadow march", "Screen-space rays" };
 
 static const std::unordered_map<int32_t, const char*> shadowMapSizeOptions = {
     { 512, "512" }, { 1024, "1024" }, { 2048, "2048" }, { 4096, "4096" },
 };
-
-// "New Dawn" preset: one-click best-looking graphics configuration. This table is the single
-// source of truth for both the apply and the restore buttons. Graphics only: no gameplay,
-// cheats, timing, skip or HUD settings are touched.
-struct NewDawnPresetCVar {
-    const char* name;
-    bool isFloat;
-    float presetValue;
-    float defaultValue;
-};
-
-static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
-    // Resolution and anti-aliasing.
-    { "gSettings.InternalResolution", true, 1.0f, 1.0f }, // never render below native resolution
-    { "gSettings.MSAAValue", false, 4.0f, 1.0f },         // 4x MSAA
-    { "gMatchRefreshRate", false, 1.0f, 0.0f },           // interpolate to the display's refresh rate
-    // Textures.
-    { "gEnhancements.Mods.AlternateAssets", false, 1.0f, 0.0f }, // HD texture packs
-    { "gNewDawn.Textures.AsyncAltLoad", false, 1.0f, 1.0f },     // load HD textures in the background
-    { "gNewDawn.Textures.Mipmaps", false, 1.0f, 1.0f },          // no shimmer on distant surfaces
-    { "gNewDawn.Textures.Anisotropy", false, 16.0f, 16.0f },     // sharp floors and walls at steep angles
-    { "gNewDawn.Textures.AlphaToCoverage", false, 1.0f, 1.0f },  // smooth foliage and fence edges (needs MSAA)
-    { "gNewDawn.Textures.LodBias", true, 0.0f, 0.0f },
-    // Scene post-processing.
-    { "gNewDawn.PostFx.Enabled", false, 1.0f, 1.0f },
-    { "gNewDawn.PostFx.AO.Enabled", false, 1.0f, 1.0f },
-    { "gNewDawn.PostFx.AO.Strength", true, 1.2f, 1.4f },
-    { "gNewDawn.PostFx.AO.Radius", true, 40.0f, 40.0f },
-    { "gNewDawn.PostFx.Bloom.Enabled", false, 1.0f, 1.0f },
-    { "gNewDawn.PostFx.Bloom.Strength", true, 0.18f, 0.25f },
-    { "gNewDawn.PostFx.Bloom.Threshold", true, 1.0f, 0.90f },
-    { "gNewDawn.PostFx.Grade.Enabled", false, 1.0f, 1.0f },
-    { "gNewDawn.PostFx.Grade.Contrast", true, 1.08f, 1.06f },
-    { "gNewDawn.PostFx.Grade.Saturation", true, 1.12f, 1.08f },
-    { "gNewDawn.Grade.ArtDirection", false, 1.0f, 0.0f },
-    { "gNewDawn.Grade.ArtStrength", true, 1.0f, 1.0f },
-    { "gNewDawn.PostFx.Debug.View", false, 0.0f, 0.0f },
-    { "gNewDawn.PostFx.Dither.Enabled", false, 1.0f, 1.0f },
-    // Linear HDR world and display transform. Defaults stay opt-in outside this preset.
-    { "gNewDawn.HDR.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.HDR.Exposure", true, 0.3f, -0.2f },
-    { "gNewDawn.HDR.SunIntensity", true, 1.2f, 1.8f },
-    { "gNewDawn.HDR.AmbientFill", true, 0.72f, 0.4f },
-    { "gNewDawn.HDR.SkyIntensity", true, 0.85f, 1.0f },
-    { "gNewDawn.HDR.FogIntensity", true, 0.85f, 1.0f },
-    { "gNewDawn.Sky.Physical", false, 1.0f, 0.0f },
-    { "gNewDawn.Sky.Flare", false, 1.0f, 0.0f },
-    { "gNewDawn.Sky.Strength", true, 1.0f, 1.0f },
-    { "gNewDawn.Sky.Ambient", false, 1.0f, 0.0f },
-    { "gNewDawn.Sky.Reflections", false, 1.0f, 0.0f },
-    { "gNewDawn.Sky.Special", false, 1.0f, 0.0f },
-    { "gNewDawn.Sky.Clouds", false, 1.0f, 0.0f },
-    { "gNewDawn.Sky.Coverage", true, 0.55f, 0.55f },
-    { "gNewDawn.Sky.CloudStrength", true, 1.0f, 1.0f },
-    // Render-only atmosphere; native game weather and actor updates remain unchanged.
-    { "gNewDawn.Atmos.Particles", false, 1.0f, 0.0f },
-    { "gNewDawn.Atmos.Weather", false, 1.0f, 0.0f },
-    { "gNewDawn.Atmos.Wind", false, 1.0f, 0.0f },
-    // Render-only HD fire, glows, embers, dust and spark sprites (CC0 art, see docs/VFX.md).
-    { "gNewDawn.Vfx.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.Grass.Enabled", false, 1.0f, 0.0f }, // render-only 3D grass tufts on grass-textured ground
-    // Lighting.
-    { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
-    { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
-    { "gNewDawn.Lighting.Characters", false, 1.0f, 0.0f },       // rim light and metal specular on actors
-    { "gNewDawn.Lighting.Local", false, 1.0f, 0.0f },            // warm flickering local lights, darker night/interiors
-    { "gNewDawn.Materials.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.Materials.Strength", true, 1.5f, 1.0f },
-    { "gNewDawn.Materials.Parallax", false, 1.0f, 0.0f }, // parallax occlusion relief on brick, stone, cobble and planks
-    // Sun shadows (outdoor daytime only; the renderer disables them indoors, at night and at the horizon).
-    { "gNewDawn.Shadows.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.Shadows.Strength", true, 0.85f, 1.0f }, // sun occlusion; HDR ambient fill preserves readability
-    { "gNewDawn.Shadows.Floor", true, 0.30f, 0.55f },
-    { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
-    { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
-    { "gNewDawn.Shadows.Cascades", false, 4.0f, 1.0f }, // 4 tiles of the map: sharper near, reaches Shadows.Distance
-    { "gNewDawn.Shadows.Foliage", false, 1.0f, 0.0f }, // leaves, fences and grass cast cut-out shadows
-    { "gNewDawn.Fog.Volumetric", false, 1.0f, 0.0f }, // replaces shadow-marched shafts in eligible scenes
-    { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.SunShafts.Mode", false, 1.0f, 0.0f },
-    { "gNewDawn.GI.Enabled", false, 1.0f, 0.0f }, // screen-space bounce light (needs HDR)
-    { "gNewDawn.SunShafts.Strength", true, 0.30f, 0.4f },
-    { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.Water.Strength", true, 0.5f, 0.5f },
-    { "gNewDawn.Water.Reflections", false, 1.0f, 0.0f },
-    { "gNewDawn.Water.ReflectionStrength", true, 0.7f, 0.7f },
-    { "gNewDawn.Water.Foam", false, 1.0f, 0.0f },
-    { "gNewDawn.Water.FoamStrength", true, 1.0f, 1.0f },
-    { "gNewDawn.Water.Refraction", false, 1.0f, 0.0f },
-    { "gNewDawn.Water.RefractionStrength", true, 1.0f, 1.0f },
-    { "gNewDawn.Water.Restyle", false, 1.0f, 0.0f },
-    { "gNewDawn.Water.Caustics", false, 1.0f, 0.0f },
-    { "gNewDawn.Water.Underwater", false, 1.0f, 0.0f },
-};
-
-// Applies the preset (or returns the same cvars to their defaults) and persists the config.
-static void NewDawnApplyPreset(bool useDefaults) {
-    for (const auto& cvar : sNewDawnPresetCvars) {
-        const float value = useDefaults ? cvar.defaultValue : cvar.presetValue;
-        if (cvar.isFloat) {
-            CVarSetFloat(cvar.name, value);
-        } else {
-            CVarSetInteger(cvar.name, static_cast<int32_t>(value));
-        }
-    }
-    // These two are also picked up by the renderer on the next frame, but the window keeps its own
-    // copy that only the corresponding widget callbacks normally update.
-    auto window = Ship::Context::GetRawInstance()->GetWindow();
-    window->SetResolutionMultiplier(CVarGetFloat(CVAR_INTERNAL_RESOLUTION, 1.0f));
-    window->SetMsaaLevel(CVarGetInteger(CVAR_MSAA_VALUE, 1));
-    CVarSave();
-}
 
 static const std::vector<const char*> motionBlurOptions = {
     "Dynamic (default)", // MOTION_BLUR_DYNAMIC
@@ -381,6 +272,7 @@ WidgetInfo& BenMenu::AddWidget(WidgetPath& pathInfo, std::string widgetName, Wid
     SidebarEntry& entry = sidebar.at(pathInfo.sidebarName);
     entry.columnWidgets.at(column).push_back({ .name = widgetName, .type = widgetType });
     WidgetInfo& widget = entry.columnWidgets.at(column).back();
+    widget.group = pathInfo.group;
     switch (widgetType) {
         case WIDGET_CHECKBOX:
         case WIDGET_CVAR_CHECKBOX:
@@ -503,29 +395,266 @@ std::vector<std::string> contributors = {
     "Alejandro Asenjo Nitti",
 };
 
+
+// ---- New Dawn menu pages: custom widgets ---------------------------------------------------------------------
+
+// Five look cards. The selected one is the tier whose cvars all match; anything else is "Custom".
+static void RenderLookPresets() {
+    using namespace NewDawn;
+    using namespace NewDawn::Theme;
+    static int sTier = -2;
+    static double sNextCheck = 0.0;
+    const double now = ImGui::GetTime();
+    if (now >= sNextCheck) {
+        sTier = DetectTier();
+        sNextCheck = now + 0.4;
+    }
+    const float u = Unit();
+    const float avail = ImGui::GetContentRegionAvail().x;
+    const int perRow = avail >= 880.0f * u ? 5 : 3;
+    const float gap = 12.0f * u;
+    const float cardW = (avail - gap * (perRow - 1)) / perRow;
+    const float cardH = 176.0f * u;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const int count = static_cast<int>(Tier::Count);
+    for (int i = 0; i < count; i++) {
+        if (i % perRow != 0) {
+            ImGui::SameLine(0, gap);
+        }
+        const bool selected = (sTier == i);
+        ImGui::PushID(i);
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImGui::InvisibleButton("##look", ImVec2(cardW, cardH));
+        const bool hovered = ImGui::IsItemHovered();
+        const bool held = ImGui::IsItemActive();
+        if (ImGui::IsItemClicked()) {
+            ApplyTier(static_cast<Tier>(i));
+            sTier = i;
+            sNextCheck = now + 0.4;
+        }
+        const ImVec2 max = pos + ImVec2(cardW, cardH);
+        ImVec4 fill = selected ? Mix(PanelRaised, Gold, 0.13f) : Mix(PanelRaised, Dusk, hovered ? 0.30f : 0.10f);
+        if (held) {
+            fill = Mix(fill, Gold, 0.10f);
+        }
+        dl->AddRectFilled(pos, max, ImGui::GetColorU32(fill), 14.0f * u);
+        dl->AddRect(pos, max, ImGui::GetColorU32(selected ? Gold : (hovered ? WithAlpha(Dusk, 0.9f) : WithAlpha(Outline, 0.7f))),
+                    14.0f * u, 0, selected ? 2.0f * u : 1.0f);
+        ImGui::RenderNavCursor(ImRect(pos, max), ImGui::GetID("##look"), ImGuiNavRenderCursorFlags_Compact);
+        PushHeading(24);
+        dl->AddText(pos + ImVec2(14.0f * u, 12.0f * u), ImGui::GetColorU32(selected ? GoldHot : Parchment),
+                    TierName(static_cast<Tier>(i)));
+        PopHeading();
+        // cost dots: how heavy the tier is
+        const int dots = (i == count - 1) ? 0 : (5 - i);
+        for (int d = 0; d < 5; d++) {
+            ImVec2 c = pos + ImVec2((18.0f + d * 14.0f) * u, 56.0f * u);
+            ImU32 col = ImGui::GetColorU32(d < dots ? Gold : WithAlpha(Outline, 0.9f));
+            dl->AddCircleFilled(c, 4.5f * u, col);
+        }
+        dl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.80f, pos + ImVec2(14.0f * u, 72.0f * u),
+                    ImGui::GetColorU32(TextDim), TierBlurb(static_cast<Tier>(i)), nullptr, cardW - 28.0f * u);
+        if (selected) {
+            dl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.78f, pos + ImVec2(14.0f * u, cardH - 26.0f * u),
+                        ImGui::GetColorU32(Gold), "ACTIVE");
+        }
+        ImGui::PopID();
+    }
+    ImGui::Dummy(ImVec2(0, 4.0f * u));
+    ImGui::PushStyleColor(ImGuiCol_Text, sTier >= 0 ? Gold : TextDim);
+    if (sTier >= 0) {
+        ImGui::Text("Current look: %s", TierName(static_cast<Tier>(sTier)));
+    } else {
+        ImGui::TextWrapped("Current look: Custom. Your settings differ from every preset; fine-tune them below or in "
+                           "Advanced. Picking a look replaces the graphics settings it covers.");
+    }
+    ImGui::PopStyleColor();
+}
+
+static std::vector<const char*> shadowQualityOptions = { "Off", "Low", "Medium", "High", "Ultra" };
+
+static void RenderShadowQuality() {
+    int32_t level = 0;
+    if (CVarGetInteger("gNewDawn.Shadows.Enabled", 0)) {
+        int32_t cascades = CVarGetInteger("gNewDawn.Shadows.Cascades", 1);
+        level = cascades <= 1 ? 1 : cascades == 2 ? 2 : cascades == 3 ? 3 : 4;
+    }
+    UIWidgets::ComboboxOptions options = {};
+    options.color = UIWidgets::Colors::NewDawn;
+    options.tooltip = "Sun shadow detail: the shadow map size and how many cascades split the view. Outdoors in daylight "
+                      "only; higher levels cost more GPU time.";
+    if (UIWidgets::Combobox("Shadow Quality", &level, shadowQualityOptions, options)) {
+        static const int32_t sizes[] = { 1024, 1024, 2048, 2048, 4096 };
+        static const int32_t cascades[] = { 1, 1, 2, 3, 4 };
+        CVarSetInteger("gNewDawn.Shadows.Enabled", level > 0 ? 1 : 0);
+        if (level > 0) {
+            CVarSetInteger("gNewDawn.Shadows.MapSize", sizes[level]);
+            CVarSetInteger("gNewDawn.Shadows.Cascades", cascades[level]);
+        }
+        CVarSave();
+    }
+}
+
+static void RenderAboutPage() {
+    using namespace NewDawn::Theme;
+    const float u = Unit();
+    const float avail = ImGui::GetContentRegionAvail().x;
+    const float markW = std::min(520.0f * u, avail * 0.8f);
+    ImGui::SetCursorPosX((avail - markW) * 0.5f);
+    float markH = DrawWordmark(markW);
+    if (markH == 0.0f) {
+        PushHeading(36);
+        ImGui::TextColored(Gold, "New Dawn");
+        PopHeading();
+    }
+    auto centered = [&](const char* text, const ImVec4& color) {
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::SetCursorPosX(std::max(0.0f, (avail - ImGui::CalcTextSize(text).x) * 0.5f));
+        ImGui::TextUnformatted(text);
+        ImGui::PopStyleColor();
+    };
+    centered("A modern visual remaster of The Legend of Zelda: Majora's Mask", Parchment);
+    char version[160];
+    if (gGitCommitTag[0] == 0) {
+        snprintf(version, sizeof(version), "%s  |  %s  |  %s", (char*)gBuildVersion, (char*)gGitBranch, (char*)gGitCommitHash);
+    } else {
+        snprintf(version, sizeof(version), "%s", (char*)gBuildVersion);
+    }
+    centered(version, TextDim);
+    ImGui::Dummy(ImVec2(0, 8.0f * u));
+
+    BeginSectionCard("about_built");
+    SectionHeader("Built on");
+    ImGui::TextWrapped("New Dawn is a fork of 2 Ship 2 Harkinian, the PC port of Majora's Mask. Gameplay, physics, timing, "
+                       "AI, cutscenes and save data are untouched: only the rendering changes, and every effect can be "
+                       "switched off to get back the original look.");
+    ImGui::Dummy(ImVec2(0, 4.0f * u));
+    ImGui::TextLinkOpenURL("2 Ship 2 Harkinian", "https://github.com/2ship2harkinian/2ship2harkinian");
+    ImGui::SameLine();
+    ImGui::TextDisabled("by HarbourMasters and its contributors");
+    ImGui::TextLinkOpenURL("Majora's Mask decompilation", "https://github.com/zeldaret/mm");
+    ImGui::SameLine();
+    ImGui::TextDisabled("by the zeldaret project");
+    ImGui::TextLinkOpenURL("libultraship", "https://github.com/Kenix3/libultraship");
+    ImGui::SameLine();
+    ImGui::TextDisabled("by Kenix and contributors, the renderer New Dawn extends");
+    ImGui::TextLinkOpenURL("New Dawn", "https://github.com/nyakuoff/New-Dawn");
+    ImGui::SameLine();
+    ImGui::TextDisabled("source, issues and documentation");
+    EndSectionCard();
+    ImGui::Dummy(ImVec2(0, 4.0f * u));
+
+    BeginSectionCard("about_assets");
+    SectionHeader("Textures and models");
+    ImGui::TextWrapped("These community mods are not included. Put the files in the game's mods folder and turn on "
+                       "Alternate Assets (Tab).");
+    ImGui::TextLinkOpenURL("MM Reloaded 4K", "https://evilgames.eu/texture-packs/mm-reloaded.htm");
+    ImGui::SameLine();
+    ImGui::TextDisabled("textures");
+    ImGui::TextLinkOpenURL("3DS Link and 3DS Equipment", "https://gamebanana.com/mods/644553");
+    ImGui::SameLine();
+    ImGui::TextDisabled("models");
+    ImGui::TextLinkOpenURL("HD Moon", "https://gamebanana.com/mods/640438");
+    ImGui::Dummy(ImVec2(0, 6.0f * u));
+    SectionHeader("Fonts and icons");
+    ImGui::TextWrapped("Cinzel, Montserrat and Inconsolata are licensed under the SIL Open Font License 1.1. Icons are "
+                       "Font Awesome 4. The New Dawn logo is project branding.");
+    EndSectionCard();
+    ImGui::Dummy(ImVec2(0, 4.0f * u));
+
+    BeginSectionCard("about_thanks");
+    SectionHeader("Thank you");
+    ImGui::TextWrapped("Special thanks to the 2 Ship 2 Harkinian contributors, playtesters, artists and everyone in the "
+                       "decomp and N64 communities who make this project possible.");
+    ImGui::Dummy(ImVec2(0, 4.0f * u));
+    ImGui::BeginChild("contributors", ImVec2(0, 200.0f * u), 0,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
+    static double scrollSpeed = 1.5f * (ImGui::GetFontSize() / 1000.0f); // lines per second
+    static int numColumns = 3;
+    float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+    float singleListHeight =
+        (contributors.size() / numColumns + (contributors.size() % numColumns != 0 ? 1 : 0)) * lineHeight;
+    double scrollPosition = fmod((GetUnixTimestamp() % 18446744000000000000) * scrollSpeed, singleListHeight);
+    ImGui::SetScrollY(scrollPosition);
+    for (int iteration = 0; iteration < 2; iteration++) {
+        for (int column = 0; column < numColumns; column++) {
+            if (column > 0) {
+                ImGui::SameLine(avail / numColumns * column);
+            }
+            ImGui::BeginGroup();
+            for (int i = column; i < contributors.size(); i += numColumns) {
+                ImGui::TextUnformatted(contributors.at(i).c_str());
+            }
+            ImGui::EndGroup();
+        }
+    }
+    ImGui::EndChild();
+    EndSectionCard();
+    ImGui::Dummy(ImVec2(0, 4.0f * u));
+
+    BeginSectionCard("about_dev");
+    SectionHeader("Advanced");
+    UIWidgets::CheckboxOptions devOptions = {};
+    devOptions.color = UIWidgets::Colors::NewDawn;
+    devOptions.tooltip = "Shows the Developer page: stats, console, collision and actor viewers, the save editor and "
+                         "other tools. Not needed to play.";
+    UIWidgets::CVarCheckbox("Developer mode", "gSettings.Menu.DeveloperMode", devOptions);
+    EndSectionCard();
+    ImGui::Dummy(ImVec2(0, 4.0f * u));
+    ImGui::PushStyleColor(ImGuiCol_Text, TextDim);
+    ImGui::TextWrapped("The Legend of Zelda: Majora's Mask is (c) Nintendo. New Dawn is not affiliated with or endorsed "
+                       "by Nintendo and includes no game assets: you need your own copy of the game. The code is "
+                       "released under CC0 1.0.");
+    ImGui::PopStyleColor();
+}
+
 void BenMenu::AddSettings() {
     // Add Settings menu
     AddMenuEntry("Settings", "gSettings.Menu.SettingsSidebarSection");
-    // General Settings
-    AddSidebarEntry("Settings", "General", 2);
+    // New Dawn pages are built from these sidebars in AddPages(); each sidebar below is one tab.
+    AddSidebarEntry("Settings", "General", 1); // Interface > Menu
+    AddSidebarEntry("Settings", "Hotkeys", 1); // Controls > Menu & Hotkeys
+    AddSidebarEntry("Settings", "Accessibility", 1);
+    AddSidebarEntry("Settings", "About", 1);
+    AddSidebarEntry("Settings", "Quality", 1);
+    AddSidebarEntry("Settings", "Advanced", 1);
+    menuEntries.at("Settings").sidebars.at("About").plain = true;
+    {
+        auto& adv = menuEntries.at("Settings").sidebars.at("Advanced");
+        adv.grouped = true;
+        adv.groupOrder = { "Sky",   "Lighting & Shadows",   "Atmosphere",   "Water",
+                           "Materials & Textures", "Effects & Foliage", "Image & Colour", "Experimental" };
+    }
+
     WidgetPath path = { "Settings", "General", SECTION_COLUMN_1 };
-    AddWidget(path, "Menu Theme", WIDGET_CVAR_COMBOBOX)
+    AddWidget(path, "Menu Accent Colour", WIDGET_CVAR_COMBOBOX)
         .CVar("gSettings.Menu.Theme")
         .Options(ComboboxOptions()
-                     .Tooltip("Changes the Theme of the Menu Widgets.")
+                     .Tooltip("Changes the accent colour of the menu widgets.")
                      .ComboMap(&menuThemeOptions)
-                     .DefaultIndex(Colors::LightBlue));
-    AddWidget(path, "Menu Background Opacity", WIDGET_CVAR_SLIDER_FLOAT)
+                     .DefaultIndex(Colors::NewDawn));
+    AddWidget(path, "Menu Panel Opacity", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gSettings.Menu.BackgroundOpacity")
-        .Options(FloatSliderOptions().DefaultValue(0.85f).IsPercentage().Tooltip(
-            "Sets the opacity of the background of the port menu."));
+        .Options(FloatSliderOptions().DefaultValue(0.95f).IsPercentage().Tooltip(
+            "Sets the opacity of the menu panel."));
+    AddWidget(path, "Game Dimming Behind Menu", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gSettings.Menu.Dim")
+        .Options(FloatSliderOptions().DefaultValue(0.55f).IsPercentage().Tooltip(
+            "How much the game picture is darkened behind the menu."));
+    AddWidget(path, "Open App Files Folder", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) {
+            std::string filesPath = Ship::Context::GetRawInstance()->GetAppDirectoryPath();
+            SDL_OpenURL(std::string("file:///" + std::filesystem::absolute(filesPath).string()).c_str());
+        })
+        .Options(ButtonOptions().Tooltip("Opens the folder that contains the save and mods folders, etc."));
+
+    path.sidebarName = "Hotkeys";
 #if not defined(__SWITCH__) and not defined(__WIIU__)
     AddWidget(path, "Menu Controller Navigation", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_IMGUI_CONTROLLER_NAV)
         .Options(CheckboxOptions().Tooltip(
-            "Allows controller navigation of the 2Ship menu (Settings, Enhancements,...)\nCAUTION: "
-            "This will disable game inputs while the menu is visible.\n\nD-pad to move between "
-            "items, A to select, B to move up in scope."));
+            "Allows controller navigation of the menu.\nCAUTION: This will disable game inputs while the menu is "
+            "visible.\n\nD-pad to move between items, A to select, B to move up in scope."));
     AddWidget(path, "Allow background inputs", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ALLOW_BACKGROUND_INPUTS)
         .Callback([](WidgetInfo& info) {
@@ -544,21 +673,6 @@ void BenMenu::AddSettings() {
         })
         .Options(CheckboxOptions().Tooltip("Makes the cursor always visible, even in full screen."));
 #endif
-    AddWidget(path, "Search In Sidebar", WIDGET_CVAR_CHECKBOX)
-        .CVar("gSettings.Menu.SidebarSearch")
-        .Callback([](WidgetInfo& info) {
-            if (CVarGetInteger("gSettings.Menu.SidebarSearch", 0)) {
-                mBenMenu->InsertSidebarSearch();
-            } else {
-                mBenMenu->RemoveSidebarSearch();
-            }
-        })
-        .Options(CheckboxOptions().Tooltip(
-            "Displays the Search menu as a sidebar entry in Settings instead of in the header."));
-    AddWidget(path, "Search Input Autofocus", WIDGET_CVAR_CHECKBOX)
-        .CVar("gSettings.Menu.SearchAutofocus")
-        .Options(CheckboxOptions().Tooltip(
-            "Search input box gets autofocus when visible. Does not affect using other widgets."));
     AddWidget(path, "Alt Assets Tab hotkey", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Mods.AlternateAssetsHotkey")
         .Options(
@@ -566,77 +680,22 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Reset Button Combination:", WIDGET_CVAR_BTN_SELECTOR)
         .CVar("gSettings.ResetBtn")
         .Options(BtnSelectorOptions().DefaultValue(BTN_CUSTOM_MODIFIER2));
-    AddWidget(path, "Open App Files Folder", WIDGET_BUTTON)
-        .Callback([](WidgetInfo& info) {
-            std::string filesPath = Ship::Context::GetRawInstance()->GetAppDirectoryPath();
-            SDL_OpenURL(std::string("file:///" + std::filesystem::absolute(filesPath).string()).c_str());
-        })
-        .Options(ButtonOptions().Tooltip("Opens the folder that contains the save and mods folders, etc."));
 
-    AddWidget(path, "ImGui Menu Scaling", WIDGET_CVAR_COMBOBOX)
+    path.sidebarName = "Accessibility";
+    AddWidget(path, "Menu", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Menu Text Size", WIDGET_CVAR_COMBOBOX)
         .CVar("gSettings.ImGuiScale")
         .Options(ComboboxOptions()
                      .ComboMap(&imguiScaleOptions)
-                     .Tooltip("Changes the scaling of the ImGui menu elements.")
+                     .Tooltip("Changes the size of all menu text and controls.")
                      .DefaultIndex(1)
                      .ComponentAlignment(UIWidgets::Right)
                      .LabelPosition(UIWidgets::Far))
         .Callback([](WidgetInfo& info) { OTRGlobals::Instance->ScaleImGui(); });
+    // The a11y options from the gameplay page are added to this sidebar further down (see "Accessibility" there).
 
-    path.column = SECTION_COLUMN_2;
-    AddWidget(path, "about", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
-        ImGui::BeginChild("about");
-        ImGui::PushStyleColor(ImGuiCol_Text, ColorValues.at(Colors::Gray));
-        if (gGitCommitTag[0] == 0) {
-            ImGui::Text("%s | %s | %s", (char*)gBuildVersion, (char*)gGitBranch, (char*)gGitCommitHash);
-        } else {
-            ImGui::Text("%s", (char*)gBuildVersion);
-        }
-        ImGui::PopStyleColor();
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
-        ImGui::SeparatorText("Thank You");
-        ImGui::PopStyleColor();
-        ImGui::SameLine();
-        ImTextureID heartTextureId =
-            std::dynamic_pointer_cast<Fast::Fast3dGui>(Ship::Context::GetRawInstance()->GetWindow()->GetGui())
-                ->GetTextureByName((const char*)gQuestIconHeartContainer2Tex);
-        ImGui::Image(heartTextureId, ImVec2(25.0f, 25.0f));
-        ImGui::TextWrapped("Special thanks to our contributors, playtesters, artists, moderators, helpers, and "
-                           "everyone in the larger decomp & N64 communities who make this project possible.\n\n");
-
-        // Draw auto scrolling list of contributors in columns
-        ImGui::SetNextWindowSize(ImVec2(0.0f, ImGui::GetMainViewport()->WorkSize.y / 3));
-        ImGui::BeginChild("contributors", ImVec2(0, 0), 0,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-        static double scrollSpeed = 1.5f * (ImGui::GetFontSize() / 1000.0f); // Lines to scroll per second
-        static int numColumns = 2; // Two columns seem to work best. Some names are too long for more on lower res
-
-        // Calculate the height of one full list iteration
-        float lineHeight = ImGui::GetTextLineHeightWithSpacing();
-        float singleListHeight =
-            (contributors.size() / numColumns + (contributors.size() % numColumns != 0 ? 1 : 0)) * lineHeight;
-
-        // Calculate scroll position that wraps seamlessly
-        double scrollPosition = fmod((GetUnixTimestamp() % 18446744000000000000) * scrollSpeed, singleListHeight);
-        ImGui::SetScrollY(scrollPosition);
-
-        // Render the contributors list twice for infinite scroll effect
-        for (int iteration = 0; iteration < 2; iteration++) {
-            for (int column = 0; column < numColumns; column++) {
-                if (column > 0)
-                    ImGui::SameLine();
-
-                ImGui::BeginGroup();
-                for (int i = column; i < contributors.size(); i += numColumns) {
-                    ImGui::Text("%s", contributors.at(i).c_str());
-                }
-                ImGui::EndGroup();
-            }
-        }
-        ImGui::EndChild();
-
-        ImGui::EndChild();
-    });
+    path.sidebarName = "About";
+    AddWidget(path, "about", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) { RenderAboutPage(); });
 
     // Audio Settings
     path.sidebarName = "Audio";
@@ -704,12 +763,18 @@ void BenMenu::AddSettings() {
     // Graphics Settings
     path.sidebarName = "Graphics";
     path.column = SECTION_COLUMN_1;
-    AddSidebarEntry("Settings", "Graphics", 3);
-    AddWidget(path, "Graphics Options", WIDGET_SEPARATOR_TEXT);
+    AddSidebarEntry("Settings", "Graphics", 2);
+
+    // The Graphics > Quality tab: look presets, then the handful of settings that matter most.
+    WidgetPath q = { "Settings", "Quality", SECTION_COLUMN_1 };
+    AddWidget(q, "Look", WIDGET_SEPARATOR_TEXT);
+    AddWidget(q, "look presets", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) { RenderLookPresets(); });
+    AddWidget(q, "Image", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Window and Display", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Toggle Fullscreen", WIDGET_BUTTON)
         .Callback([](WidgetInfo& info) { Ship::Context::GetRawInstance()->GetWindow()->ToggleFullscreen(); })
         .Options(ButtonOptions().Tooltip("Toggles Fullscreen On/Off."));
-    AddWidget(path, "Internal Resolution: %.0f%%", WIDGET_CVAR_SLIDER_FLOAT)
+    AddWidget(q, "Internal Resolution: %.0f%%", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_INTERNAL_RESOLUTION)
         .Callback([](WidgetInfo& info) {
             Ship::Context::GetRawInstance()->GetWindow()->SetResolutionMultiplier(
@@ -734,7 +799,7 @@ void BenMenu::AddSettings() {
                 .Min(0.5f)
                 .Max(2.0f));
 #ifndef __WIIU__
-    AddWidget(path, "Anti-aliasing (MSAA): %d", WIDGET_CVAR_SLIDER_INT)
+    AddWidget(q, "Anti-aliasing (MSAA): %d", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_MSAA_VALUE)
         .Callback([](WidgetInfo& info) {
             Ship::Context::GetRawInstance()->GetWindow()->SetMsaaLevel(CVarGetInteger(CVAR_MSAA_VALUE, 1));
@@ -749,7 +814,7 @@ void BenMenu::AddSettings() {
                 .DefaultValue(1));
 #endif
 
-    AddWidget(path, "Current FPS: %d", WIDGET_CVAR_SLIDER_INT)
+    AddWidget(q, "Current FPS: %d", WIDGET_CVAR_SLIDER_INT)
         .CVar("gInterpolationFPS")
         .Callback([](WidgetInfo& info) {
             int32_t defaultValue = std::static_pointer_cast<IntSliderOptions>(info.options)->defaultValue;
@@ -768,7 +833,7 @@ void BenMenu::AddSettings() {
             "This is purely visual and does not impact game logic, execution of glitches etc.\n\n"
             "A higher target FPS than your monitor's refresh rate will waste resources, and might give a worse "
             "result."));
-    AddWidget(path, "Match Refresh Rate", WIDGET_CVAR_CHECKBOX)
+    AddWidget(q, "Match Refresh Rate", WIDGET_CVAR_CHECKBOX)
         .CVar("gMatchRefreshRate")
         .Options(CheckboxOptions().Tooltip("Matches interpolation value to the refresh rate of your display."));
     AddWidget(path, "Renderer API (Needs reload)", WIDGET_VIDEO_BACKEND);
@@ -795,37 +860,16 @@ void BenMenu::AddSettings() {
         .CVar(CVAR_TEXTURE_FILTER)
         .Options(ComboboxOptions().Tooltip("Sets the applied Texture Filtering.").ComboVec(&textureFilteringOptions));
 
-    path.column = SECTION_COLUMN_2;
-    AddWidget(path, "Advanced Graphics Options", WIDGET_SEPARATOR_TEXT);
+    path.sidebarName = "Advanced";
+    path.column = SECTION_COLUMN_1;
 
-    AddWidget(path, "New Dawn", WIDGET_SEPARATOR_TEXT);
-    AddWidget(path, "Apply New Dawn Preset", WIDGET_BUTTON)
-        .Callback([](WidgetInfo& info) {
-            NewDawnApplyPreset(false);
-            Notification::Emit({
-                .prefix = "New Dawn",
-                .message = "preset applied.",
-            });
-        })
-        .Options(ButtonOptions().Tooltip(
-            "Sets the recommended graphics options for the best-looking result: 4x MSAA, HD textures with "
-            "mipmaps and 16x anisotropy, post-processing, per-pixel lighting and interpolation at your display's "
-            "refresh rate. Widescreen, HUD and all gameplay settings are left untouched."));
-    AddWidget(path, "Restore Defaults", WIDGET_BUTTON)
-        .Callback([](WidgetInfo& info) {
-            NewDawnApplyPreset(true);
-            Notification::Emit({
-                .prefix = "New Dawn",
-                .message = "graphics defaults restored.",
-            });
-        })
-        .Options(ButtonOptions().Tooltip("Returns only the settings listed in the New Dawn preset to their "
-                                         "defaults. Everything else is left as it is."));
+    path.group = "Experimental";
     AddWidget(path, "3DS World Geometry (experimental)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.MM3D.Rooms")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Uses local converted 3DS room geometry in supported scenes. Original collision and gameplay remain active. "
             "Set gNewDawn.MM3D.Path to your converted asset directory. OpenGL only."));
+    path.group = "Image & Colour";
     AddWidget(path, "Scene Post-Processing", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Enabled")
         .Options(CheckboxOptions()
@@ -833,12 +877,14 @@ void BenMenu::AddSettings() {
                               "grade and dithering. The HUD and menus are not affected. When off, the game renders "
                               "exactly as before. OpenGL only.")
                      .DefaultValue(true));
+    path.group = "Lighting & Shadows";
     AddWidget(path, "Indirect Bounce Light (SSGI)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.GI.Enabled")
-        .Options(CheckboxOptions().DefaultValue(false).Tooltip("Screen-space colour bleeding from nearby lit surfaces. Requires HDR."));
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip("Screen-space colour bleeding from nearby lit surfaces. Requires the Modern Lighting Pipeline."));
     AddWidget(path, "Bounce Strength", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.GI.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).DefaultValue(1.0f).Tooltip("Indirect diffuse intensity, bounded to preserve dark interiors."));
+    path.group = "Image & Colour";
     AddWidget(path, "Ambient Occlusion", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.AO.Enabled")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
@@ -862,23 +908,27 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Display Dither", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Dither.Enabled")
         .Options(CheckboxOptions().Tooltip("Reduce banding in the final display image.").DefaultValue(true));
-    AddWidget(path, "HDR Lighting", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Modern Lighting Pipeline", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.HDR.Enabled")
         .Options(CheckboxOptions()
-                     .Tooltip("Linear lighting with filmic highlights. Included in the New Dawn preset.")
+                     .Tooltip("Lights and blends the game in linear light and maps it to the screen with a filmic "
+                              "curve. This does NOT need an HDR monitor: the picture is normal SDR. Most New Dawn "
+                              "effects (sky, bounce light, fog, water, grass, effects) require it, and every look "
+                              "except Original look turns it on.")
                      .DefaultValue(false));
-    AddWidget(path, "HDR Exposure: %.2f EV", WIDGET_CVAR_SLIDER_FLOAT)
+    AddWidget(path, "Exposure: %.2f EV", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.HDR.Exposure")
         .Options(FloatSliderOptions().Min(-2.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(-0.2f).Tooltip(
-            "Brightness of the HDR world before the display transform."));
-    AddWidget(path, "Physical Sky (HDR)", WIDGET_CVAR_CHECKBOX)
+            "Brightness of the lit world before the final colour transform. Does not need an HDR monitor."));
+    path.group = "Sky";
+    AddWidget(path, "Physical Sky", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Physical")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Atmospheric scattering in normal outdoor skies. Requires HDR. Special skies and the final day retain "
+            "Atmospheric scattering in normal outdoor skies. Requires the Modern Lighting Pipeline. Special skies and the final day retain "
             "their original look."));
-    AddWidget(path, "HDR Lens Flare (VFX Textures)", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Lens Flare (VFX Textures)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Flare")
-        .Options(CheckboxOptions().Tooltip("Downloaded glow and iris ghosts, occluded by geometry and clouds. Requires HDR and the flare pack under gNewDawn.Assets.Path (default assets/newdawn)."));
+        .Options(CheckboxOptions().Tooltip("Downloaded glow and iris ghosts, occluded by geometry and clouds. Requires the Modern Lighting Pipeline and the flare pack under gNewDawn.Assets.Path (default assets/newdawn)."));
     AddWidget(path, "Sky Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Sky.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
@@ -886,54 +936,56 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Sky.Ambient")
         .Options(
             CheckboxOptions().DefaultValue(false).Tooltip("Outdoor surfaces and actors receive directional sky colour "
-                                                          "and ground bounce. Requires Physical Sky and HDR."));
+                                                          "and ground bounce. Requires Physical Sky and the Modern Lighting Pipeline."));
     AddWidget(path, "Sky Reflections", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Reflections")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Sky and clouds reflected in outdoor water and glossy materials. Requires Physical Sky and HDR."));
+            "Sky and clouds reflected in outdoor water and glossy materials. Requires Physical Sky and the Modern Lighting Pipeline."));
     AddWidget(path, "Special Skies", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Special")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Remastered skies for the final day (stormy red apocalypse), cursed Ikana and the poisoned swamp, and "
-            "the physical sky during cutscenes and conversations. Requires Physical Sky and HDR."));
+            "the physical sky during cutscenes and conversations. Requires Physical Sky and the Modern Lighting Pipeline."));
     AddWidget(path, "Volumetric Clouds (Physical Sky)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Clouds")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Sunlit cumulus clouds with shaded bodies and steady wind. Requires Physical Sky and HDR."));
+            "Sunlit cumulus clouds with shaded bodies and steady wind. Requires Physical Sky and the Modern Lighting Pipeline."));
     AddWidget(path, "Cloud Coverage: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Sky.Coverage")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(0.55f));
     AddWidget(path, "Cloud Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Sky.CloudStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
-    AddWidget(path, "Ambient Dust, Pollen and Fireflies (HDR)", WIDGET_CVAR_CHECKBOX)
+    path.group = "Atmosphere";
+    AddWidget(path, "Ambient Dust, Pollen and Fireflies", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Atmos.Particles")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Floating sunlight-lit motes and biome-specific pollen/fireflies. Read-only scene lights. Requires HDR."));
-    AddWidget(path, "Modern Rain, Snow and Wet Surfaces (HDR)", WIDGET_CVAR_CHECKBOX)
+            "Floating sunlight-lit motes and biome-specific pollen/fireflies. Read-only scene lights. Requires the Modern Lighting Pipeline."));
+    AddWidget(path, "Modern Rain, Snow and Wet Surfaces", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Atmos.Weather")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Soft rain/flakes, roof shelter, splashes and wet reflections driven by existing weather. Requires HDR."));
-    AddWidget(path, "Wind: Foliage Sway and Rain Slant (HDR)", WIDGET_CVAR_CHECKBOX)
+            "Soft rain/flakes, roof shelter, splashes and wet reflections driven by existing weather. Requires the Modern Lighting Pipeline."));
+    AddWidget(path, "Wind: Foliage Sway and Rain Slant", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Atmos.Wind")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Gusting wind shared by clouds, ambient particles and new rain/snow; foliage sways and its shadows follow."));
-    AddWidget(path, "HD Fire, Embers and Glows (HDR)", WIDGET_CVAR_CHECKBOX)
+    path.group = "Effects & Foliage";
+    AddWidget(path, "HD Fire, Embers and Glows", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Vfx.Enabled")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Replaces the low-resolution torch/brazier flames and light glows with HD HDR sprites and rising embers. "
-            "Render-only; effects keep their game-driven positions and timing. Requires HDR."));
+            "Replaces the low-resolution torch/brazier flames and light glows with HD sprites and rising embers. "
+            "Render-only; effects keep their game-driven positions and timing. Requires the Modern Lighting Pipeline."));
     AddWidget(path, "Effect Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Vfx.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
     AddWidget(path, "Ember Density: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Vfx.Embers")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
-    AddWidget(path, "3D Grass (HDR)", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "3D Grass", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Grass.Enabled")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Dense, wind-swaying grass tufts on grass-textured ground. Render-only: no collision or gameplay "
-            "effect. Requires HDR."));
+            "effect. Requires the Modern Lighting Pipeline."));
     AddWidget(path, "Grass Density: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Grass.Density")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
@@ -943,9 +995,11 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Grass Height: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Grass.Height")
         .Options(FloatSliderOptions().Min(0.3f).Max(3.0f).Step(0.05f).DefaultValue(1.0f));
+    path.group = "Atmosphere";
     AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Atmos.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
+    path.group = "Image & Colour";
     AddWidget(path, "Bloom", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Bloom.Enabled")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
@@ -997,6 +1051,7 @@ void BenMenu::AddSettings() {
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
         .Options(FloatSliderOptions().Min(0.0f).Max(1.5f).Step(0.01f).Format("%.2f").DefaultValue(1.0f).Tooltip(
             "How strongly the per-area grade is applied. 0 is off."));
+    path.group = "Experimental";
     AddWidget(path, "Debug View", WIDGET_CVAR_COMBOBOX)
         .CVar("gNewDawn.PostFx.Debug.View")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
@@ -1006,7 +1061,7 @@ void BenMenu::AddSettings() {
                      .ComboVec(&newDawnDebugViewOptions)
                      .DefaultIndex(0));
 
-    AddWidget(path, "Texture Filtering", WIDGET_SEPARATOR_TEXT);
+    path.group = "Materials & Textures";
     AddWidget(path, "Mipmaps", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Textures.Mipmaps")
         .Options(CheckboxOptions()
@@ -1033,7 +1088,7 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(-2.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(0.0f).Tooltip(
             "Negative values sharpen textures at the cost of aliasing; positive values soften them."));
 
-    AddWidget(path, "Lighting", WIDGET_SEPARATOR_TEXT);
+    path.group = "Lighting & Shadows";
     AddWidget(path, "Per-Pixel Lighting", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Lighting.PerPixel")
         .Options(CheckboxOptions()
@@ -1054,7 +1109,7 @@ void BenMenu::AddSettings() {
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Rim light from the sky or scene lights and a bounded specular on metal for Link, NPCs and enemies. "
-            "Requires HDR and per-pixel lighting."));
+            "Requires the Modern Lighting Pipeline and per-pixel lighting."));
     AddWidget(path, "Character Lighting Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Lighting.CharactersStrength")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
@@ -1063,8 +1118,8 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Local Lights", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Lighting.Local")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Torches, lamps, candles and HD flames cast warm, flickering HDR light on nearby walls, floors and "
-            "characters, with contact shadows. Render-only. Requires HDR."));
+            "Torches, lamps, candles and HD flames cast warm, flickering light on nearby walls, floors and "
+            "characters, with contact shadows. Render-only. Requires the Modern Lighting Pipeline."));
     AddWidget(path, "Local Light Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Lighting.LocalStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
@@ -1076,6 +1131,7 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Lighting.LocalFlicker")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
 
+    path.group = "Materials & Textures";
     AddWidget(path, "Companion Materials", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Materials.Enabled")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
@@ -1096,7 +1152,7 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(0.0f).Max(0.2f).Step(0.0025f).Format("%.3f").DefaultValue(0.07f).Tooltip(
             "Relief depth as a fraction of the texture's world size."));
 
-    AddWidget(path, "Shadows", WIDGET_SEPARATOR_TEXT);
+    path.group = "Lighting & Shadows";
     AddWidget(path, "Real-time Shadows", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Shadows.Enabled")
         .Options(CheckboxOptions()
@@ -1144,14 +1200,14 @@ void BenMenu::AddSettings() {
                               "instead of casting none.")
                      .DefaultValue(false));
 
-    AddWidget(path, "Volumetric Height Fog (HDR)", WIDGET_CVAR_CHECKBOX)
+    path.group = "Atmosphere";
+    AddWidget(path, "Volumetric Height Fog", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Fog.Volumetric")
-        .Options(CheckboxOptions().Tooltip("Height haze and shafts outdoors (HDR + Sun Shadows), ambient/point-lit depth fog in Woodfall Temple (HDR). Special skies and underwater views retain native fog."));
-    AddWidget(path, "Sun Shafts", WIDGET_SEPARATOR_TEXT);
+        .Options(CheckboxOptions().Tooltip("Height haze and shafts outdoors (needs the Modern Lighting Pipeline and Sun Shadows), ambient/point-lit depth fog in Woodfall Temple (needs the Modern Lighting Pipeline). Special skies and underwater views retain native fog."));
     AddWidget(path, "Sun Shafts", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.SunShafts.Enabled")
         .Options(CheckboxOptions()
-                     .Tooltip("Light shafts toward the sun. Shadow march needs Real-time Shadows; screen-space rays need HDR and Physical Sky at full strength.")
+                     .Tooltip("Light shafts toward the sun. Shadow march needs Real-time Shadows; screen-space rays need the Modern Lighting Pipeline and Physical Sky at full strength.")
                      .DefaultValue(false));
     AddWidget(path, "Sun Shaft Mode", WIDGET_CVAR_COMBOBOX)
         .CVar("gNewDawn.SunShafts.Mode")
@@ -1161,7 +1217,7 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.4f).Tooltip(
             "How visible the shafts and the sun haze are."));
 
-    AddWidget(path, "Water", WIDGET_SEPARATOR_TEXT);
+    path.group = "Water";
     AddWidget(path, "Water Glints", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Water.Enabled")
         .Options(CheckboxOptions()
@@ -1202,13 +1258,13 @@ void BenMenu::AddSettings() {
             CheckboxOptions()
                 .Tooltip("Replaces the painted water colour with a physical one: clear shallows that show the bed, "
                          "deeper blue-teal further out, per-area palettes (the poisoned swamp stays sickly). "
-                         "Keeps the original ripple pattern as detail. Needs HDR. OpenGL only.")
+                         "Keeps the original ripple pattern as detail. Needs the Modern Lighting Pipeline. OpenGL only.")
                 .DefaultValue(false));
     AddWidget(path, "Water Refraction", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Water.Refraction")
         .Options(
             CheckboxOptions()
-                .Tooltip("A gently wobbling sea bed near the shore that fades into deeper, richer water. Needs HDR. "
+                .Tooltip("A gently wobbling sea bed near the shore that fades into deeper, richer water. Needs the Modern Lighting Pipeline. "
                          "The poisoned swamp stays murky. OpenGL only.")
                 .DefaultValue(false));
     AddWidget(path, "Refraction Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
@@ -1231,18 +1287,66 @@ void BenMenu::AddSettings() {
         .Options(CheckboxOptions()
                      .Tooltip("When the camera is below the surface: depth absorption and fog in the area's water "
                               "colour, soft light shafts from the surface, a gentle wavy distortion and floating "
-                              "particles. Needs HDR for the particles. OpenGL only.")
+                              "particles. Needs the Modern Lighting Pipeline for the particles. OpenGL only.")
                      .DefaultValue(false));
     AddWidget(path, "Underwater Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Water.UnderwaterStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
             "How strong the underwater look is."));
 
+    path.group = "";
+    // Quality tab, second half: the few lighting and world settings most worth changing.
+    AddWidget(q, "Lighting and Shadows", WIDGET_SEPARATOR_TEXT);
+    AddWidget(q, "Brightness (Exposure): %.2f EV", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.HDR.Exposure")
+        .HideInSearch(true)
+        .Options(FloatSliderOptions().Min(-2.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(-0.2f).Tooltip(
+            "Overall brightness of the picture. Raise it if the game looks too dark."));
+    AddWidget(q, "shadow quality", WIDGET_CUSTOM).HideInSearch(true).CustomFunction([](WidgetInfo& info) {
+        RenderShadowQuality();
+    });
+    AddWidget(q, "Bounce Light (Global Illumination)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.GI.Enabled")
+        .HideInSearch(true)
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Light bounces off lit surfaces and tints what is near them. One of the most expensive effects."));
+    AddWidget(q, "Volumetric Fog and Haze", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Fog.Volumetric")
+        .HideInSearch(true)
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Height haze and light shafts outdoors, and depth fog in Woodfall Temple."));
+    AddWidget(q, "Local Light Darkness: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Lighting.LocalContrast")
+        .HideInSearch(true)
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.5f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How dark night and interiors get between lamps and torches, so the lights carry the scene. 0 only adds "
+            "light and darkens nothing."));
+    AddWidget(q, "World", WIDGET_SEPARATOR_TEXT);
+    AddWidget(q, "3D Grass", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Grass.Enabled")
+        .HideInSearch(true)
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Dense, wind-swaying grass on grassy ground. Render-only: collision and gameplay are unchanged."));
+    AddWidget(q, "Grass Density: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Grass.Density")
+        .HideInSearch(true)
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(q, "HD Textures (Alternate Assets)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gEnhancements.Mods.AlternateAssets")
+        .HideInSearch(true)
+        .Options(CheckboxOptions().Tooltip(
+            "Uses the texture and model packs from your mods folder. Also toggled with Tab."));
+    AddWidget(q, "Motion Blur", WIDGET_CVAR_COMBOBOX)
+        .CVar("gEnhancements.Graphics.MotionBlur.Mode")
+        .HideInSearch(true)
+        .Options(ComboboxOptions().Tooltip("Dynamic follows the game's own motion blur; Always On and Always Off "
+                                           "override it.").ComboVec(&motionBlurOptions));
+
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
     AddWidget(path, "Popout Bindings Window", WIDGET_WINDOW_BUTTON)
         .CVar("gWindows.BenInputEditor")
-        .WindowName("2S2H Input Editor")
+        .WindowName("Input Editor")
         .Options(ButtonOptions().Tooltip("Enables the separate Bindings Window.").Size(Sizes::Inline));
 
     path.sidebarName = "Overlay";
@@ -1357,6 +1461,15 @@ void BenMenu::AddEnhancements() {
     AddMenuEntry("Enhancements", "gSettings.Menu.EnhancementsSidebarSection");
     WidgetPath path = { "Enhancements", "Camera", SECTION_COLUMN_1 };
     AddSidebarEntry("Enhancements", "Camera", 3);
+    AddWidget(path, "Mouse Look", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Mouse Look", WIDGET_CVAR_CHECKBOX)
+        .CVar("gEnhancements.Camera.MouseLook.Enable")
+        .Options(CheckboxOptions().Tooltip("Move the camera and aim the bow, hookshot and first-person view with the "
+                                           "mouse; the cursor is captured while playing."));
+    AddWidget(path, "Sensitivity: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gEnhancements.Camera.MouseLook.Sensitivity")
+        .Options(FloatSliderOptions().Min(0.1f).Max(5.0f).DefaultValue(1.0f).Step(0.05f));
+    AddWidget(path, "Invert Y", WIDGET_CVAR_CHECKBOX).CVar("gEnhancements.Camera.MouseLook.InvertY");
     // Camera Snap Fix
     AddWidget(path, "Fixes", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Fix Targeting Camera Snap", WIDGET_CVAR_CHECKBOX)
@@ -1801,21 +1914,22 @@ void BenMenu::AddEnhancements() {
             "- Seahorse: After obtaining a Bottle, Zora Mask, Pictograph Box & (Rando Only) Swim Ability\n"
             "- Gold Dust: After obtaining the Gold Dust bottle\n"
             "- Chateau Romani: After obtaining Chateau Romani"));
-    AddWidget(path, "Accessibility", WIDGET_SEPARATOR_TEXT);
-    AddWidget(path, "Disable Screen Flash for Enemy Kills", WIDGET_CVAR_CHECKBOX)
+    WidgetPath a11y = { "Settings", "Accessibility", SECTION_COLUMN_1 };
+    AddWidget(a11y, "Game", WIDGET_SEPARATOR_TEXT);
+    AddWidget(a11y, "Disable Screen Flash for Enemy Kills", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.A11y.NoScreenFlashForEnemyKill")
         .Options(CheckboxOptions().Tooltip("Disables the white screen flash on enemy kill."));
-    AddWidget(path, "Disable Final Day Quakes", WIDGET_CVAR_CHECKBOX)
+    AddWidget(a11y, "Disable Final Day Quakes", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.A11y.NoFinalDayQuakes")
         .Options(CheckboxOptions().Tooltip("Earthquakes will not occur on the final day."));
-    AddWidget(path, "Disable Screen Distortion", WIDGET_CVAR_CHECKBOX)
+    AddWidget(a11y, "Disable Screen Distortion", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.A11y.NoScreenDistortion")
         .Options(CheckboxOptions().Tooltip(
             "Disables the wobbling/warping of the screen while swimming underwater, and other various sources"));
-    AddWidget(path, "Bow Reticle", WIDGET_CVAR_CHECKBOX)
+    AddWidget(a11y, "Bow Reticle", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Graphics.BowReticle")
         .Options(CheckboxOptions().Tooltip("Gives the bow a reticle when you draw an arrow."));
-    AddWidget(path, "Mark Shooting Gallery Octoroks", WIDGET_CVAR_CHECKBOX)
+    AddWidget(a11y, "Mark Shooting Gallery Octoroks", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Minigames.MarkShootingGalleryOctoroks")
         .Options(CheckboxOptions().Tooltip("Places markers on the Town Shooting Gallery Octoroks, indicating whether "
                                            "they should be hit."));
@@ -2288,7 +2402,7 @@ void BenMenu::AddEnhancements() {
         .CVar("gEnhancements.Fixes.ConsoleCrashes")
         .Options(CheckboxOptions()
                      .Tooltip("Fixes crashes that would typically happen on Console. "
-                              "Disabling this option will simply soft reset 2Ship when encountering these "
+                              "Disabling this option will simply soft reset the game when encountering these "
                               "crashes instead of actually crashing the program.\n\n"
                               "Includes the following:\n"
                               "- HESS/Weirdshot crashes\n"
@@ -2731,9 +2845,6 @@ void BenMenu::AddDevTools() {
     AddMenuEntry("Dev Tools", "gSettings.Menu.DevToolsSidebarSection");
     AddSidebarEntry("Dev Tools", "General", 3);
     WidgetPath path = { "Dev Tools", "General", SECTION_COLUMN_1 };
-    AddWidget(path, "Popout Menu", WIDGET_CVAR_CHECKBOX)
-        .CVar("gSettings.Menu.Popout")
-        .Options(CheckboxOptions().Tooltip("Changes the menu display from overlay to windowed."));
     AddWidget(path, "Debug Mode", WIDGET_CVAR_CHECKBOX)
         .CVar("gDeveloperTools.DebugEnabled")
         .Options(CheckboxOptions().Tooltip("Enables Debug Mode, allowing the following:\n\n"
@@ -2902,7 +3013,7 @@ void BenMenu::AddDevTools() {
 }
 
 BenMenu::BenMenu(const std::string& consoleVariable, const std::string& name)
-    : Menu(consoleVariable, name, 0, UIWidgets::Colors::LightBlue) {
+    : Menu(consoleVariable, name, 0, UIWidgets::Colors::NewDawn) {
 }
 
 void BenMenu::InitElement() {
@@ -2918,6 +3029,7 @@ void BenMenu::InitElement() {
     for (auto& initFunc : MenuInit::GetInitFuncs()) {
         initFunc();
     }
+    AddPages();
 
     disabledMap = {
         { DISABLE_FOR_CAMERAS_OFF,
@@ -3061,6 +3173,75 @@ void BenMenu::InitElement() {
           { [](disabledInfo& info) -> bool { return CVarGetInteger("gEnhancements.Minigames.SkipRanchInvasion", 0); },
             "Alien Invasion Skipped" } }
     };
+}
+
+// The New Dawn page structure. Each tab shows one (entry, sidebar) widget list that is registered elsewhere, so
+// every existing setting keeps its place in the search and in other modules' init functions.
+void BenMenu::AddPages() {
+    auto sidebarTabs = [&](const std::string& entry) {
+        std::vector<MenuTab> tabs;
+        if (menuEntries.contains(entry)) {
+            for (auto& sidebar : menuEntries.at(entry).sidebarOrder) {
+                tabs.push_back({ sidebar, entry, sidebar });
+            }
+        }
+        return tabs;
+    };
+    // Sidebars that host whole windows (editors, bindings) or lay themselves out are shown without section cards.
+    auto setPlain = [&](const std::string& entry, const std::string& sidebar) {
+        if (menuEntries.contains(entry) && menuEntries.at(entry).sidebars.contains(sidebar)) {
+            menuEntries.at(entry).sidebars.at(sidebar).plain = true;
+        }
+    };
+    for (auto& [entry, sidebar] : std::vector<std::pair<const char*, const char*>>{
+             { "Settings", "Mod Menu" },
+             { "Settings", "Controls" },
+             { "Settings", "Presets" },
+             { "Settings", "Input Viewer" },
+             { "Enhancements", "HUD Editor" },
+             { "Enhancements", "Cosmetic Editor" },
+             { "Enhancements", "Time Splits" },
+             { "Enhancements", "Audio Editor" } }) {
+        setPlain(entry, sidebar);
+    }
+    if (menuEntries.contains("Dev Tools")) {
+        for (auto& sidebar : menuEntries.at("Dev Tools").sidebarOrder) {
+            setPlain("Dev Tools", sidebar);
+        }
+    }
+    AddPage({ "graphics", "Graphics", ICON_FA_MAGIC,
+              { { "Quality", "Settings", "Quality" },
+                { "Advanced", "Settings", "Advanced" },
+                { "Extras", "Enhancements", "Graphics" },
+                { "Mods", "Settings", "Mod Menu" } } });
+    AddPage({ "display", "Display", ICON_FA_DESKTOP, { { "Window and Resolution", "Settings", "Graphics" } } });
+    AddPage({ "audio", "Audio", ICON_FA_VOLUME_UP,
+              { { "Volume", "Settings", "Audio" }, { "Audio Editor", "Enhancements", "Audio Editor" } } });
+    AddPage({ "controls", "Controls", ICON_FA_GAMEPAD,
+              { { "Bindings", "Settings", "Controls" },
+                { "Camera", "Enhancements", "Camera" },
+                { "Menu and Hotkeys", "Settings", "Hotkeys" } } });
+    AddPage({ "gameplay", "Gameplay", ICON_FA_SHIELD,
+              { { "Quality of Life", "Enhancements", "Gameplay" },
+                { "Items and Songs", "Enhancements", "Items/Songs" },
+                { "Time Savers", "Enhancements", "Time Savers" },
+                { "Fixes", "Enhancements", "Fixes" },
+                { "Restorations", "Enhancements", "Restorations" },
+                { "Difficulty", "Enhancements", "Difficulty Options" } } });
+    AddPage({ "cheats", "Cheats", ICON_FA_KEY, { { "Cheats", "Enhancements", "Cheats" } } });
+    AddPage({ "interface", "Interface", ICON_FA_TH_LARGE,
+              { { "Menu", "Settings", "General" },
+                { "HUD", "Enhancements", "HUD Editor" },
+                { "Cosmetics", "Enhancements", "Cosmetic Editor" },
+                { "Notifications and Timer", "Settings", "Overlay" },
+                { "Input Viewer", "Settings", "Input Viewer" },
+                { "Time Splits", "Enhancements", "Time Splits" },
+                { "Config Presets", "Settings", "Presets" } } });
+    AddPage({ "accessibility", "Accessibility", ICON_FA_UNIVERSAL_ACCESS,
+              { { "Accessibility", "Settings", "Accessibility" } } });
+    AddPage({ "randomizer", "Randomizer", ICON_FA_RANDOM, sidebarTabs("Rando"), false, true });
+    AddPage({ "about", "About", ICON_FA_INFO_CIRCLE, { { "About New Dawn", "Settings", "About" } } });
+    AddPage({ "developer", "Developer", ICON_FA_WRENCH, sidebarTabs("Dev Tools"), true, true });
 }
 
 void BenMenu::UpdateElement() {

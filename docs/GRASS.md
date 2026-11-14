@@ -7,11 +7,12 @@ stream, the player's position and the sun; there is no collision, hitbox, RNG or
 ## How it works
 
 1. **Recognition.** `tools/newdawn/grass_textures.py` turns the "grass" class of `material-classification.json` into
-   `libultraship/src/fast/newdawn_grass_textures.inc` (277 scene-texture basenames, tiny detail tiles skipped). While the
+   `libultraship/src/fast/newdawn_grass_textures.inc` (205 scene-texture basenames, tiny detail tiles skipped; textures of
+   interior scenes are dropped: every scene the game marks `RESTRICTIONS_INDOORS` plus a few enclosed ones, so rugs,
+   upholstery and planter soil never qualify). While the
    marker-bracketed world is being drawn, the interpreter (`RecordGrassTriangle`) keeps the **world-space triangle** of
    every opaque, non-decal, non-cut-out draw whose tile-0 texture is in that list, before frustum rejection (tufts of an
-   off-screen triangle can still reach into view). Triangles steeper than about 53° (`|n.y| < 0.6`) are dropped, so walls and
-   steep banks get no grass. `gNewDawn.Grass.Debug=1` logs the textures and triangle counts, `gNewDawn.Grass.Only=<substr>`
+   off-screen triangle can still reach into view). Triangles steeper than about 32° (`|n.y| < 0.85`) are dropped, so walls, banks and moss-covered slopes get no grass. `gNewDawn.Grass.Debug=1` logs the textures and triangle counts, `gNewDawn.Grass.Only=<substr>`
    isolates one texture.
 2. **Scatter (renderer, `gfx_opengl_grass.cpp`).** At the opaque-end marker, before the depth copy, the world is cut into a
    fixed 20-unit grid. Every cell that overlaps a recorded triangle, lies within `Distance`, and is inside a conservative
@@ -25,6 +26,10 @@ stream, the player's position and the sun; there is no collision, hitbox, RNG or
    self-rendered 2×2 atlas of side-view tufts (`tools/newdawn/grass-tufts/render_tufts.py`; asset pack
    `~/dev/ghm-mods/assets/grass/`, loaded from `<gNewDawn.Assets.Path>/grass/tuft_atlas.png`; the feature stays off and
    logs a warning if the file is missing). Alpha-to-coverage with a sharpened ramp at MSAA > 1, a 0.45 cut-out otherwise.
+   Sharpness (#83, "our grass looks blurry"): the atlas is now 2048² (`render_tufts.py OUT 7 1024`, any square size from 256 to
+   4096 loads), sampled with 16x anisotropic filtering (the tufts are seen at grazing angles; it was 1x) and a LOD bias of
+   -1.0 with alpha-to-coverage (-0.5 without; `gNewDawn.Grass.LodBias` overrides). The old 1024 atlas smeared into broad
+   stippled patches. Cost: bias -1.0 0.86 ms vs 0.68 ms at -0.5 in the dense meadow (-1.5 doubles it, so it was rejected).
 4. **Colour and light.** Each tuft samples the **ground colour behind its root**, copied at the ground-end marker, before any actor is drawn (a single-sample copy of the
    HDR world: 5 taps, ±5 px), multiplies it with the atlas shading (dark root, bright tip), slightly saturates it, applies
    a slow world-space dry-straw ↔ lush-green patch variation and a small per-tuft hue drift, and adds a sun-behind
@@ -45,8 +50,10 @@ visible: 0.085 ms (the ground copy).
 
 ## Gating and identity
 
-Grass is only enabled in time-of-day (`LIGHT_MODE_TIME`) scenes: the first Stock Pot Inn test showed tufts on its planter soil
-and green rug, so interiors are excluded. In the frozen Stock Pot Inn fixture (noon, frozen at frame 30, `final_fixture.py`
+Grass is only enabled in time-of-day (`LIGHT_MODE_TIME`) scenes that are not indoors. Time-of-day light mode alone is not
+enough: the Mayor's Residence (#83) uses it, and its planter and couch got tufts. `NewDawnSceneIsIndoors` therefore also
+treats a scene as enclosed when the game's own per-scene restrictions disable both the Song of Storms and Double Time (the
+`RESTRICTIONS_INDOORS` set), and the texture list above drops interior-scene textures as a second layer. In the frozen Stock Pot Inn fixture (noon, frozen at frame 30, `final_fixture.py`
 recipe plus `LocalFlicker=0`, `Vfx.Embers=0`, dither off) grass on vs off differs by at most 4 levels (no tufts), the same
 order as two runs of an unmodified `origin/main` build (`5b986cedd`, built in a separate worktree). **Byte identity was not
 established**: on the day of this check the fixture itself was not deterministic (main vs main differed in 360k pixels,

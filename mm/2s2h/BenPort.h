@@ -53,6 +53,10 @@ class OTRGlobals {
     ImFont* fontMono = nullptr;
     ImFont* fontMonoLarger = nullptr;
     ImFont* fontMonoLargest = nullptr;
+    // New Dawn menu display font (Cinzel, OFL): section headings, page names, title.
+    ImFont* fontHeadingSmall = nullptr;
+    ImFont* fontHeading = nullptr;
+    ImFont* fontHeadingLarge = nullptr;
 
     Ship::Context* context = nullptr;
 
