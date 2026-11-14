@@ -773,19 +773,34 @@ extern "C" void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin) {
     CLOSE_DISPS(gfxCtx);
 }
 
-static void NewDawnSky_Emit(PlayState* play, bool winterPass);
+static void NewDawnSky_Emit(PlayState* play, bool fillPass);
 
 extern "C" void NewDawnSky_Draw(PlayState* play) {
     NewDawnSky_Emit(play, false);
 }
 
-// Winter Mountain Village has no skybox (SKYBOX_2): the game paints an opaque fog-colour fill. The overcast deck is
-// emitted right after that fill and blends over it, so the fill stays as the fallback if the pass cannot run.
+// gNewDawn.Sky.Special variants (values shared with the renderer's skyVariant).
+enum { SKY_VARIANT_NORMAL, SKY_VARIANT_WINTER, SKY_VARIANT_FINAL, SKY_VARIANT_CURSED, SKY_VARIANT_SWAMP };
+
+// Final-day intensity 0..1, read-only from the clock: ominous from dawn of day 3, deeper through the evening, and
+// building through the final hours (00:00-06:00) to the peak just before the Moon falls.
+static float NewDawnFinalDayMood() {
+    const float hours = gSaveContext.save.time * (24.0f / 65536.0f);
+    if (hours >= 6.0f) {
+        const float t = NewDawnClampF((hours - 6.0f) / 18.0f, 0.0f, 1.0f);
+        return 0.40f + 0.25f * t * t * (3.0f - 2.0f * t);
+    }
+    return 0.65f + 0.35f * (hours / 6.0f);
+}
+
+// Winter Mountain Village (SKYBOX_2) and cursed Ikana (SKYBOX_3) have no skybox drawn: the game paints an opaque
+// fog-colour fill. The overcast deck is emitted right after that fill and blends over it, so the fill stays as the
+// fallback if the pass cannot run.
 extern "C" void NewDawnSky_DrawOvercast(PlayState* play) {
     NewDawnSky_Emit(play, true);
 }
 
-static void NewDawnSky_Emit(PlayState* play, bool winterPass) {
+static void NewDawnSky_Emit(PlayState* play, bool fillPass) {
     static u32 lastLogFrame = UINT32_MAX;
     static s16 lastLogScene = -1;
     if (CVarGetInteger("gNewDawn.Sky.Physical", 0) && CVarGetInteger("gNewDawn.PostFx.Debug.Stats", 0) &&
@@ -793,48 +808,67 @@ static void NewDawnSky_Emit(PlayState* play, bool winterPass) {
         lastLogFrame = play->gameplayFrames;
         lastLogScene = play->sceneId;
         SPDLOG_INFO("NewDawnSky: scene {} sky {} config {} layer {} day {} mode {} sunDisabled {} lateSky {} override "
-                    "{} cutscene {}",
+                    "{} cutscene {} time {} cursed {:.2f}",
                     play->sceneId, play->skyboxId, play->envCtx.skyboxConfig, gSaveContext.sceneLayer,
                     gSaveContext.save.day, play->envCtx.lightMode, play->envCtx.sunDisabled, play->skyboxCtx.shouldDraw,
-                    play->envCtx.lightSettingOverride, Play_InCsMode(play));
+                    play->envCtx.lightSettingOverride, Play_InCsMode(play), gSaveContext.save.time, D_801F4E74);
     }
-    const bool winter = winterPass && play->skyboxId == SKYBOX_2 && play->sceneId == SCENE_10YUKIYAMANOMURA;
+    const bool special = CVarGetInteger("gNewDawn.Sky.Special", 0) != 0;
+    const bool winter = fillPass && play->skyboxId == SKYBOX_2 && play->sceneId == SCENE_10YUKIYAMANOMURA;
+    // Fully cursed Ikana only: while the curse lifts (D_801F4E74 fading) the native sky cross-fades in.
+    const bool cursed = special && fillPass && play->skyboxId == SKYBOX_3 && D_801F4E74 >= 1.0f;
+    const bool finalDay = special && !fillPass && gSaveContext.save.day == 3;
+    // Cutscenes and conversations keep the physical sky in Special mode; otherwise it would flip to the native sky.
+    const bool csBlocks = !special && (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play));
+    const bool dayBlocks = (finalDay || cursed) ? false : (gSaveContext.save.day < 1 || gSaveContext.save.day >= 3);
+    const bool layerBlocks = (finalDay || cursed) ? false : gSaveContext.sceneLayer != 0;
     if (!CVarGetInteger("gNewDawn.Sky.Physical", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
         CVarGetFloat("gNewDawn.Sky.Strength", 1.0f) <= 0.0f ||
-        (winterPass ? !winter : play->skyboxId != SKYBOX_NORMAL_SKY) || play->skyboxCtx.shouldDraw ||
-        play->envCtx.skyboxDisabled || play->envCtx.sunDisabled || play->envCtx.lightMode != LIGHT_MODE_TIME ||
+        (fillPass ? !(winter || cursed) : play->skyboxId != SKYBOX_NORMAL_SKY) || play->skyboxCtx.shouldDraw ||
+        play->envCtx.skyboxDisabled || (play->envCtx.sunDisabled && !cursed) ||
+        play->envCtx.lightMode != LIGHT_MODE_TIME ||
         play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE || play->envCtx.changeSkyboxState != 0 ||
         play->envCtx.skyboxConfig != play->envCtx.changeSkyboxNextConfig ||
-        play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 ||
-        gSaveContext.save.day < 1 || gSaveContext.save.day >= 3 || gSaveContext.sceneLayer != 0 ||
-        play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
+        play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 || dayBlocks ||
+        layerBlocks || csBlocks) {
         return;
     }
 
-    // Explicitly known normal outdoor locations. Special skies (notably cursed Ikana's SKYBOX_3),
-    // dungeons, cutscenes, the final day and unclassified scenes retain the original skybox.
-    switch (play->sceneId) {
-        case SCENE_00KEIKOKU:
-        case SCENE_CLOCKTOWER:
-        case SCENE_TOWN:
-        case SCENE_ICHIBA:
-        case SCENE_BACKTOWN:
-        case SCENE_30GYOSON:
-        case SCENE_IKANA:
-        case SCENE_10YUKIYAMANOMURA:
-        case SCENE_10YUKIYAMANOMURA2:
-        case SCENE_20SICHITAI2:
-        case SCENE_22DEKUCITY:
-        case SCENE_F01:
-            break;
-        default:
-            return;
+    // Explicitly known normal outdoor locations. Other special skies, dungeons, cutscene-only sky maps and
+    // unclassified scenes retain the original skybox. The poisoned swamp is classified only for Special mode.
+    // Poisoned swamp, and Woodfall's exterior until its temple is cleared (the same poison palette as the water).
+    const bool swamp = special && !fillPass &&
+                       (play->sceneId == SCENE_20SICHITAI ||
+                        (play->sceneId == SCENE_21MITURINMAE && !CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE)));
+    if (!fillPass && !swamp) {
+        switch (play->sceneId) {
+            case SCENE_00KEIKOKU:
+            case SCENE_CLOCKTOWER:
+            case SCENE_TOWN:
+            case SCENE_ICHIBA:
+            case SCENE_BACKTOWN:
+            case SCENE_30GYOSON:
+            case SCENE_IKANA:
+            case SCENE_10YUKIYAMANOMURA:
+            case SCENE_10YUKIYAMANOMURA2:
+            case SCENE_20SICHITAI2:
+            case SCENE_22DEKUCITY:
+            case SCENE_F01:
+                break;
+            default:
+                return;
+        }
     }
     const auto& sun = play->envCtx.dirLight1.params.dir;
     float len = sqrtf((float)(sun.x * sun.x + sun.y * sun.y + sun.z * sun.z));
     if (len < 0.001f) {
         return;
     }
+    const int variant = winter ? SKY_VARIANT_WINTER
+                        : cursed ? SKY_VARIANT_CURSED
+                        : finalDay ? SKY_VARIANT_FINAL
+                        : swamp  ? SKY_VARIANT_SWAMP
+                                 : SKY_VARIANT_NORMAL;
     auto* params = NewDawnPostFx_AllocParams(play);
     params->skySunDir[0] = sun.x / len;
     params->skySunDir[1] = sun.y / len;
@@ -842,17 +876,20 @@ static void NewDawnSky_Emit(PlayState* play, bool winterPass) {
     for (int i = 0; i < 3; ++i) {
         params->skyFogColor[i] = play->lightCtx.fogColor[i] / 255.0f;
     }
-    // SKYBOX_2 never loads a palette; the overcast deck takes its hue from the fog.
-    params->skyPaletteColor[0] = winter ? params->skyFogColor[0] : play->skyboxCtx.prim.r / 255.0f;
-    params->skyPaletteColor[1] = winter ? params->skyFogColor[1] : play->skyboxCtx.prim.g / 255.0f;
-    params->skyPaletteColor[2] = winter ? params->skyFogColor[2] : play->skyboxCtx.prim.b / 255.0f;
+    // SKYBOX_2/3 never load a palette; their decks take their hue from the fog.
+    const bool fogPalette = winter || cursed;
+    params->skyPaletteColor[0] = fogPalette ? params->skyFogColor[0] : play->skyboxCtx.prim.r / 255.0f;
+    params->skyPaletteColor[1] = fogPalette ? params->skyFogColor[1] : play->skyboxCtx.prim.g / 255.0f;
+    params->skyPaletteColor[2] = fogPalette ? params->skyFogColor[2] : play->skyboxCtx.prim.b / 255.0f;
     params->skyOvercast = winter ? 1.0f : 0.0f;
+    params->skyVariant = variant;
+    params->skyMood = finalDay ? NewDawnFinalDayMood() : 0.0f;
     // Representative render-only ground albedo, used for the lower-hemisphere sky bounce.
     const bool grass = play->sceneId == SCENE_00KEIKOKU || play->sceneId == SCENE_F01 ||
                        play->sceneId == SCENE_20SICHITAI2 || play->sceneId == SCENE_22DEKUCITY;
-    params->skyGroundAlbedo[0] = winter ? 0.70f : grass ? 0.24f : 0.42f;
-    params->skyGroundAlbedo[1] = winter ? 0.74f : grass ? 0.30f : 0.32f;
-    params->skyGroundAlbedo[2] = winter ? 0.80f : grass ? 0.10f : 0.18f; // fresh snow
+    params->skyGroundAlbedo[0] = winter ? 0.70f : cursed ? 0.28f : swamp ? 0.14f : grass ? 0.24f : 0.42f;
+    params->skyGroundAlbedo[1] = winter ? 0.74f : cursed ? 0.26f : swamp ? 0.16f : grass ? 0.30f : 0.32f;
+    params->skyGroundAlbedo[2] = winter ? 0.80f : cursed ? 0.30f : swamp ? 0.12f : grass ? 0.10f : 0.18f;
     params->skySceneId = play->sceneId;
     params->skyWeather = NewDawnClampF(play->envCtx.precipitation[PRECIP_RAIN_CUR] / 40.0f +
                                            play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f,

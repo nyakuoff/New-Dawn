@@ -2274,7 +2274,7 @@ void Environment_DrawSkyboxFilters(PlayState* play) {
 
         CLOSE_DISPS(play->state.gfxCtx);
 
-        if (play->skyboxId == SKYBOX_2) {
+        if ((play->skyboxId == SKYBOX_2) || (play->skyboxId == SKYBOX_3)) {
             // New Dawn: physical overcast deck over the fog fill (no-op unless Physical Sky and HDR are on).
             NewDawnSky_DrawOvercast(play);
         }
