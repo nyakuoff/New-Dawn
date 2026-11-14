@@ -18,7 +18,7 @@ tools/newdawn/capture.py --compare /tmp/newdawn/before /tmp/newdawn/after --out 
 ```
 
 `--rot DEG` overrides a point's yaw (0 = +Z, 90 = +X; the camera starts behind the player), e.g. to look towards the sun. `--burst N,INTERVAL` takes N screenshots per point INTERVAL seconds apart (`<point>_00.png` ...), for motion checks. `--list` shows the points; `--points a,b` selects some; `--wait N` is the seconds from launch to the screenshot
-(default 10; the scene is fully faded in after about 3). `--cvar name=value` is repeatable and wins over everything. `--preset` applies the New Dawn graphics preset read from `sNewDawnPresetCvars` in BenMenu.cpp, with the right int or float types; `--cvar` overrides it.
+(default 10; the scene is fully faded in after about 3). `--cvar name=value` is repeatable and wins over everything. `--preset` applies the New Dawn (Ultra) graphics preset read from the `kRows` table in `mm/2s2h/BenGui/NewDawnPresets.cpp`, with the right int or float types; `--cvar` overrides it. The generated config counts as an existing install (`gNewDawn.Setup.Version=1`), so the first-run notice and Ultra auto-apply never touch captures.
 
 How it works / things to know:
 
@@ -165,7 +165,7 @@ python tools/newdawn/capture.py --bin-dir build/mm --mods /tmp/nd/matbind/mods \
     --cvar gNewDawn.Lighting.PerPixel=1 --cvar gNewDawn.Materials.Enabled=1
 ```
 
-Add all `sNewDawnPresetCvars` values from `mm/2s2h/BenGui/BenMenu.cpp` for a full-preset
+Add all `kRows` Ultra values from `mm/2s2h/BenGui/NewDawnPresets.cpp` for a full-preset
 comparison; the command above only demonstrates loading. Change Materials.Enabled to 0
 for the matching off image. Archives actually loaded are printed by the capture tool.
 
