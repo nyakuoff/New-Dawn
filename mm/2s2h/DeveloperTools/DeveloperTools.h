@@ -12,5 +12,6 @@ void RegisterPreventActorUpdateHooks();
 void RegisterPreventActorDrawHooks();
 void RegisterPreventActorInitHooks();
 void RenderWarpPointSection();
+void RenderWarpMenu();
 
 #endif // DEVELOPER_TOOLS_H
