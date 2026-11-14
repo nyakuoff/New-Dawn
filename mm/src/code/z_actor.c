@@ -4,6 +4,7 @@
  */
 
 #include "z64actor.h"
+#include "2s2h/Enhancements/Graphics/NewDawnPostFx.h"
 #include "z64door.h"
 
 #include "prevent_bss_reordering.h"
@@ -2924,6 +2925,22 @@ void Actor_UpdateAll(PlayState* play, ActorContext* actorCtx) {
 extern void Player_Action_93(Player* this, PlayState* play);
 extern void Player_Action_95(Player* this, PlayState* play);
 
+static s32 Actor_IsWindFoliage(s16 id) {
+    switch (id) {
+        case ACTOR_EN_WOOD02:
+        case ACTOR_EN_KUSA:
+        case ACTOR_EN_KUSA2:
+        case ACTOR_OBJ_GRASS:
+        case ACTOR_OBJ_TREE:
+        case ACTOR_OBJ_YASI:
+        case ACTOR_EN_SNOWWD:
+        case ACTOR_OBJ_HANA:
+            return true;
+        default:
+            return false;
+    }
+}
+
 void Actor_Draw(PlayState* play, Actor* actor) {
     Lights* light;
 
@@ -2992,7 +3009,15 @@ void Actor_Draw(PlayState* play, Actor* actor) {
     }
 
     if (GameInteractor_ShouldActorDraw(actor)) {
+        // New Dawn: scope only the foliage draw; actor updates and collision stay unchanged.
+        s32 windSway = Actor_IsWindFoliage(actor->id);
+        if (windSway) {
+            NewDawnHDR_WindScope(play, true);
+        }
         actor->draw(actor, play);
+        if (windSway) {
+            NewDawnHDR_WindScope(play, false);
+        }
         GameInteractor_ExecuteOnActorDraw(actor);
     }
 
