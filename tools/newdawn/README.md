@@ -288,3 +288,18 @@ Regenerate material companions from the final albedo: add
 Repeat `--overlay-pack` in archive load order if there are several overrides; the last matching entry wins.
 Unchanged source content reuses the existing material cache. Old companions for changed albedos fail the
 renderer's source fingerprint check.
+
+## Parallax relief (POM)
+
+The roughness companion's **G channel is a parallax height** (0.5 = the real surface). The generator
+bakes a per-class `relief` gain (0..1; stone 0.6, wood 0.5, dirt 0.35, plaster 0.15, grass/metal 0, hand-listed
+brick/paving 0.85) into it from a band-passed luminance (joints and cracks sink; fine noise and slab-scale
+swells are removed). Regenerate the archive with `materials.py` (VERSION 1.4.0); older archives have
+near-flat G and show little parallax.
+
+`gNewDawn.Materials.Parallax` (0/1, preset 1) enables a steep-parallax ray march with bisection refinement in
+`default.shader.glsl` (12-48 layers by shift length, depth fades out from ~385 to 700 game units;
+`.ParallaxDistance`). `gNewDawn.Materials.ParallaxScale` (default 0.04) is the depth as a fraction of the
+texture's world size, which is capped at 28 units. The albedo and companion lookups of the material tile use the
+displaced UV; the camera position comes from a new `uMaterialEye` uniform (vertex positions are world-space).
+Measured cost: +0.16 to +0.46 ms of world-pass GPU (`gNewDawn.Materials.Debug.Stats=1`, 1080p, RX 7800 XT).

@@ -189,6 +189,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Lighting.Characters", false, 1.0f, 0.0f },       // rim light and metal specular on actors
     { "gNewDawn.Materials.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Materials.Strength", true, 1.5f, 1.0f },
+    { "gNewDawn.Materials.Parallax", false, 1.0f, 0.0f }, // parallax occlusion relief on brick, stone, cobble and planks
     // Sun shadows (outdoor daytime only; the renderer disables them indoors, at night and at the horizon).
     { "gNewDawn.Shadows.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Shadows.Strength", true, 0.85f, 1.0f }, // sun occlusion; HDR ambient fill preserves readability
@@ -1030,6 +1031,16 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Materials.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
             "Surface relief and dielectric highlights. Zero restores the original shading."));
+    AddWidget(path, "Parallax Relief", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Materials.Parallax")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Parallax occlusion mapping: brick, stone, cobble and plank surfaces gain real depth. "
+            "Needs a material archive generated with relief heights. Costs GPU time on close walls."));
+    AddWidget(path, "Parallax Depth: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Materials.ParallaxScale")
+        .Options(FloatSliderOptions().Min(0.0f).Max(0.1f).Step(0.0025f).Format("%.3f").DefaultValue(0.04f).Tooltip(
+            "Relief depth as a fraction of the texture's world size."));
 
     AddWidget(path, "Shadows", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Real-time Shadows", WIDGET_CVAR_CHECKBOX)
