@@ -1461,6 +1461,15 @@ void BenMenu::AddEnhancements() {
     AddMenuEntry("Enhancements", "gSettings.Menu.EnhancementsSidebarSection");
     WidgetPath path = { "Enhancements", "Camera", SECTION_COLUMN_1 };
     AddSidebarEntry("Enhancements", "Camera", 3);
+    AddWidget(path, "Mouse Look", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Mouse Look", WIDGET_CVAR_CHECKBOX)
+        .CVar("gEnhancements.Camera.MouseLook.Enable")
+        .Options(CheckboxOptions().Tooltip("Move the camera and aim the bow, hookshot and first-person view with the "
+                                           "mouse; the cursor is captured while playing."));
+    AddWidget(path, "Sensitivity: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gEnhancements.Camera.MouseLook.Sensitivity")
+        .Options(FloatSliderOptions().Min(0.1f).Max(5.0f).DefaultValue(1.0f).Step(0.05f));
+    AddWidget(path, "Invert Y", WIDGET_CVAR_CHECKBOX).CVar("gEnhancements.Camera.MouseLook.InvertY");
     // Camera Snap Fix
     AddWidget(path, "Fixes", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Fix Targeting Camera Snap", WIDGET_CVAR_CHECKBOX)

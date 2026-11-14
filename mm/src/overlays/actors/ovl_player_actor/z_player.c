@@ -45,6 +45,7 @@
 #include "objects/object_link_nuts/object_link_nuts.h"
 #include "objects/object_link_child/object_link_child.h"
 
+#include "2s2h/Enhancements/Camera/MouseLook.h"
 #include "2s2h/BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
@@ -13556,12 +13557,17 @@ s32 Ship_HandleFirstPersonAiming(PlayState* play, Player* this, s32 arg2) {
         stickY += rightStickY * CVarGetFloat("gEnhancements.Camera.FirstPerson.RightStickSensitivityY", 1.0f);
     }
 
+    // Mouse look: add the raw mouse delta alongside gyro, before the existing clamps (zero when disabled)
+    gyroX -= MouseLook_GetDeltaX();
+    gyroY += MouseLook_GetDeltaY();
+
     stickX = CLAMP(stickX, -60, 60);
     stickY = CLAMP(stickY, -60, 60);
 
     if (!func_800B7128(this) && !func_8082EF20(this) && !arg2) { // First person without weapon
         var_s0 = stickY * 0xF0;
         if (CVarGetInteger("gEnhancements.Camera.FirstPerson.DisableFirstPersonAutoCenterView", 0) ||
+            MouseLook_IsActive() ||
             CVarGetInteger("gEnhancements.Camera.FirstPerson.GyroEnabled", 0)) {
             this->actor.focus.rot.x += var_s0 * 0.1f;
         } else {
