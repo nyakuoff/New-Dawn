@@ -22,22 +22,26 @@ Render-only OpenGL feature, HDR required. `gNewDawn.Vfx.Enabled` defaults to **0
 ## Classes (all CC0 art)
 | class | native texture | replacement |
 | --- | --- | --- |
-| flame | `gEffFireTex`, `gEffEnemyDeathFlame*` | 3 flame layers (Kenney `flame_05/06`), game prim/env colours, tip sway, halo, embers |
+| flame | `gEffFireTex`, `gEffEnemyDeathFlame*` | animated **fire flipbook** (64-frame loop, two cross-offset layers), the game's prim/env colours, additive and partly transparent, native size and bottom anchor, plus embers. Covers every actor/effect that draws through `gEffFire1DL/2DL` (torches, chandeliers, Poes, burning enemies, burning Link) |
 | glow | `gameplay_keep_Tex_08FBE0` (Lights_DrawGlow, alpha 50 only) | soft HDR halo (`circle_05`) |
 | dust | `gEffDust1-8`, `gEffHitmarkDust1-8` | two lit smoke layers (`smoke_04/07`) |
 | bomb | `gEffBombExplosion1-8` | HDR fireball (`fire_01/02`) cooling to a dark smoke layer (`smoke_01`) + flash. **Not triggered in a capture** |
 | hit | `gEffHitmarkRed/WhiteMetal1-8` | HDR spark + star (`spark_01`, `star_01`) |
 | spark | `gElectricSpark1-4` | blue-white HDR spark |
+| sparkle | `gameplay_keep_Tex_054AF0` (`gEffSparklesDL`) | crisp HDR star (`star_01`) with a soft halo. Recorded in game (Tatl's trail) but **not visually verified** |
 
-Art: Kenney Particle Pack (CC0, https://kenney.nl/assets/particle-pack), unmodified copies in
-`<gNewDawn.Assets.Path>/vfx/*.png`; provenance in `~/dev/ghm-mods/assets/vfx/MANIFEST.md`. Nothing is committed.
-Missing files disable the feature and leave the native effects.
+Art: smoke/spark/star/halo sprites from the Kenney Particle Pack (CC0, https://kenney.nl/assets/particle-pack), unmodified, and
+`fire_flipbook_8x8.png`, an authored asset (Blender Mantaflow sim rendered to a sprite sheet; scripts in
+`tools/newdawn/vfx-flipbook/`). Files live in `<gNewDawn.Assets.Path>/vfx/`, default `assets/newdawn/vfx` beside the game
+(no cvar needed; captures resolve it through the binary's symlinked `assets/`). Provenance: `~/dev/ghm-mods/assets/vfx/MANIFEST.md`.
+OpenGameArt blocked automated downloads, so no third-party flipbook was used. Missing files disable the feature and leave the
+native effects. Art is not committed (only the authoring scripts are).
 
 ## Evidence (2026-11-14, RX 7800 XT, 1920×1080, preset + full mods)
 - Off identical to main: frozen Stock Pot Inn (12:00, frame 30, `gMatchRefreshRate=0`, `gInterpolationFPS=20`),
   main `a358fa2d6` build vs this branch, 2 runs each: all four PNG SHA-256 `440c1ac3…`; also identical with VFX on (no
   recorded effects in that view). 0 GL errors (`MESA_DEBUG=context`) over all 19 capture points with VFX on.
-- GPU stage 14 (`gNewDawn.PostFx.Debug.Stats=1`): **0.004–0.007 ms** with one torch + glow + embers (Clock Town, night).
+- GPU stage 15 (`gNewDawn.PostFx.Debug.Stats=1`; stage 14 is GI): **0.004–0.007 ms** with one torch + glow + embers (Clock Town, night).
 - Before/after: `~/dev/ghm-mods/showcase/vfx/`.
 
 ## Limits
