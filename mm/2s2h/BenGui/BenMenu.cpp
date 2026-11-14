@@ -201,6 +201,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Fog.Volumetric", false, 1.0f, 0.0f }, // replaces shadow-marched shafts in eligible scenes
     { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.SunShafts.Mode", false, 1.0f, 0.0f },
+    { "gNewDawn.GI.Enabled", false, 1.0f, 0.0f }, // screen-space bounce light (needs HDR)
     { "gNewDawn.SunShafts.Strength", true, 0.30f, 0.4f },
     { "gNewDawn.Water.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Water.Strength", true, 0.5f, 0.5f },
@@ -825,6 +826,12 @@ void BenMenu::AddSettings() {
                               "grade and dithering. The HUD and menus are not affected. When off, the game renders "
                               "exactly as before. OpenGL only.")
                      .DefaultValue(true));
+    AddWidget(path, "Indirect Bounce Light (SSGI)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.GI.Enabled")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip("Screen-space colour bleeding from nearby lit surfaces. Requires HDR."));
+    AddWidget(path, "Bounce Strength", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.GI.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).DefaultValue(1.0f).Tooltip("Indirect diffuse intensity, bounded to preserve dark interiors."));
     AddWidget(path, "Ambient Occlusion", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.AO.Enabled")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
