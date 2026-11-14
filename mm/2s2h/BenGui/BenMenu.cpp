@@ -189,6 +189,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
     { "gNewDawn.Lighting.Characters", false, 1.0f, 0.0f },       // rim light and metal specular on actors
+    { "gNewDawn.Lighting.Local", false, 1.0f, 0.0f },            // warm flickering local lights, darker night/interiors
     { "gNewDawn.Materials.Enabled", false, 1.0f, 0.0f },
     { "gNewDawn.Materials.Strength", true, 1.5f, 1.0f },
     // Sun shadows (outdoor daytime only; the renderer disables them indoors, at night and at the horizon).
@@ -1033,6 +1034,22 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Lighting.CharactersStrength")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
+
+    AddWidget(path, "Local Lights", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Lighting.Local")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Torches, lamps, candles and HD flames cast warm, flickering HDR light on nearby walls, floors and "
+            "characters, with contact shadows. Render-only. Requires HDR."));
+    AddWidget(path, "Local Light Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Lighting.LocalStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
+    AddWidget(path, "Local Light Contrast: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Lighting.LocalContrast")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.5f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How far the unlit scene is darkened at night and indoors so the lights carry it. 0 only adds light."));
+    AddWidget(path, "Local Light Flicker: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Lighting.LocalFlicker")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
 
     AddWidget(path, "Companion Materials", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Materials.Enabled")
