@@ -3012,11 +3012,11 @@ void Actor_Draw(PlayState* play, Actor* actor) {
         // New Dawn: scope only the foliage draw; actor updates and collision stay unchanged.
         s32 windSway = Actor_IsWindFoliage(actor->id);
         if (windSway) {
-            NewDawnHDR_WindScope(play, true);
+            NewDawnHDR_WindScope(play, true, false);
         }
         actor->draw(actor, play);
         if (windSway) {
-            NewDawnHDR_WindScope(play, false);
+            NewDawnHDR_WindScope(play, false, false);
         }
         GameInteractor_ExecuteOnActorDraw(actor);
     }

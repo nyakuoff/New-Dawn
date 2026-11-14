@@ -754,11 +754,18 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
     }
 }
 
+// Enclosed scenes (the game's own "indoors" restriction set: no Song of Storms or Double Time) with a time-of-day light
+// mode still exist, e.g. the Mayor's Residence. They get no grass and no room-geometry sway.
+static bool NewDawnSceneIsIndoors(PlayState* play) {
+    return play->envCtx.lightMode != LIGHT_MODE_TIME ||
+           (play->interfaceCtx.restrictions.songOfStorms == 3 && play->interfaceCtx.restrictions.songOfDoubleTime == 3);
+}
+
 // Render-only 3D grass on grass-textured ground. Reads the player's position and the sun; changes nothing.
 static void NewDawnFillGrassParams(PlayState* play, NewDawnPostFxParams* params) {
     // Outdoor time-of-day scenes only: interiors reuse "grass"-coloured rugs, planters and moss.
     params->grassEnabled = CVarGetInteger("gNewDawn.Grass.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0) &&
-                           play->envCtx.lightMode == LIGHT_MODE_TIME;
+                           !NewDawnSceneIsIndoors(play);
     if (!params->grassEnabled) {
         return;
     }
@@ -830,12 +837,19 @@ extern "C" void NewDawnHDR_WeatherScope(PlayState* play, int begin) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-extern "C" void NewDawnHDR_WindScope(PlayState* play, int begin) {
+extern "C" void NewDawnHDR_WindScope(PlayState* play, int begin, int room) {
     if (!CVarGetInteger("gNewDawn.Atmos.Wind", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    // Room geometry only sways outdoors (and then only plant textures); foliage actors keep their own scope anywhere.
+    if (room && NewDawnSceneIsIndoors(play)) return;
     static NewDawnPostFxParams sUnused; // the command only needs a non-null pointer
     OPEN_DISPS(play->state.gfxCtx);
-    gSPNewDawnPostFx(POLY_OPA_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END, &sUnused);
-    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END, &sUnused);
+    const int stage = begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END;
+    Gfx* opa = POLY_OPA_DISP++;
+    gSPNewDawnPostFx(opa, stage, &sUnused);
+    opa->words.w0 |= (uint32_t)(room != 0) << NEWDAWN_POSTFX_WIND_ROOM_SHIFT;
+    Gfx* xlu = POLY_XLU_DISP++;
+    gSPNewDawnPostFx(xlu, stage, &sUnused);
+    xlu->words.w0 |= (uint32_t)(room != 0) << NEWDAWN_POSTFX_WIND_ROOM_SHIFT;
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
