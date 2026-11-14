@@ -81,6 +81,12 @@ Status: ✅ done (in the New Dawn preset unless noted) · 🚧 in progress · �
 | MM3D animated materials and highlight roll-off | ✅ | #37 |
 | MM3D collision trial (South Clock Town) | 🧪 not shipped: 9.6% of walkable floor would let Link fall through; see [docs/MM3D_COLLISION_TRIAL.md](docs/MM3D_COLLISION_TRIAL.md) | #41 |
 
+## Phase 9: Menu and first run ✅
+| Feature | PRs |
+|---|---|
+| New Dawn menu: themed pages and tabs, search, wordmark and Cinzel headings; every 2Ship setting kept (`docs/MENU.md`) | |
+| Five looks (Ultra, High, Medium, Low, Original look), Ultra applied on a fresh install, one-time offer to existing configs | |
+
 ## Planned 📋
 Roughly in priority order; this will change as work lands.
 
