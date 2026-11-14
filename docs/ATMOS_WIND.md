@@ -15,6 +15,15 @@
   bracket only the original draw of whitelisted foliage actors: EnWood02, EnKusa, EnKusa2,
   ObjGrass, ObjTree, ObjYasi, EnSnowwd and ObjHana. Actor state, update functions, collision,
   gameplay RNG and animation data are unchanged. Link and other actors are outside these scopes.
+- **What sways (#83).** Room scopes (`NewDawnHDR_WindScope(play, begin, room=1)`, flagged in bit 8 of the marker word) are
+  skipped in indoor scenes (`NewDawnSceneIsIndoors`: not time-of-day, or the game's indoors restriction set) and, outdoors,
+  only displace textures in `newdawn_sway_textures.inc` (outdoor cut-outs classified as plants by
+  `tools/newdawn/grass_textures.py`), so furniture, cloth, fences and signs stay rigid. Triangles that lie near level are
+  never displaced (room: `|n.y| >= 0.75`, foliage actors, whose drooping leaf cards are tilted: `>= 0.95`), and the
+  per-vertex weight is also multiplied by the height above the triangle's lowest vertex, so bases shared with the ground
+  stay welded and no cracks open. Floor triangles that use a cut-out texture were the source of the "hole between the floor
+  geometry" report. Displaced triangles per frame in the Termina Field and cleared Swamp test views fell from 175 to 22 and
+  385 to 112.
 - Inside a scope the interpreter copies cut-out (`CVG_X_ALPHA`) triangle vertices. Texture-v
   weighting keeps bases planted. It displaces world and clip positions consistently; the
   foliage-shadow recorder consumes the same copy. Loaded vertices remain unchanged.
