@@ -151,10 +151,23 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     const bool foam = surfaceVisible && CVarGetInteger("gNewDawn.Water.Foam", 0) != 0;
     const bool refraction = surfaceVisible && CVarGetInteger("gNewDawn.Water.Refraction", 0) != 0;
     const bool restyle = surfaceVisible && CVarGetInteger("gNewDawn.Water.Restyle", 0) != 0;
+    const bool caustics = CVarGetInteger("gNewDawn.Water.Caustics", 0) != 0 &&
+                          CVarGetFloat("gNewDawn.Water.CausticsStrength", 1.0f) > 0.0f;
+    const bool underwater = surfaceVisible && CVarGetInteger("gNewDawn.Water.Underwater", 0) != 0 &&
+                            CVarGetFloat("gNewDawn.Water.UnderwaterStrength", 1.0f) > 0.0f;
+    // Smoothed camera-in-water state: snaps in when the camera dips below a surface and relaxes over a few frames
+    // after leaving it, so crossing the surface never pops.
+    static float sUnderwaterState = 0.0f;
+    static float sUnderwaterSurfaceY = 0.0f;
+    static float sUnderwaterRect[4] = {};
+    static uint32_t sUnderwaterFrame = UINT32_MAX;
     // Without a time of day there is no sun or moon, so glints alone would only add the faint sky tint: interiors
     // skip the pass unless reflections, foam or refraction are on.
-    if ((!glints && !reflections && !foam && !refraction && !restyle) || play->colCtx.colHeader == NULL ||
-        (play->envCtx.lightMode != LIGHT_MODE_TIME && !reflections && !foam && !refraction && !restyle)) {
+    if ((!glints && !reflections && !foam && !refraction && !restyle && !caustics && !underwater) ||
+        play->colCtx.colHeader == NULL ||
+        (play->envCtx.lightMode != LIGHT_MODE_TIME && !reflections && !foam && !refraction && !restyle && !caustics &&
+         !underwater)) {
+        sUnderwaterState = 0.0f;
         return;
     }
     const CollisionHeader* col = play->colCtx.colHeader;
@@ -199,7 +212,36 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
         out[3] = box->minPos.z + box->zLength;
         out[4] = box->minPos.y;
     }
-    if (count == 0) {
+    // Camera below a plane whose XZ rectangle contains it (the highest such surface nearest above the eye).
+    bool eyeUnder = false;
+    {
+        float best = 1.0e9f;
+        for (int i = 0; i < count; i++) {
+            const float* box = params->waterBoxes[i];
+            const float gap = box[4] - play->view.eye.y;
+            if (gap > 0.0f && gap < 1500.0f && gap < best && play->view.eye.x >= box[0] && play->view.eye.x <= box[2] &&
+                play->view.eye.z >= box[1] && play->view.eye.z <= box[3]) {
+                best = gap;
+                eyeUnder = true;
+                sUnderwaterSurfaceY = box[4];
+                for (int j = 0; j < 4; j++) {
+                    sUnderwaterRect[j] = box[j];
+                }
+            }
+        }
+    }
+    if (underwater) {
+        // Advance once per game frame so fade-out time does not depend on how often the display list is rebuilt.
+        if (sUnderwaterFrame != play->gameplayFrames) {
+            sUnderwaterFrame = play->gameplayFrames;
+            sUnderwaterState = eyeUnder ? 1.0f : std::max(sUnderwaterState - 0.25f, 0.0f);
+        } else if (eyeUnder) {
+            sUnderwaterState = 1.0f;
+        }
+    } else {
+        sUnderwaterState = 0.0f;
+    }
+    if (count == 0 && sUnderwaterState <= 0.0f) {
         return;
     }
 
@@ -257,18 +299,54 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
         refraction
             ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.RefractionStrength", 1.0f), 0.0f, 1.0f) * refractionFactor
             : 0.0f;
-    if (restyle) {
+    if (restyle || caustics || underwater) {
         const NewDawnWaterPalette* palette = &sNewDawnWaterGeneric;
         for (const auto& entry : sNewDawnWaterPalettes) {
             if (entry.sceneId == play->sceneId) {
                 palette = &entry;
             }
         }
-        params->waterRestyle = 1.0f;
+        params->waterRestyle = restyle ? 1.0f : 0.0f;
         for (int i = 0; i < 3; i++) {
             params->waterScatter[i] = palette->scatter[i];
             params->waterAbsorb[i] = palette->absorb[i];
         }
+    }
+    // Caustic light: the sun (or moon) outdoors, where the sun shadow map applies. Interiors fall back to the scene's
+    // first directional light, tilted towards the vertical so a pool still receives a pattern.
+    {
+        float causticDir[3] = { light[0], light[1], light[2] };
+        float causticColor[3] = { lightColor[0], lightColor[1], lightColor[2] };
+        params->waterCausticSun = 1;
+        if (lightColor[0] + lightColor[1] + lightColor[2] <= 0.0f) {
+            params->waterCausticSun = 0;
+            const LightDirectional* dir = &play->envCtx.dirLight1.params.dir;
+            float len = sqrtf((f32)(dir->x * dir->x + dir->y * dir->y + dir->z * dir->z));
+            if (len > 0.001f) {
+                float d[3] = { dir->x / len, dir->y / len, dir->z / len };
+                d[1] = fabsf(d[1]) * 0.5f + 0.6f;
+                float l2 = sqrtf(d[0] * d[0] * 0.25f + d[1] * d[1] + d[2] * d[2] * 0.25f);
+                causticDir[0] = d[0] * 0.5f / l2;
+                causticDir[1] = d[1] / l2;
+                causticDir[2] = d[2] * 0.5f / l2;
+                for (int i = 0; i < 3; i++) {
+                    causticColor[i] = (dir->color[i] / 255.0f) * 0.6f;
+                }
+            }
+        }
+        for (int i = 0; i < 3; i++) {
+            params->waterCausticDir[i] = causticDir[i];
+            params->waterCausticColor[i] = causticColor[i];
+        }
+    }
+    params->waterCaustics =
+        caustics ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.CausticsStrength", 1.0f), 0.0f, 2.0f) : 0.0f;
+    params->waterUnderwater =
+        underwater ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.UnderwaterStrength", 1.0f), 0.0f, 1.0f) : 0.0f;
+    params->waterUnderwaterState = sUnderwaterState;
+    params->waterEyeSurfaceY = sUnderwaterSurfaceY;
+    for (int i = 0; i < 4; i++) {
+        params->waterEyeRect[i] = sUnderwaterRect[i];
     }
     // The native glare is a full-screen XLU fill after the bed capture. Attenuate only our replacement by its
     // transmission so looking into the sun cannot reveal an unglared rectangle of water.
@@ -805,19 +883,34 @@ extern "C" void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin) {
     CLOSE_DISPS(gfxCtx);
 }
 
-static void NewDawnSky_Emit(PlayState* play, bool winterPass);
+static void NewDawnSky_Emit(PlayState* play, bool fillPass);
 
 extern "C" void NewDawnSky_Draw(PlayState* play) {
     NewDawnSky_Emit(play, false);
 }
 
-// Winter Mountain Village has no skybox (SKYBOX_2): the game paints an opaque fog-colour fill. The overcast deck is
-// emitted right after that fill and blends over it, so the fill stays as the fallback if the pass cannot run.
+// gNewDawn.Sky.Special variants (values shared with the renderer's skyVariant).
+enum { SKY_VARIANT_NORMAL, SKY_VARIANT_WINTER, SKY_VARIANT_FINAL, SKY_VARIANT_CURSED, SKY_VARIANT_SWAMP };
+
+// Final-day intensity 0..1, read-only from the clock: ominous from dawn of day 3, deeper through the evening, and
+// building through the final hours (00:00-06:00) to the peak just before the Moon falls.
+static float NewDawnFinalDayMood() {
+    const float hours = gSaveContext.save.time * (24.0f / 65536.0f);
+    if (hours >= 6.0f) {
+        const float t = NewDawnClampF((hours - 6.0f) / 18.0f, 0.0f, 1.0f);
+        return 0.40f + 0.25f * t * t * (3.0f - 2.0f * t);
+    }
+    return 0.65f + 0.35f * (hours / 6.0f);
+}
+
+// Winter Mountain Village (SKYBOX_2) and cursed Ikana (SKYBOX_3) have no skybox drawn: the game paints an opaque
+// fog-colour fill. The overcast deck is emitted right after that fill and blends over it, so the fill stays as the
+// fallback if the pass cannot run.
 extern "C" void NewDawnSky_DrawOvercast(PlayState* play) {
     NewDawnSky_Emit(play, true);
 }
 
-static void NewDawnSky_Emit(PlayState* play, bool winterPass) {
+static void NewDawnSky_Emit(PlayState* play, bool fillPass) {
     static u32 lastLogFrame = UINT32_MAX;
     static s16 lastLogScene = -1;
     if (CVarGetInteger("gNewDawn.Sky.Physical", 0) && CVarGetInteger("gNewDawn.PostFx.Debug.Stats", 0) &&
@@ -825,48 +918,75 @@ static void NewDawnSky_Emit(PlayState* play, bool winterPass) {
         lastLogFrame = play->gameplayFrames;
         lastLogScene = play->sceneId;
         SPDLOG_INFO("NewDawnSky: scene {} sky {} config {} layer {} day {} mode {} sunDisabled {} lateSky {} override "
-                    "{} cutscene {}",
+                    "{} cutscene {} time {} cursed {:.2f}",
                     play->sceneId, play->skyboxId, play->envCtx.skyboxConfig, gSaveContext.sceneLayer,
                     gSaveContext.save.day, play->envCtx.lightMode, play->envCtx.sunDisabled, play->skyboxCtx.shouldDraw,
-                    play->envCtx.lightSettingOverride, Play_InCsMode(play));
+                    play->envCtx.lightSettingOverride, Play_InCsMode(play), gSaveContext.save.time, D_801F4E74);
     }
-    const bool winter = winterPass && play->skyboxId == SKYBOX_2 && play->sceneId == SCENE_10YUKIYAMANOMURA;
+    const bool special = CVarGetInteger("gNewDawn.Sky.Special", 0) != 0;
+    const bool winter = fillPass && play->skyboxId == SKYBOX_2 && play->sceneId == SCENE_10YUKIYAMANOMURA;
+    // Fully cursed Ikana only: while the curse lifts (D_801F4E74 fading) the native sky cross-fades in.
+    const bool cursed = special && fillPass && play->skyboxId == SKYBOX_3 && D_801F4E74 >= 1.0f;
+    const bool finalDay = special && !fillPass && gSaveContext.save.day == 3;
+    // Special mode keeps the physical sky through cutscenes, conversations, lighting overrides and skybox config
+    // changes: it only reads the fog colour, palette, sun direction and clock, which the scripts already drive.
+    // Scripted filter fills and fades are drawn by the game after this pass and cover it exactly as they cover the
+    // native sky. Without Special, any of these states falls back to the native skybox, as before.
+    const bool scripted = !special && (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play) ||
+                                       play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE ||
+                                       play->envCtx.changeSkyboxState != 0 ||
+                                       play->envCtx.skyboxConfig != play->envCtx.changeSkyboxNextConfig ||
+                                       play->envCtx.skyboxFilterColor[3] != 0);
+    const bool dayBlocks = (finalDay || cursed) ? false : (gSaveContext.save.day < 1 || gSaveContext.save.day >= 3);
+    const bool layerBlocks = (finalDay || cursed) ? false : gSaveContext.sceneLayer != 0;
     if (!CVarGetInteger("gNewDawn.Sky.Physical", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
         CVarGetFloat("gNewDawn.Sky.Strength", 1.0f) <= 0.0f ||
-        (winterPass ? !winter : play->skyboxId != SKYBOX_NORMAL_SKY) || play->skyboxCtx.shouldDraw ||
-        play->envCtx.skyboxDisabled || play->envCtx.sunDisabled || play->envCtx.lightMode != LIGHT_MODE_TIME ||
-        play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE || play->envCtx.changeSkyboxState != 0 ||
-        play->envCtx.skyboxConfig != play->envCtx.changeSkyboxNextConfig ||
-        play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 ||
-        gSaveContext.save.day < 1 || gSaveContext.save.day >= 3 || gSaveContext.sceneLayer != 0 ||
-        play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
+        (fillPass ? !(winter || cursed) : play->skyboxId != SKYBOX_NORMAL_SKY) || play->skyboxCtx.shouldDraw ||
+        play->envCtx.skyboxDisabled || (play->envCtx.sunDisabled && !cursed) ||
+        play->envCtx.lightMode != LIGHT_MODE_TIME || play->envCtx.sandstormState != SANDSTORM_OFF || dayBlocks ||
+        layerBlocks || scripted) {
         return;
     }
 
-    // Explicitly known normal outdoor locations. Special skies (notably cursed Ikana's SKYBOX_3),
-    // dungeons, cutscenes, the final day and unclassified scenes retain the original skybox.
-    switch (play->sceneId) {
-        case SCENE_00KEIKOKU:
-        case SCENE_CLOCKTOWER:
-        case SCENE_TOWN:
-        case SCENE_ICHIBA:
-        case SCENE_BACKTOWN:
-        case SCENE_30GYOSON:
-        case SCENE_IKANA:
-        case SCENE_10YUKIYAMANOMURA:
-        case SCENE_10YUKIYAMANOMURA2:
-        case SCENE_20SICHITAI2:
-        case SCENE_22DEKUCITY:
-        case SCENE_F01:
-            break;
-        default:
-            return;
+    // Explicitly known normal outdoor locations. Other special skies, dungeons, cutscene-only sky maps and
+    // unclassified scenes retain the original skybox. The poisoned swamp is classified only for Special mode.
+    // Poisoned swamp, and Woodfall's exterior until its temple is cleared (the same poison palette as the water).
+    const bool swamp = special && !fillPass &&
+                       (play->sceneId == SCENE_20SICHITAI ||
+                        (play->sceneId == SCENE_21MITURINMAE && !CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE)));
+    if (!fillPass && !swamp) {
+        switch (play->sceneId) {
+            case SCENE_00KEIKOKU:
+            case SCENE_CLOCKTOWER:
+            case SCENE_TOWN:
+            case SCENE_ICHIBA:
+            case SCENE_BACKTOWN:
+            case SCENE_30GYOSON:
+            case SCENE_IKANA:
+            case SCENE_10YUKIYAMANOMURA:
+            case SCENE_10YUKIYAMANOMURA2:
+            case SCENE_20SICHITAI2:
+            case SCENE_22DEKUCITY:
+            case SCENE_F01:
+                break;
+            case SCENE_OKUJOU: // Clock Tower rooftop: the Moon's approach, Special mode only
+                if (special)
+                    break;
+                return;
+            default:
+                return;
+        }
     }
     const auto& sun = play->envCtx.dirLight1.params.dir;
     float len = sqrtf((float)(sun.x * sun.x + sun.y * sun.y + sun.z * sun.z));
     if (len < 0.001f) {
         return;
     }
+    const int variant = winter ? SKY_VARIANT_WINTER
+                        : cursed ? SKY_VARIANT_CURSED
+                        : finalDay ? SKY_VARIANT_FINAL
+                        : swamp  ? SKY_VARIANT_SWAMP
+                                 : SKY_VARIANT_NORMAL;
     auto* params = NewDawnPostFx_AllocParams(play);
     params->skySunDir[0] = sun.x / len;
     params->skySunDir[1] = sun.y / len;
@@ -874,17 +994,20 @@ static void NewDawnSky_Emit(PlayState* play, bool winterPass) {
     for (int i = 0; i < 3; ++i) {
         params->skyFogColor[i] = play->lightCtx.fogColor[i] / 255.0f;
     }
-    // SKYBOX_2 never loads a palette; the overcast deck takes its hue from the fog.
-    params->skyPaletteColor[0] = winter ? params->skyFogColor[0] : play->skyboxCtx.prim.r / 255.0f;
-    params->skyPaletteColor[1] = winter ? params->skyFogColor[1] : play->skyboxCtx.prim.g / 255.0f;
-    params->skyPaletteColor[2] = winter ? params->skyFogColor[2] : play->skyboxCtx.prim.b / 255.0f;
+    // SKYBOX_2/3 never load a palette; their decks take their hue from the fog.
+    const bool fogPalette = winter || cursed;
+    params->skyPaletteColor[0] = fogPalette ? params->skyFogColor[0] : play->skyboxCtx.prim.r / 255.0f;
+    params->skyPaletteColor[1] = fogPalette ? params->skyFogColor[1] : play->skyboxCtx.prim.g / 255.0f;
+    params->skyPaletteColor[2] = fogPalette ? params->skyFogColor[2] : play->skyboxCtx.prim.b / 255.0f;
     params->skyOvercast = winter ? 1.0f : 0.0f;
+    params->skyVariant = variant;
+    params->skyMood = finalDay ? NewDawnFinalDayMood() : 0.0f;
     // Representative render-only ground albedo, used for the lower-hemisphere sky bounce.
     const bool grass = play->sceneId == SCENE_00KEIKOKU || play->sceneId == SCENE_F01 ||
                        play->sceneId == SCENE_20SICHITAI2 || play->sceneId == SCENE_22DEKUCITY;
-    params->skyGroundAlbedo[0] = winter ? 0.70f : grass ? 0.24f : 0.42f;
-    params->skyGroundAlbedo[1] = winter ? 0.74f : grass ? 0.30f : 0.32f;
-    params->skyGroundAlbedo[2] = winter ? 0.80f : grass ? 0.10f : 0.18f; // fresh snow
+    params->skyGroundAlbedo[0] = winter ? 0.70f : cursed ? 0.28f : swamp ? 0.14f : grass ? 0.24f : 0.42f;
+    params->skyGroundAlbedo[1] = winter ? 0.74f : cursed ? 0.26f : swamp ? 0.16f : grass ? 0.30f : 0.32f;
+    params->skyGroundAlbedo[2] = winter ? 0.80f : cursed ? 0.30f : swamp ? 0.12f : grass ? 0.10f : 0.18f;
     params->skySceneId = play->sceneId;
     params->skyWeather = NewDawnClampF(play->envCtx.precipitation[PRECIP_RAIN_CUR] / 40.0f +
                                            play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f,
@@ -918,6 +1041,7 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
+        !CVarGetInteger("gNewDawn.Water.Caustics", 0) && !CVarGetInteger("gNewDawn.Water.Underwater", 0) &&
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
         !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.GI.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0)) {
@@ -941,7 +1065,8 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
-        params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && !params->fogVolumetric &&
+        params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && params->waterCaustics <= 0.0f &&
+        !params->fogVolumetric &&
         !params->atmosBiome && !params->giEnabled && !params->localEnabled && !params->grassEnabled) {
         return;
     }
@@ -955,6 +1080,7 @@ extern "C" void NewDawnPostFx_SceneEnd(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
+        !CVarGetInteger("gNewDawn.Water.Caustics", 0) && !CVarGetInteger("gNewDawn.Water.Underwater", 0) &&
         !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
         return;
     }
