@@ -29,6 +29,7 @@ class Menu : public GuiWindow {
 
     void MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors menuThemeIndex);
     void AddMenuEntry(std::string entryName, const char* entryCvar);
+    void AddPage(MenuPage page);
     void AddSearchWidget(SearchWidget widget);
     std::unordered_map<uint32_t, disabledInfo>& GetDisabledMap();
 
@@ -38,7 +39,11 @@ class Menu : public GuiWindow {
     uint32_t mWindowFlags;
     std::unordered_map<std::string, MainMenuEntry> menuEntries;
     std::vector<std::string> menuOrder;
+    std::vector<MenuPage> menuPages;
     uint32_t DrawSearchResults(std::string& menuSearchText);
+    void DrawTabContent(const MenuTab& tab, UIWidgets::Colors accent);
+    void DrawWidgetColumns(SidebarEntry& sidebar, UIWidgets::Colors accent);
+    void DrawGroupedWidgets(SidebarEntry& sidebar, UIWidgets::Colors accent);
     ImGuiTextFilter menuSearch;
     uint8_t searchSidebarIndex;
     UIWidgets::Colors defaultThemeIndex;

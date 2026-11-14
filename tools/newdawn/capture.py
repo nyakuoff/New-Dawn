@@ -60,7 +60,9 @@ point('stone_tower_inverted', 0x2a00, 0, (0, -210, 810), 23082, 'Z2_INISIE_R spa
 DEFAULT_ATTRACT = "20,48,76"
 # A fresh 8:00-day-1 save plays story/entrance cutscenes in several scenes; these existing enhancements skip
 # them so the capture lands in gameplay.  Applied to both builds being compared; override with --cvar.
-DEFAULT_CVARS = {"gEnhancements.Cutscenes.SkipEntranceCutscenes": 1, "gEnhancements.Cutscenes.SkipStoryCutscenes": 1}
+DEFAULT_CVARS = {"gEnhancements.Cutscenes.SkipEntranceCutscenes": 1, "gEnhancements.Cutscenes.SkipStoryCutscenes": 1,
+                 # the generated config counts as an existing install: don't show the first-run notice over captures
+                 "gNewDawn.Setup.Version": 1}
 RUN_FILES_SKIP = {"2ship2harkinian.json", "imgui.ini", "logs", "mods", "captures", "Save", "gamecontrollerdb.txt"}
 
 
@@ -166,16 +168,19 @@ def parse_cvar(s):
     return k, v
 
 
-def preset_cvars():
-    """The New Dawn preset, read from the sNewDawnPresetCvars table so captures can't drift from the menu.
-    Entries flagged as floats stay floats; on/off and integer settings must be ints or the game ignores them."""
-    src = (Path(__file__).resolve().parents[2] / "mm/2s2h/BenGui/BenMenu.cpp").read_text()
-    table = src[src.index("sNewDawnPresetCvars[] = {"):]
+def preset_cvars(tier=0):
+    """The New Dawn preset, read from the kRows table in NewDawnPresets.cpp so captures can't drift from the menu.
+    tier: 0 Ultra, 1 High, 2 Medium, 3 Low, 4 Original look. Float rows stay floats; on/off and integer rows must be
+    ints or the game ignores them."""
+    src = (Path(__file__).resolve().parents[2] / "mm/2s2h/BenGui/NewDawnPresets.cpp").read_text()
+    table = src[src.index("const Row kRows[] = {"):]
     table = table[:table.index("};")]
     out = []
-    for name, is_float, value in re.findall(r'\{\s*"([^"]+)",\s*(true|false),\s*([-0-9.]+)f', table):
-        if not name.endswith("Debug.View"):
-            out.append((name, float(value) if is_float == "true" else int(float(value))))
+    for name, kind, vals in re.findall(r'\{\s*"([^"]+)",\s*([IF]),\s*\{([^}]*)\}', table):
+        if name.endswith("Debug.View"):
+            continue
+        v = float(vals.split(",")[tier].strip().rstrip("f"))
+        out.append((name, v if kind == "F" else int(v)))
     return out
 
 
@@ -285,13 +290,14 @@ def main():
     ap.add_argument("--height", type=int, default=1080)
     ap.add_argument("--cvar", action="append", default=[], type=parse_cvar, metavar="NAME=VALUE",
                     help="console variable merged into the generated config, e.g. gEnhancements.Graphics.DisableBlackBars=1 (repeatable)")
-    ap.add_argument("--preset", action="store_true", help="apply the New Dawn graphics preset from BenMenu.cpp (later --cvar options override it)")
+    ap.add_argument("--preset", action="store_true", help="apply the New Dawn (Ultra) graphics preset from NewDawnPresets.cpp (later --cvar options override it)")
     ap.add_argument("--mods", metavar="DIR", help="link the .o2r/.otr archives of DIR into each run's mods/ and enable them (sorted by filename). Default: no mods, even if <bin-dir>/mods has some")
     ap.add_argument("--list", action="store_true", help="list capture points and exit")
     ap.add_argument("--compare", nargs=2, metavar=("DIR_A", "DIR_B"), help="write labelled side-by-side images of two capture directories into --out")
     a = ap.parse_args()
     if a.preset:
-        a.cvar = preset_cvars() + a.cvar
+        # the looks no longer touch asset mods (the player's choice); captures that link mods still want them on
+        a.cvar = preset_cvars() + ([("gEnhancements.Mods.AlternateAssets", 1)] if a.mods else []) + a.cvar
 
     if a.list:
         for n, (w, src, _) in POINTS.items():

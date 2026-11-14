@@ -290,7 +290,7 @@ void ModMenuWindow::DrawElement() {
 
     ImGui::TextColored(
         UIWidgets::ColorValues.at(UIWidgets::Colors::Yellow),
-        "Mods are currently not reloaded at runtime. Close and re-open 2Ship for the changes to take effect.\n"
+        "Mods are currently not reloaded at runtime. Close and re-open New Dawn for the changes to take effect.\n"
         "Drag ordering for the enabled list is available.\nMod priority is top to bottom. They override mods listed "
         "below them.");
 
@@ -328,7 +328,7 @@ void ModMenuWindow::DrawElement() {
         if (UIWidgets::Button("Apply & Close",
                               UIWidgets::ButtonOptions().Size(UIWidgets::Sizes::Inline).Color(THEME_COLOR))) {
             BenGui::RegisterPopup("Apply & Close",
-                                  "Application currently requires a restart. Save the mod info and close 2S2H?",
+                                  "Application currently requires a restart. Save the mod info and close New Dawn?",
                                   "Close", "Cancel", [&]() {
                                       // TODO: runtime changes
                                       SetEnabledModsCVarValue();
