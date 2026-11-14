@@ -21,13 +21,14 @@ Preset*). Each feature has its own toggle in the same menu.
 | Area | What you get |
 |---|---|
 | **HDR and colour** | A linear HDR pipeline with a hue-preserving tonemap and filmic grade, an art-directed colour grade per area and time of day, and an optional texture recolour pass for muddy or garish textures. |
-| **Sky** | A physical sky with volumetric clouds that follow the in-game clock; warm dawns and dusks; special skies for the final day, cursed Ikana and the poisoned swamp; and an overcast snow sky. Sky-driven ambient light and reflections keep the world consistent with the sky. |
+| **Sky** | A physical sky with volumetric clouds that follow the in-game clock; warm dawns and dusks; special skies for the final day (an intensifying storm under the Moon), cursed Ikana and the poisoned swamp, also in cutscenes; and an overcast snow sky. Sky-driven ambient light and reflections keep the world consistent with the sky. |
 | **Lighting** | Real-time sun shadows with 4 cascades out to about 7,000 units; shadows from foliage, fences and grass; screen-space bounce light (GI) with colour bleeding; per-pixel lighting with character rim and specular light; and dynamic flickering light from torches, lamps and flames, with darker, moodier nights and interiors. |
+| **Grass** | Dense, render-only 3D grass on grassy ground that sways in the wind and is lit like the world (no collision change). |
 | **Atmosphere** | Volumetric fog and haze, screen-space sun rays through trees, a textured lens flare, sunlit dust motes, pollen, fireflies and drifting leaves, plus a shared gusting wind that sways foliage and drives clouds and particles. |
 | **Weather** | Soft sky-lit rain sheltered under roofs, splash rings, wet reflective ground that lingers after rain, and softer snow. |
 | **Water** | Per-area art-directed water colour, sharp reflections of geometry and the sky, Fresnel and sun glints, shoreline foam, refraction with depth absorption, caustics on seabeds, and an underwater view with fog, light shafts and particles. |
 | **Materials** | Generated normal, roughness and height maps for about 2,200 world textures, with GGX highlights and parallax occlusion mapping, so brick, cobble and stone have real depth. |
-| **Effects** | Redrawn fire (an animated flipbook rendered from a fluid simulation) with embers and light, soft glows, dust, sparks, bomb explosions and candles. |
+| **Effects** | Redrawn fire (an animated flipbook rendered from a fluid simulation) with embers and light, soft glows, dust, sparks, bomb explosions, candles, and fire/ice/light arrows. |
 | **Image quality** | 4× MSAA with alpha-to-coverage for foliage edges, mipmaps with 16× anisotropic filtering, and async HD texture loading. |
 | **3DS geometry (experimental)** | An optional switch that draws the *Majora's Mask 3D* room geometry in 18 scenes, converted from your own 3DS dump with a clean-room tool. Off by default and not part of the preset. |
 
