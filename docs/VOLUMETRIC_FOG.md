@@ -1,5 +1,9 @@
 # Volumetric height fog (E2)
 
+**Follow-up 2026-11-14:** three dusk-shaft attempts were rejected and reverted. The cheapest candidate
+ran at 0.50 ms but still did not show distinct shafts. See the [renderer investigation](../libultraship/docs/NEW_DAWN_FOLLOWUPS.md)
+for source findings, failed-view limitations and labelled local comparisons. No fog rendering change was retained.
+
 `gNewDawn.Fog.Volumetric`: default **0**, preset **1**. Outdoor fog requires active HDR and Sun Shadows; the Woodfall Temple path requires HDR only. No gameplay/environment state is written.
 
 The opaque-end HDR pass integrates Beer–Lambert extinction and single scattering over 24 jittered steps at

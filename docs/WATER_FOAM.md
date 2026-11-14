@@ -1,5 +1,9 @@
 # Water foam, refraction and restyle
 
+**Follow-up 2026-11-14:** dusk SSR-speck reproduction stopped after three failed attempts on current main.
+No water/filter change was retained and no fix is claimed. See the [renderer investigation](../libultraship/docs/NEW_DAWN_FOLLOWUPS.md)
+for the tested views and capture limitations.
+
 Visual-only OpenGL water extension, based on main `bf1c48e68` / libultraship `33c48852`.
 
 ## Controls and rendering
