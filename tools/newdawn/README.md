@@ -4,7 +4,7 @@
 game with no input, screenshots fixed spots, kills its own process tree and exits. Run from the repo root.
 
 ```sh
-# 1. every named point (12, about 2.5 min), 1920x1080, from the frozen baseline
+# 1. every named point (18, about 3.5 min), 1920x1080, from the frozen baseline
 tools/newdawn/capture.py --bin-dir build-baseline --out /tmp/newdawn/before
 
 # 2. the same against a new build, optionally with a setting changed
@@ -269,3 +269,22 @@ existing lighting regression prevents visual approval. The final log scan covers
 with zero logged GL/null-texture errors. No gameplay, animation, engine or shader
 source was modified; interactive gameplay regression coverage remains limited to
 these private capture runs.
+
+## Art-directed albedo recolour
+
+`recolor.py` applies the explicit environment-only shortlist in `recolor.json` to a local HD archive.
+It requires NumPy; `--preview` also needs Pillow. Source and derived art must remain private and outside
+this repository. See [ART_DIRECTION.md](../../docs/ART_DIRECTION.md) for recipes, local commands,
+archive order, visual evidence and limitations.
+
+```sh
+python3 tools/newdawn/recolor.py --self-check
+python3 tools/newdawn/recolor.py --pack /path/to/4K.o2r --base /path/to/mm.o2r \
+    --out /private/mods/zy-newdawn-recolor.o2r
+```
+
+Regenerate material companions from the final albedo: add
+`--overlay-pack /private/mods/zy-newdawn-recolor.o2r` to the existing `materials.py` generation command.
+Repeat `--overlay-pack` in archive load order if there are several overrides; the last matching entry wins.
+Unchanged source content reuses the existing material cache. Old companions for changed albedos fail the
+renderer's source fingerprint check.

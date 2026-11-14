@@ -368,6 +368,19 @@ def self_check():
         write_source(101)
         changed = generate_one(task)
         assert not changed[2] and first[1]["source_sha256"] != changed[1]["source_sha256"]
+        overlay = root/"recolor.o2r"
+        with zipfile.ZipFile(overlay, "w") as z:
+            z.writestr("alt/unrelated", b"ignored")
+        overlay_task = task + ([str(overlay)],)
+        assert generate_one(overlay_task)[1] == changed[1]  # absent override falls back to pack
+        override = encode_texture(Texture(8, 8, 1, 1, 1, 1, bytes([105, 110, 125, 255])*64))
+        with zipfile.ZipFile(overlay, "w") as z:
+            z.writestr("alt/"+item["resource"], override)
+        recoloured = generate_one(overlay_task)
+        assert not recoloured[2] and generate_one(overlay_task)[2]
+        assert recoloured[1]["source_sha256"] == hashlib.sha256(override).hexdigest()
+        assert recoloured[1]["source_pixels_fnv1a64"] == pixel_fingerprint(decode_texture(override).pixels)
+        assert generate_one(task + ([str(overlay), str(pack)],))[1] == changed[1]  # last wins
     if np is not None:
         with tempfile.TemporaryDirectory() as tmp:
             pack = Path(tmp)/"classification.o2r"
@@ -458,16 +471,25 @@ def classify(args):
 
 
 def generate_one(task):
-    pack, item, divisor, cache, stdlib = task
+    pack, item, divisor, cache, stdlib, *extra = task
+    overlays = extra[0] if extra else []
     global np
     if stdlib:
         np = None
     resource = item["resource"]
-    with zipfile.ZipFile(pack) as source:
-        entry = "alt/"+resource
-        if source.namelist().count(entry) != 1:
-            raise ValueError(f"expected exactly one source entry: {entry}")
-        raw = source.read(entry)
+    entry = "alt/"+resource
+    raw = None
+    # Match the renderer's last-archive-wins albedo, so companion fingerprints and height maps stay valid.
+    for path in reversed([pack] + overlays):
+        with zipfile.ZipFile(path) as source:
+            count = source.namelist().count(entry)
+            if count > 1:
+                raise ValueError(f"expected exactly one source entry: {entry}")
+            if count == 1:
+                raw = source.read(entry)
+                break
+    if raw is None:
+        raise ValueError(f"missing source entry: {entry}")
     source_hash = hashlib.sha256(raw).hexdigest()
     key = hashlib.sha256(json.dumps([VERSION, source_hash, item["recipe"], divisor], sort_keys=True).encode()).hexdigest()
     target = Path(cache) / (key+".zip")
@@ -545,10 +567,13 @@ def run(args):
     metadata = {"generator": "newdawn-materials", "version": VERSION,
                 "source_archive": args.pack.name, "resolution_divisor": args.resolution,
                 "materials": []}
+    if args.overlay_pack:
+        metadata["overlay_archives"] = [p.name for p in args.overlay_pack]
     hits = 0
     results = []
     with ProcessPoolExecutor(max_workers=args.jobs) as pool:
-        tasks = ((str(args.pack), item, args.resolution, str(cache), args.stdlib) for item in materials)
+        tasks = ((str(args.pack), item, args.resolution, str(cache), args.stdlib,
+                  [str(p) for p in args.overlay_pack]) for item in materials)
         for index, result in enumerate(pool.map(generate_one, tasks, chunksize=1)):
             results.append(result)
             hits += result[2]
@@ -582,6 +607,8 @@ def run(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pack", type=Path, help="local ZIP-backed texture pack .o2r")
+    parser.add_argument("--overlay-pack", type=Path, action="append", default=[],
+                        help="albedo override archive; repeat in load order (last wins), e.g. recolour output")
     parser.add_argument("--manifest", type=Path, default=Path(__file__).with_name("materials.json"))
     parser.add_argument("--out", type=Path, help="private output directory outside the repository (required)")
     parser.add_argument("--resolution", type=int, choices=(1, 2), default=2, help="axis divisor; default half axes")
