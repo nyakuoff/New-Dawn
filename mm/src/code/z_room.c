@@ -656,9 +656,9 @@ void Room_Draw(PlayState* play, Room* room, u32 flags) {
     if (room->segment != NULL) {
         gSegments[3] = OS_K0_TO_PHYSICAL(room->segment);
         bool mm3d = NewDawnMM3D_BeginRoom(play, room, flags);
-        NewDawnHDR_WindScope(play, true);
+        NewDawnHDR_WindScope(play, true, true);
         sRoomDrawHandlers[room->roomShape->base.type](play, room, flags);
-        NewDawnHDR_WindScope(play, false);
+        NewDawnHDR_WindScope(play, false, true);
         if (mm3d) {
             NewDawnMM3D_EndRoom(play, room, flags);
         }

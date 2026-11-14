@@ -47,3 +47,15 @@
   (as the MM3D track already does with its own geometry) or changing game culling, which is out of scope; not done.
 - Sphere-fit wastes some tile area on wide frustums; far-cascade texels are about one pixel at the far end of the cascade (≈8 world units at 7000).
 - The shaft march (Mode 0) still uses `Shadows.Radius` for its length and density.
+
+## Smooth sun motion (fix #82, 2026-11-14)
+Shadows used to teleport: the game stores the light direction as `s8` (steps of 1/120, about 0.5 degrees), so the sun, and with it every
+shadow, moved in jumps (a 0.5 degree step moves a shadow 7000 units away by about 60 units). `NewDawnSunDirection`
+(NewDawnPostFx.cpp) re-evaluates the formula of `Environment_UpdateLights` (`-sin(t-12h)*120, cos*120, cos*20`) from the clock without
+the truncation when time-of-day lighting is active and the result matches the stored direction within 1 step; otherwise the stored
+value is used. Read-only; `gNewDawn.Shadows.SmoothSun` (default 1) switches back. Texel snapping of the cascade centres is unchanged
+and does not step: the snap is relative to the continuously rotating light basis.
+Verified with an accelerated clock (`run.py --clock 7 --clock-rate 0.04`, South Clock Town, shadow-mask burst): the fraction of pixels that
+change between frames alternates 2.4% / 11.1% / 1.5% / 1.4% / 1.4% before and falls steadily 12.0 -> 3.7% after; a shadow edge holds for
+5-8 frames and then jumps 2-3 px before, and moves 1 px at a time after (`showcase/fix-82/shadow-mask-timelapse-*.png`).
+Not covered: the water glints and the grass sun still read the stored direction.

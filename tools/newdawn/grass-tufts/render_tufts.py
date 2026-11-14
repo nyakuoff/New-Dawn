@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Self-rendered grass tuft cards for gNewDawn.Grass.* (no third-party art).
 
-Writes a 2x2 atlas (1024x1024 RGBA, 512x512 cells). Each cell is one tuft seen from the side, base centred on the bottom
+Writes a 2x2 atlas (default 1024x1024 RGBA, 512x512 cells). Each cell is one tuft seen from the side, base centred on the bottom
 edge. RGB is a neutral shading value (dark ambient-occluded base -> bright tips, pale midrib, small per-blade tint drift)
-that the shader multiplies with the ground colour; A is coverage.   python3 render_tufts.py OUT.png [seed]
+that the shader multiplies with the ground colour; A is coverage.   python3 render_tufts.py OUT.png [seed] [cell]
+(cell = 1024 writes the 2048x2048 atlas the game ships since #83: crisper blades at 1:1)
 """
 import sys
 import numpy as np
 from PIL import Image, ImageDraw
 
-CELL, SS = 512, 4          # cell size and supersampling
+CELL = int(sys.argv[3]) if len(sys.argv) > 3 else 512
+SS = 4 if CELL <= 512 else 3  # cell size and supersampling
 rng = np.random.default_rng(int(sys.argv[2]) if len(sys.argv) > 2 else 7)
 
 
@@ -73,7 +75,7 @@ def tuft(blades, spread, hmin, hmax, wmin, wmax, curl):
     valid = (alpha[..., 0] > 0.02)
     acc, cnt = np.zeros_like(rgb), valid.astype(np.float32)
     acc[valid] = rgb[valid]
-    for _ in range(14):
+    for _ in range(14 * CELL // 512):
         k = np.zeros_like(cnt)
         a2 = np.zeros_like(acc)
         for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):

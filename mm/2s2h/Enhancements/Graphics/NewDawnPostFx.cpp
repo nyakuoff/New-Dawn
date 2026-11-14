@@ -8,10 +8,38 @@
 extern "C" {
 #include "global.h"
 #include "overlays/actors/ovl_En_Arrow/z_en_arrow.h"
+s32 Environment_IsSceneUpsideDown(PlayState* play);
 }
 
 static float NewDawnClampF(float value, float low, float high) {
     return (value < low) ? low : ((value > high) ? high : value);
+}
+
+// Unit vector towards the sun. The game stores the light direction as s8 (steps of 1/120, about 0.5 degrees), so the
+// stored value jumps and the whole shadow set teleports with it (a 0.5 degree step moves a far shadow by ~60 units).
+// Under time-of-day lighting the game derives it from the clock with the formula in Environment_UpdateLights; evaluate
+// the same formula without the s8 truncation. If the stored value disagrees (blending, overrides) it is used as is.
+// Read-only: nothing is written back to the game.
+static bool NewDawnSunDirection(PlayState* play, float out[3]) {
+    const LightDirectional* sun = &play->envCtx.dirLight1.params.dir;
+    float v[3] = { (float)sun->x, (float)sun->y, (float)sun->z };
+    if (CVarGetInteger("gNewDawn.Shadows.SmoothSun", 1) && play->envCtx.lightMode == LIGHT_MODE_TIME &&
+        play->envCtx.lightSettingOverride == LIGHT_SETTING_OVERRIDE_NONE) {
+        u16 time = CURRENT_TIME + (Environment_IsSceneUpsideDown(play) ? CLOCK_TIME(12, 0) : 0);
+        s16 angle = (u16)(time - CLOCK_TIME(12, 0));
+        float exact[3] = { -(Math_SinS(angle) * 120.0f), Math_CosS(angle) * 120.0f, Math_CosS(angle) * 20.0f };
+        if (fabsf(exact[0] - v[0]) < 1.01f && fabsf(exact[1] - v[1]) < 1.01f && fabsf(exact[2] - v[2]) < 1.01f) {
+            v[0] = exact[0], v[1] = exact[1], v[2] = exact[2];
+        }
+    }
+    float len = sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    if (len < 0.001f) {
+        return false;
+    }
+    for (int i = 0; i < 3; i++) {
+        out[i] = v[i] / len;
+    }
+    return true;
 }
 
 static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params) {
@@ -26,14 +54,10 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     }
 
     const LightDirectional* sun = &play->envCtx.dirLight1.params.dir;
-    Vec3f dir = { (f32)sun->x, (f32)sun->y, (f32)sun->z };
-    float len = sqrtf(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-    if (len < 0.001f) {
+    Vec3f dir;
+    if (!NewDawnSunDirection(play, &dir.x)) {
         return;
     }
-    dir.x /= len;
-    dir.y /= len;
-    dir.z /= len;
 
     // Fade out at night and close to the horizon; the moon is a later pass.
     float horizonFade = NewDawnClampF((dir.y - 0.03f) / 0.25f, 0.0f, 1.0f);
@@ -754,11 +778,18 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
     }
 }
 
+// Enclosed scenes (the game's own "indoors" restriction set: no Song of Storms or Double Time) with a time-of-day light
+// mode still exist, e.g. the Mayor's Residence. They get no grass and no room-geometry sway.
+static bool NewDawnSceneIsIndoors(PlayState* play) {
+    return play->envCtx.lightMode != LIGHT_MODE_TIME ||
+           (play->interfaceCtx.restrictions.songOfStorms == 3 && play->interfaceCtx.restrictions.songOfDoubleTime == 3);
+}
+
 // Render-only 3D grass on grass-textured ground. Reads the player's position and the sun; changes nothing.
 static void NewDawnFillGrassParams(PlayState* play, NewDawnPostFxParams* params) {
     // Outdoor time-of-day scenes only: interiors reuse "grass"-coloured rugs, planters and moss.
     params->grassEnabled = CVarGetInteger("gNewDawn.Grass.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0) &&
-                           play->envCtx.lightMode == LIGHT_MODE_TIME;
+                           !NewDawnSceneIsIndoors(play);
     if (!params->grassEnabled) {
         return;
     }
@@ -830,12 +861,19 @@ extern "C" void NewDawnHDR_WeatherScope(PlayState* play, int begin) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-extern "C" void NewDawnHDR_WindScope(PlayState* play, int begin) {
+extern "C" void NewDawnHDR_WindScope(PlayState* play, int begin, int room) {
     if (!CVarGetInteger("gNewDawn.Atmos.Wind", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    // Room geometry only sways outdoors (and then only plant textures); foliage actors keep their own scope anywhere.
+    if (room && NewDawnSceneIsIndoors(play)) return;
     static NewDawnPostFxParams sUnused; // the command only needs a non-null pointer
     OPEN_DISPS(play->state.gfxCtx);
-    gSPNewDawnPostFx(POLY_OPA_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END, &sUnused);
-    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END, &sUnused);
+    const int stage = begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END;
+    Gfx* opa = POLY_OPA_DISP++;
+    gSPNewDawnPostFx(opa, stage, &sUnused);
+    opa->words.w0 |= (uint32_t)(room != 0) << NEWDAWN_POSTFX_WIND_ROOM_SHIFT;
+    Gfx* xlu = POLY_XLU_DISP++;
+    gSPNewDawnPostFx(xlu, stage, &sUnused);
+    xlu->words.w0 |= (uint32_t)(room != 0) << NEWDAWN_POSTFX_WIND_ROOM_SHIFT;
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
