@@ -176,7 +176,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Sky.Strength", true, 1.0f, 1.0f },
     { "gNewDawn.Sky.Ambient", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Reflections", false, 1.0f, 0.0f },
-    { "gNewDawn.Sky.Special", false, 0.0f, 0.0f },
+    { "gNewDawn.Sky.Special", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Clouds", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Coverage", true, 0.55f, 0.55f },
     { "gNewDawn.Sky.CloudStrength", true, 1.0f, 1.0f },
