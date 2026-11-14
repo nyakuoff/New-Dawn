@@ -183,6 +183,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Atmos.Particles", false, 1.0f, 0.0f },
     { "gNewDawn.Atmos.Weather", false, 1.0f, 0.0f },
     { "gNewDawn.Atmos.Wind", false, 1.0f, 0.0f },
+    // Render-only HD fire, glows, embers, dust and spark sprites (CC0 art, see docs/VFX.md).
+    { "gNewDawn.Vfx.Enabled", false, 1.0f, 0.0f },
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
@@ -904,6 +906,17 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Atmos.Wind")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Gusting wind shared by clouds, ambient particles and new rain/snow; foliage sways and its shadows follow."));
+    AddWidget(path, "HD Fire, Embers and Glows (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Vfx.Enabled")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Replaces the low-resolution torch/brazier flames and light glows with HD HDR sprites and rising embers. "
+            "Render-only; effects keep their game-driven positions and timing. Requires HDR."));
+    AddWidget(path, "Effect Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Vfx.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Ember Density: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Vfx.Embers")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
     AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Atmos.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
