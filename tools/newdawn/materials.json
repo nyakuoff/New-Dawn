@@ -22,7 +22,7 @@
           0.72,
           0.95
         ],
-        "relief": 0.85
+        "relief": 1.0
       },
       "class": "stone"
     },
@@ -37,7 +37,7 @@
           0.7,
           0.94
         ],
-        "relief": 0.85
+        "relief": 1.0
       },
       "class": "stone"
     },
@@ -52,7 +52,7 @@
           0.7,
           0.93
         ],
-        "relief": 0.85
+        "relief": 1.0
       },
       "class": "stone"
     },
@@ -108,7 +108,7 @@
         0.8,
         0.98
       ],
-      "relief": 0.6
+      "relief": 0.4
     },
     "wood": {
       "height_scale": 0.008,
@@ -118,7 +118,7 @@
         0.74,
         0.96
       ],
-      "relief": 0.5
+      "relief": 0.35
     },
     "dirt": {
       "height_scale": 0.003,
@@ -128,7 +128,7 @@
         0.87,
         0.99
       ],
-      "relief": 0.35
+      "relief": 0.25
     },
     "grass": {
       "height_scale": 0.002,
@@ -148,7 +148,7 @@
         0.88,
         0.99
       ],
-      "relief": 0.15
+      "relief": 0.1
     },
     "metal": {
       "height_scale": 0.004,
@@ -168,7 +168,7 @@
         0.65,
         0.92
       ],
-      "relief": 0.5
+      "relief": 0.3
     },
     "wet": {
       "height_scale": 0.005,
@@ -178,7 +178,7 @@
         0.55,
         0.85
       ],
-      "relief": 0.2
+      "relief": 0.15
     },
     "other": {
       "height_scale": 0.003,
@@ -188,7 +188,7 @@
         0.87,
         0.99
       ],
-      "relief": 0.1
+      "relief": 0.08
     }
   }
 }

@@ -25,7 +25,7 @@ try:
 except ImportError:
     np = None
 
-VERSION = "1.4.0"
+VERSION = "1.6.0"
 TEXTURE_TYPE = 0x4F544558
 EXPANDED_TYPES = {1, 2, 5, 6, 7, 8, 9}
 # "relief" (0..1) is the parallax depth range stored in the roughness map's G channel (0.5 = flat).

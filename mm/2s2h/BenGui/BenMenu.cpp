@@ -1052,7 +1052,7 @@ void BenMenu::AddSettings() {
             "Needs a material archive generated with relief heights. Costs GPU time on close walls."));
     AddWidget(path, "Parallax Depth: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Materials.ParallaxScale")
-        .Options(FloatSliderOptions().Min(0.0f).Max(0.1f).Step(0.0025f).Format("%.3f").DefaultValue(0.04f).Tooltip(
+        .Options(FloatSliderOptions().Min(0.0f).Max(0.2f).Step(0.0025f).Format("%.3f").DefaultValue(0.07f).Tooltip(
             "Relief depth as a fraction of the texture's world size."));
 
     AddWidget(path, "Shadows", WIDGET_SEPARATOR_TEXT);
