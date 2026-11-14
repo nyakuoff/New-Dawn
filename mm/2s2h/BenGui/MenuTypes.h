@@ -139,6 +139,8 @@ struct WidgetInfo {
     bool isHidden = false;
     bool sameLine = false;
     bool hideInSearch = false;
+    // New Dawn: collapsible group this widget belongs to on a `grouped` sidebar (set from WidgetPath::group).
+    std::string group = "";
 
     WidgetInfo& CVar(const char* cVar_) {
         cVar = cVar_;
@@ -231,6 +233,7 @@ struct WidgetPath {
     std::string sectionName;
     std::string sidebarName;
     SectionColumns column;
+    std::string group = "";
 };
 
 // `disabledInfo` holds information on reasons for hiding or disabling a widget, as well as an evaluation lambda that
@@ -272,9 +275,31 @@ struct disabledInfo {
 // separation, 1-3), and nested vectors of the widgets, grouped by column (columnWidgets). The number of widget vectors
 // added to the column groups does not need to match the specified columnCount, e.g. you can have one vector added to
 // the sidebar, but still separate the window into 3 columns and display only in the first column
+// `grouped` draws widgets under collapsible headers by WidgetInfo::group instead of per-separator cards, and
+// `plain` skips the card wrapper for pages that lay out their own content (about, presets, custom widgets).
 struct SidebarEntry {
     uint32_t columnCount;
     std::vector<std::vector<WidgetInfo>> columnWidgets;
+    bool grouped = false;
+    bool plain = false;
+    std::vector<std::string> groupOrder = {};
+};
+
+// New Dawn menu pages: the left rail lists pages; a page's tabs each show one sidebar of widgets that other
+// modules register against the (entry, sidebar) names, so they keep working unchanged.
+struct MenuTab {
+    std::string label;
+    std::string entry;
+    std::string sidebar;
+};
+
+struct MenuPage {
+    std::string id;
+    std::string label;
+    const char* icon;
+    std::vector<MenuTab> tabs;
+    bool devOnly = false;
+    bool dividerBefore = false;
 };
 
 struct SearchWidget {

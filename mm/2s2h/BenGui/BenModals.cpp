@@ -4,6 +4,7 @@
 #include <string>
 #include "UIWidgets.hpp"
 #include "BenGui.hpp"
+#include "NewDawnTheme.h"
 
 struct BenModal {
     std::string title_;
@@ -27,6 +28,7 @@ void BenModalWindow::Draw() {
 }
 
 void BenModalWindow::DrawElement() {
+    NewDawn::Theme::ReplayDebugClicks();
     if (modals.size() > 0) {
         BenModal curModal = modals.at(0);
         if (!ImGui::IsPopupOpen(curModal.title_.c_str())) {

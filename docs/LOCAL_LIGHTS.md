@@ -76,3 +76,17 @@ p95, before to after): Lost Woods .0142/.0041/.0090/.0298 to .0144/.0029/.0091/.
 - Tatl and other white game lights light their surroundings too (they are point lights).
 - Transparent (XLU) surfaces drawn after the opaque-end marker are not lit or darkened.
 - Not run: Ikana Castle (no capture point); the Ikana Graveyard at night has no point lights at its start.
+
+## Flicker and character softening (fix #82, 2026-11-14)
+- **Root cause of the "lights flicker around characters" report.** The game re-rolls some lights every tick (a torch sets its
+  intensity to `128 + rand * 127` at 20 Hz: white noise of up to +-33%). The pass used those values directly, so every surface the
+  light reaches strobed, and `LocalFlicker=0` did not help (the cvar is a float: `--cvar ...=0` is stored as an int and read as
+  the default; use `0.0`). `RunLocalLights` now low-passes each light's colour and radius (about 0.6 s, wall clock, keyed on the
+  light's position in 8-unit cells; a new or returning light starts at its current value) before the designed flicker.
+  The designed flicker is also calmer (warm +-12% instead of +-18%, the 5 Hz term weighs 10%).
+  South Clock Town torch, 16-shot burst, luminance variation of the scene (std / mean of mean luma): 3.60% -> 1.52%; floor region
+  frame-to-frame difference 0.0143 -> 0.0091; the same scene with `Lighting.Local=0` is 0.75%.
+- **Characters.** The second (stencil) draw uses a smoothed normal: the 1-pixel depth normal averaged with 3- and 6-pixel
+  footprints, and a wider wrap (0.7 instead of 0.3), so a torch rolls over a body instead of snapping between triangles.
+- `gNewDawn.Lighting.LocalSmooth` (default 1) turns the filter, the soft normal and the calmer flicker off for A/B comparisons.
+- GPU, stage 16, South Clock Town torch: 0.275 -> 0.273 ms.

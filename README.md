@@ -15,8 +15,8 @@ of Majora's Mask, and of its renderer [libultraship](https://github.com/Kenix3/l
 
 ## What New Dawn changes
 
-Everything below is on in the **New Dawn preset** (**Esc** → Settings → Graphics → New Dawn → *Apply New Dawn
-Preset*). Each feature has its own toggle in the same menu.
+Everything below is on in the **Ultra** look, which a fresh install starts with. Pick another look in **Esc → Graphics →
+Quality** (Ultra, High, Medium, Low, or *Original look*); every feature also has its own toggle under *Graphics → Advanced*.
 
 | Area | What you get |
 |---|---|
@@ -32,7 +32,7 @@ Preset*). Each feature has its own toggle in the same menu.
 | **Image quality** | 4× MSAA with alpha-to-coverage for foliage edges, mipmaps with 16× anisotropic filtering, and async HD texture loading. |
 | **3DS geometry (experimental)** | An optional switch that draws the *Majora's Mask 3D* room geometry in 18 scenes, converted from your own 3DS dump with a clean-room tool. Off by default and not part of the preset. |
 
-The renderer work is OpenGL-only for now. On Windows, choose OpenGL in *Settings → Graphics backend*.
+The renderer work is OpenGL-only for now. On Windows, choose OpenGL in *Display → Renderer API*.
 
 ## Getting started
 
@@ -52,9 +52,10 @@ The game is `build/mm/2s2h.elf`. On first launch it asks for your ROM and extrac
 2Ship. You can check that your dump is supported at <https://2ship.equipment/> or against
 [docs/supportedHashes.json](docs/supportedHashes.json).
 
-### 2. Turn on the New Dawn look
-Press **Esc** to open the settings menu, go to **Settings → Graphics → New Dawn**, and click **Apply New Dawn
-Preset**. *Restore Defaults* returns those settings to the original look.
+### 2. The New Dawn look
+It is on by default. A fresh install starts with the **Ultra** look; an existing 2Ship config is left alone and you are
+asked once whether to switch the look on. Press **Esc** and open **Graphics → Quality** to pick Ultra, High, Medium,
+Low or *Original look* (every New Dawn effect off, the N64 path). The menu is described in [docs/MENU.md](docs/MENU.md).
 
 ### 3. Optional: HD textures and models
 New Dawn is built and tuned around these community mods. They can't be redistributed here, so download them
@@ -79,7 +80,7 @@ These are 2Ship's defaults.
 
 | Keys | Action |
 | - | - |
-| Esc | Settings menu (New Dawn options are under Settings → Graphics) |
+| Esc | Menu (looks and effects are under Graphics) |
 | F1 | Toggle the menu bar |
 | F11 | Fullscreen |
 | Tab | Toggle alternate assets |
@@ -91,6 +92,7 @@ These are 2Ship's defaults.
 |---|---|
 | [ROADMAP.md](ROADMAP.md) | Finished, current and planned work |
 | [docs/NEW_DAWN.md](docs/NEW_DAWN.md) | Ground rules, repository layout, workflow |
+| [docs/MENU.md](docs/MENU.md) | The menu: pages, the five looks and their settings, first-run and migration |
 | [docs/STATE.md](docs/STATE.md) | Feature status, the settings behind each feature and how it was verified |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/DECISIONS.md](docs/DECISIONS.md) | How the renderer is extended, and why |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | How visual changes are tested |
@@ -112,7 +114,8 @@ New Dawn stands on [2 Ship 2 Harkinian](https://github.com/2ship2harkinian/2ship
 its contributors ([Discord](https://discord.com/invite/sxrPyuh697)), the
 [Majora's Mask decompilation](https://github.com/zeldaret/mm), and
 [libultraship](https://github.com/Kenix3/libultraship). Please direct New Dawn issues to this repository, not to
-2Ship. Third-party assets used locally are credited in their own manifests.
+2Ship. Third-party assets used locally are credited in their own manifests; the menu's fonts and art are listed in
+[docs/licenses/MENU_ASSETS.md](docs/licenses/MENU_ASSETS.md) (Cinzel and Montserrat, SIL OFL 1.1).
 
 The code is released under [CC0 1.0](LICENSE), the same as 2Ship. *The Legend of Zelda: Majora's Mask* is © Nintendo;
 New Dawn is not affiliated with or endorsed by Nintendo. We do not condone piracy.
