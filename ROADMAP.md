@@ -84,8 +84,13 @@ Status: ✅ done (in the New Dawn preset unless noted) · 🚧 in progress · �
 ## Phase 9: Menu and first run ✅
 | Feature | PRs |
 |---|---|
-| New Dawn menu: themed pages and tabs, search, wordmark and Cinzel headings; every 2Ship setting kept (`docs/MENU.md`) | |
-| Five looks (Ultra, High, Medium, Low, Original look), Ultra applied on a fresh install, one-time offer to existing configs | |
+| New Dawn menu: themed pages and tabs, search, wordmark and Cinzel headings; every 2Ship setting kept (`docs/MENU.md`) | #86 |
+| Five looks (Ultra, High, Medium, Low, Original look), Ultra applied on a fresh install, one-time offer to existing configs | #86 |
+| Mouse Look toggle: mouse free look and first-person/bow aiming | #87 |
+| Warp tab: one-click teleports to key locations, plus saved warp points | #91 |
+
+## Playtest fixes ✅
+The first full manual playtest led to fixes for washed-out darks and the opening (#93), character lighting, flicker and shadow motion (#90), grass placement and sway (#89), water puddles, reflections and splashes (#88), and the arrow and sword-trail effects (#92).
 
 ## Planned 📋
 Roughly in priority order; this will change as work lands.
@@ -99,7 +104,8 @@ Roughly in priority order; this will change as work lands.
 7. **Interior polish.** Light leaking through windows and doorways, dust in light beams, more emissive surfaces (signs, lamps, crystals).
 8. **Performance and options.** Quality tiers (low/medium/high/ultra), a performance overlay, and a pass to keep the full preset comfortably above 60 fps at 1080p on mid-range GPUs.
 9. **Other backends.** DirectX 11 and Metal ports of the OpenGL-only effects (Windows and macOS players currently need OpenGL).
-10. **Releases.** Packaged builds once the feature set stabilises.
+10. **HDR display output.** True HDR10/scRGB output for HDR monitors, off by default and opt-in by the player (the existing "HDR" is the internal lighting pipeline, which outputs normal SDR).
+11. **Releases.** Packaged builds once the feature set stabilises.
 
 ## Out of scope
 - Changes to gameplay, physics, timing, AI, schedules, cutscene sequencing, saves or animation data. Cutscene
