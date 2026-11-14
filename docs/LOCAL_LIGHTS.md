@@ -10,14 +10,15 @@ Other cvars: `.LocalStrength` (0–3, 1), `.LocalContrast` (0–1.5, 1; 0 only a
   It also derives a darkening amount from the game clock and light mode, read-only: outdoors (`LIGHT_MODE_TIME`) a smooth
   dusk/dawn ramp to 0.62 at night; interiors and dungeons (`LIGHT_MODE_SETTINGS`) a constant 0.35; zero in cutscenes.
 - `PostFxGL::RunLocalLights` runs at the opaque-end marker after AO and GI. It appends the VFX flames recorded last frame
-  that have no game light within 90 units (up to 8, warm orange, range 260), applies the flicker, and draws one
+  that have no game light within 90 units (up to 8, warm white-orange, range 195), applies the flicker, and draws one
   full-screen pass. No game shader is edited, so vertex-coloured rooms and actors are lit alike and the packaged
   `default.shader.glsl` is untouched.
 - Per pixel (depth + depth-derived normal): softened inverse-square falloff with a smooth range window (range = game
   radius × 1.3), wrapped Lambert, an 8-step screen-space contact shadow toward the light, a per-channel soft cap, and the
   scene colour's square root as the albedo proxy. The unlit scene is multiplied down by the darkening (cool, dim moon tint,
-  a 0.009 luminance floor, a soft exemption around the player) and surfaces the lights reach keep their authored
-  brightness. Dual-source blending (`GL_ONE, GL_SRC1_COLOR`) keeps MSAA samples intact.
+  a 0.009 luminance floor) and surfaces the lights reach keep their authored
+  brightness. Characters (Link, enemies, NPCs, props: the draws the character-lighting classifier flags) write stencil 1 while the
+  frame is drawn, and a second draw darkens them by only 40% of the world value. Dual-source blending (`GL_ONE, GL_SRC1_COLOR`) keeps MSAA samples intact.
 - Flicker: three sines (≈1.3, 2.9, 5.1 Hz) keyed on the light's 4-unit-quantised position and wall-clock time; warm lights
   swing up to ±18%, neutral lamps ±3%. It never touches game data.
 - No new sampler: the pass reuses the existing colour (unit 8) and depth (unit 9) lanes bound to dummies at program creation.
@@ -25,31 +26,32 @@ Other cvars: `.LocalStrength` (0–3, 1), `.LocalContrast` (0–1.5, 1; 0 only a
 ## Evidence (2026-11-14, RX 7800 XT, 1080p, MSAA 4, preset + full mods; `~/dev/ghm-mods/showcase/lights/`)
 - **Off = main.** Frozen Stock Pot Inn (clock 12, frame 30, `gMatchRefreshRate=0`, `gInterpolationFPS=20`, GI and wind off
   because their jitter is wall-clock keyed): main build (`17a6cedf4` sources) and this branch with Local=0 have the same
-  PNG SHA-256 `247b7072…`; Local=1 differs (`3a52655f…`, before the contrast work). 0 GL errors under `MESA_DEBUG=context`.
-- **GPU** (`PostFx.Debug.Stats`, stage 16, 300-run average): 0.13 ms Inn, 0.21 ms South Clock Town, 0.29 ms Great Bay Temple.
-- **Luminance** (linear, scene area without HUD; mean / p5 / p95, off → on):
-  | view (clock) | off: mean / p5 / p95 | on: mean / p5 / p95 | mean on/off |
-  | --- | --- | --- | --- |
-  | South Clock Town, torch close (00:00) | 0.0889 / 0.0051 / 0.2089 | 0.1055 / 0.0092 / 0.3125 | 1.19 |
-  | South Clock Town, wide (00:00) | 0.0567 / 0.0062 / 0.1506 | 0.0301 / 0.0072 / 0.0809 | 0.53 |
-  | Termina Field (00:00) | 0.1426 / 0.0047 / 0.5513 | 0.0641 / 0.0047 / 0.2260 | 0.45 |
-  | Ikana Canyon (00:00) | 0.1739 / 0.0338 / 0.3196 | 0.0819 / 0.0198 / 0.1913 | 0.47 |
-  | Stock Pot Inn, lamp (12:00) | 0.0330 / 0.0041 / 0.1177 | 0.0260 / 0.0042 / 0.0872 | 0.79 |
-  | Stock Pot Inn, wide (12:00) | 0.0773 / 0.0051 / 0.3672 | 0.0613 / 0.0050 / 0.3016 | 0.79 |
-  | Woodfall Temple (00:00) | 0.0498 / 0.0081 / 0.2333 | 0.0493 / 0.0081 / 0.2461 | 0.99 |
-  | Great Bay Temple (00:00) | 0.0831 / 0.0071 / 0.4091 | 0.1092 / 0.0187 / 0.3605 | 1.31 |
-  | South Clock Town torch, dusk (18:30) | 0.0500 / 0.0049 / 0.2126 | 0.0730 / 0.0072 / 0.2935 | 1.46 |
+  PNG SHA-256 `247b7072…`; Local=1 differs (`3a52655f…`, before the contrast work). 0 GL errors under `MESA_DEBUG=context`. Re-checked after merging main `cae7c2b6b` / new-dawn `6c3edb2e` (POM): Local=0 still `247b7072…` in two runs, Local=1 `97c1e82a…`, 0 GL errors. That comparison is against the earlier main build; a fresh build of the POM main was not made.
+- **GPU** (`PostFx.Debug.Stats`, stage 16, 300-run average, two stencil-split draws): 0.17 ms Inn, 0.24 ms South Clock Town, 0.31 ms Great Bay Temple.
+- **Luminance, round 2** (linear, scene area without HUD; mean / p5 / p95, off → on):
 
-  Night outdoors falls to 0.45-0.53 of the mean; the p5 floor holds (never below ~0.005). Torch-lit pools rise instead
-  (close torch +19% mean, +50% p95). Temples stay near their original key (lights offset the darkening), and dusk gets
-  brighter because the torches add to a still-bright scene.
+  | view | off | on | mean on/off |
+  | --- | --- | --- | --- |
+  | South Clock Town, torch close (00:00) | 0.0828 / 0.0050 / 0.1907 | 0.1000 / 0.0092 / 0.3086 | 1.21 |
+  | South Clock Town, wide (00:00) | 0.0565 / 0.0062 / 0.1498 | 0.0289 / 0.0072 / 0.0837 | 0.51 |
+  | Termina Field (00:00) | 0.1426 / 0.0047 / 0.5513 | 0.0553 / 0.0047 / 0.1816 | 0.39 |
+  | Stock Pot Inn, lamp | 0.0330 / 0.0041 / 0.1177 | 0.0155 / 0.0042 / 0.0417 | 0.47 |
+  | Stock Pot Inn, wide | 0.0773 / 0.0051 / 0.3672 | 0.0347 / 0.0050 / 0.1229 | 0.45 |
+  | Shop interior | 0.0650 / 0.0073 / 0.1967 | 0.0236 / 0.0069 / 0.0672 | 0.36 |
+  | Dark house interior | 0.0205 / 0.0053 / 0.0715 | 0.0123 / 0.0053 / 0.0240 | 0.60 |
+  | Woodfall Temple (00:00) | 0.0498 / 0.0081 / 0.2334 | 0.0479 / 0.0081 / 0.2495 | 0.96 |
+  | Great Bay Temple (00:00) | 0.0876 / 0.0071 / 0.4188 | 0.1162 / 0.0196 / 0.3261 | 1.33 |
+
+  Round 1 (interior darkening 0.35) left the Inn at 0.79; round 2 (0.70, lamp gain 1.5) brings it to 0.45-0.47 while the lamp
+  pool keeps its brightness. Only the Inn lamp view was recaptured after the final contact-shadow softening.
 - **Flicker burst** (16 shots, South Clock Town torch pool): ±7% around the mean, largest step 10.7% — a slow drift, no strobing.
   The measured region includes the native flame sprite.
 
 ## Limits
 - Screen-space: lights and contact shadows only see what is on screen; no cube shadow maps (stretch goal not done).
-- The player exemption is a world-space ellipsoid, so enemies and props get only the luminance floor, not an exemption.
+- The actor mask relies on the character-lighting classifier (per-pixel lighting + Characters on); unlit or classifier-missed actors get only the luminance floor. Enemies were not present in the captured views, so the mask is verified on Link and NPCs only.
 - The darkening is a per-class constant, not an adaptive exposure; a few bright interiors may read dim.
 - Tatl and other white game lights light their surroundings too (they are point lights).
 - Transparent (XLU) surfaces drawn after the opaque-end marker are not lit or darkened.
+- Clock Tower interior opens with a cutscene (no darkening by design); not captured in play.
 - Not run: Ikana Castle (no capture point); the Ikana Graveyard at night has no point lights at its start.

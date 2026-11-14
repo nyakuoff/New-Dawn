@@ -71,6 +71,9 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     params->shadowStrength = strength;
     params->shadowRadius = radius;
     params->shadowMapSize = mapSize;
+    // 1 = the single map above; 3-4 split the map into tiles that cover the view out to Distance (view-axis units).
+    params->shadowCascades = (int)NewDawnClampF((float)CVarGetInteger("gNewDawn.Shadows.Cascades", 1), 1.0f, 4.0f);
+    params->shadowDistance = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Distance", 7000.0f), 1000.0f, 12000.0f);
     params->shadowSunDir[0] = dir.x;
     params->shadowSunDir[1] = dir.y;
     params->shadowSunDir[2] = dir.z;
@@ -634,18 +637,13 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
             return t * t * (3.0f - 2.0f * t);
         };
         const float night = hour >= 12.0f ? smooth(17.5f, 19.5f, hour) : 1.0f - smooth(4.5f, 6.5f, hour);
-        float darken = play->envCtx.lightMode == LIGHT_MODE_TIME ? 0.62f * night : 0.35f;
+        const bool outdoor = play->envCtx.lightMode == LIGHT_MODE_TIME;
+        float darken = outdoor ? 0.62f * night : 0.70f;
+        params->localGain = outdoor ? 1.0f : 1.5f;
         if (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
             darken = 0.0f;
         }
         params->localDarken = darken * NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalContrast", 1.0f), 0.0f, 1.5f);
-        const Player* player = GET_PLAYER(play);
-        if (player) {
-            params->localPlayerValid = 1;
-            params->localPlayer[0] = player->actor.world.pos.x;
-            params->localPlayer[1] = player->actor.world.pos.y;
-            params->localPlayer[2] = player->actor.world.pos.z;
-        }
     }
     float scores[NEWDAWN_LOCAL_LIGHTS];
     for (float& score : scores)
