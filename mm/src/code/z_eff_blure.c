@@ -10,6 +10,7 @@
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/BenGui/CosmeticEditor.h"
+#include <libultraship/bridge/consolevariablebridge.h>
 
 void EffectBlure_AddVertex(EffectBlure* this, Vec3f* p1, Vec3f* p2) {
     EffectBlureElement* elem;
@@ -303,6 +304,40 @@ void EffectBlure_UpdateFlags(EffectBlureElement* elem) {
     }
 }
 
+// New Dawn: restyle the player's sword trail (purely cosmetic, draw-side; the swing, hitboxes and timing are untouched).
+// A thin, bright arc hugging the blade tip: the hilt-side edge is pulled toward the tip and faded, the alpha falls off
+// faster than linear with the trail's age, and the colour is a per-sword tint (Kokiri cool white, Razor silver-blue, Gilded pale
+// gold) instead of the flat white/grey ribbon. Spin attacks (curved native arc) are left untouched.
+static void EffectBlure_RestylePlayerSword(EffectBlure* this, Vec3s* hilt, Vec3s* tip, Color_RGBA8* tipColor,
+                                           Color_RGBA8* hiltColor) {
+    static const u8 sTint[3][3] = { { 232, 242, 255 }, { 190, 212, 245 }, { 255, 238, 185 } };
+    Player* player;
+    s32 sword;
+
+    if (!CVarGetInteger("gNewDawn.Vfx.Enabled", 0) || !CVarGetInteger("gNewDawn.Vfx.SwordTrail", 1) || gPlayState == NULL || this->drawMode != EFF_BLURE_DRAW_MODE_SMOOTH) {
+        return;
+    }
+    player = GET_PLAYER(gPlayState);
+    if (player == NULL || (this != Effect_GetByIndex(player->meleeWeaponEffectIndex[0]) &&
+                           this != Effect_GetByIndex(player->meleeWeaponEffectIndex[1]))) {
+        return;
+    }
+    sword = player->heldItemAction - PLAYER_IA_SWORD_KOKIRI;
+    if (sword < 0 || sword > 2 || player->meleeWeaponAnimation >= PLAYER_MWA_SPIN_ATTACK_1H) {
+        return; // not a sword, or a (great) spin attack: those keep the native curved arc
+    }
+    hilt->x = tip->x + (hilt->x - tip->x) * 3 / 5;
+    hilt->y = tip->y + (hilt->y - tip->y) * 3 / 5;
+    hilt->z = tip->z + (hilt->z - tip->z) * 3 / 5;
+    tipColor->a = (tipColor->a * (tipColor->a + 255)) / 510;
+    hiltColor->a = (hiltColor->a * hiltColor->a) / 255 / 2;
+    {
+        tipColor->r = hiltColor->r = sTint[sword][0];
+        tipColor->g = hiltColor->g = sTint[sword][1];
+        tipColor->b = hiltColor->b = sTint[sword][2];
+    }
+}
+
 void EffectBlure_GetComputedValues(EffectBlure* this, s32 index, f32 ratio, Vec3s* vec1, Vec3s* vec2,
                                    Color_RGBA8* color1, Color_RGBA8* color2) {
     Vec3s sp30;
@@ -438,6 +473,8 @@ void EffectBlure_GetComputedValues(EffectBlure* this, s32 index, f32 ratio, Vec3
         color2->b = EffectSs_LerpU8(p2Start.b, p2End.b, ratio);
         color2->a = EffectSs_LerpU8(p2Start.a, p2End.a, ratio);
     }
+
+    EffectBlure_RestylePlayerSword(this, vec2, vec1, color1, color2);
 }
 
 void EffectBlure_SetupSmooth(EffectBlure* this, GraphicsContext* gfxCtx) {
