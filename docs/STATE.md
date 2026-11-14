@@ -14,6 +14,7 @@
 | Async HD texture loading | `gNewDawn.Textures.AsyncAltLoad` | #16 and #19. The scene-entry stall drops from about 290 to about 175 ms. Mod-only textures load synchronously. |
 | Per-pixel lighting (opt-in) | `gNewDawn.Lighting.PerPixel`, `.PointLightQuality` | #15. Off is pixel-identical; point lights were verified in the Astral Observatory. |
 | Real-time sun shadows (opt-in) | `gNewDawn.Shadows.*` | #21. Ikana and Termina cast correctly; 0.3 ms GPU. Checked in motion (walking, interpolated sub-frames, time-of-day fades): no swimming or lag. In the preset (strength 0.7, floor 0.65 for soft daylight shade; `gNewDawn.Shadows.Floor` default 0.55); the cvar default is still off. |
+| Cascaded sun shadows | `gNewDawn.Shadows.Cascades/Distance` | 4 cascades in a 2×2 atlas over the existing map, texel-snapped, blended, out to 7000 units; sharper near shadows; all consumers (apply, fog, shafts, GI, particles) use them. Cascades=1 is the old path (frozen Inn byte-identical). +0.0–0.18 ms. In the preset. See `docs/CASCADED_SHADOWS.md`. |
 | Foliage shadows (opt-in, needs shadows) | `gNewDawn.Shadows.Foliage` | Texture-edge cutouts (fences, grass, leaves, Link's cut-out parts) are recorded with UVs, batched by texture, and drawn into the shadow map with a 0.19 alpha discard. +0.03 to 0.055 ms GPU in the shadow stage; in the preset. Off is the old path. |
 | Sun shafts / rays | `gNewDawn.SunShafts.Enabled/Mode/Strength` | **Mode 1 (preset): screen-space crepuscular rays, 0.17-0.19 ms, see `docs/SUN_RAYS.md`.** Mode 0 is the shadow march below: | Half-res raymarch through the shadow map, tinted by fog and sun colour, in the preset. Shadow filter is now a rotated Poisson PCF. Off is pixel-identical; 0.25 ms GPU for shafts, shadows 0.25 ms (was 0.30). |
 | Alpha-to-coverage for cutout textures (MSAA only) | `gNewDawn.Textures.AlphaToCoverage` (default 1) | Texture-edge draws keep the 0.19 threshold but resolve the edge through MSAA coverage; no effect at MSAA 1. Leaves, plants and ornaments are smoother; region mean colour changes under 0.2%. In the preset. |
@@ -48,14 +49,14 @@ Mods are installed locally and never committed: MM Reloaded 4K is loaded first, 
 
 ## Next priority
 1. ~~Sky-driven ambient / IBL~~ (C2 and D1 done, `docs/SKY_AMBIENT.md`, `docs/SKY_REFLECTIONS.md`); D2 winter overcast sky (`docs/SKY_OVERCAST.md`) done.
-2. Deeper shadows (alpha-tested foliage casters, cascades) plus SSGI and volumetric fog.
+2. Deeper shadows (alpha-tested foliage casters, cascades: done) plus SSGI and volumetric fog.
 3. ~~Shoreline foam and refraction for water~~ (done, `docs/WATER_FOAM.md`).
 4. Still owed: interactive HDR pause/pictograph, resize and scene-transition validation; motion and time-of-day checks of the #38 grade.
 
 ## Known limitations
 - Dusk fog shafts and Coast SSR specks follow-up (`fix/fog-shafts-water-specks`, 2026-11-14): stopped at the three-attempt limit; renderer experiments reverted, documentation/evidence only. See `libultraship/docs/NEW_DAWN_FOLLOWUPS.md`. Dusk shafts are now delivered by the screen-space rays (`docs/SUN_RAYS.md`); the water specks were not reproducible.
 - Volumetric fog (`docs/VOLUMETRIC_FOG.md`) is in the preset: morning haze and Woodfall Temple light fog are verified; distinct dusk sun shafts are **not** demonstrated (Field has too few casters near the low sun). Textured lens flare (`Sky.Flare`) is in the preset and was checked with Water Restyle at the dusk Coast (no double attenuation seen).
-- Shadows: casters the game culls itself (room meshes beyond camera distance or FOV, distant actors) are missing. Cut-out foliage casts only when `gNewDawn.Shadows.Foliage` is on (texture-edge draws whose alpha is the tile-0 texel; xlu/decal/particles and masked or blended textures still do not cast).
+- Shadows: casters the game culls itself (room meshes wholly behind the camera or beyond zFar, distant actors) are missing; room meshes outside the FOV are recorded (see `docs/CASCADED_SHADOWS.md`). Cut-out foliage casts only when `gNewDawn.Shadows.Foliage` is on (texture-edge draws whose alpha is the tile-0 texel; xlu/decal/particles and masked or blended textures still do not cast).
 - MM3D rooms: 14 animated scenes stay N64 (their animated surfaces aren't modelled in MM3D at the same place); remodelled outdoor scenes need MM3D collision first.
 - Post-fx and mipmaps are OpenGL only. With MSAA, AO uses resolved depth; HDR AO and sun attenuation still approximate indirect/direct separation.
 - With mipmaps on, vanilla textures use bilinear filtering instead of three-point. The N64 two-tile LOD is not emulated.
