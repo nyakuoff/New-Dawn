@@ -28,6 +28,10 @@ void NewDawnPostFx_GroundEnd(PlayState* play);
 // which is the end of the opaque list's world drawing.
 void NewDawnPostFx_OpaqueEnd(PlayState* play);
 
+// Water surface pass (foam, refraction, restyle, glints, reflections). Call after the actors have drawn and before the
+// soft-sprite effects (splashes, ripples, dust), so those effects composite above the water instead of under it.
+void NewDawnPostFx_WaterXlu(PlayState* play);
+
 // Bloom, colour grade and dithering of the finished world. Call at the end of the world drawing, before anything that
 // belongs to the HUD.
 void NewDawnPostFx_SceneEnd(PlayState* play);
