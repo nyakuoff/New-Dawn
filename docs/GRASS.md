@@ -43,6 +43,17 @@ alpha-tested cards dominates). Termina Field default point 0.22 ms, cleared swam
 0.37 ms. The AO stage rises by about 0.2 ms in dense meadows because it now sees tuft depth. Fixed cost with no tufts
 visible: 0.085 ms (the ground copy).
 
+## Gating and identity
+
+Grass is only enabled in time-of-day (`LIGHT_MODE_TIME`) scenes: the first Stock Pot Inn test showed tufts on its planter soil
+and green rug, so interiors are excluded. In the frozen Stock Pot Inn fixture (noon, frozen at frame 30, `final_fixture.py`
+recipe plus `LocalFlicker=0`, `Vfx.Embers=0`, dither off) grass on vs off differs by at most 4 levels (no tufts), the same
+order as two runs of an unmodified `origin/main` build (`5b986cedd`, built in a separate worktree). **Byte identity was not
+established**: on the day of this check the fixture itself was not deterministic (main vs main differed in 360k pixels,
+mostly Link and lit surfaces, while other agents loaded the machine). With the cvar off the only code run per frame is a
+no-op marker flag check; the interpreter records nothing and the renderer does not run the pass. Images:
+`~/dev/ghm-mods/showcase/grass/identity-main-vs-main-noise.png`.
+
 ## Limits
 
 - Placement follows classified textures only. The classification is a hypothesis (hue/saturation based), so a texture

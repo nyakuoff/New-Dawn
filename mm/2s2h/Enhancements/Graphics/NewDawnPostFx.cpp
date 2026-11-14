@@ -678,7 +678,9 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
 
 // Render-only 3D grass on grass-textured ground. Reads the player's position and the sun; changes nothing.
 static void NewDawnFillGrassParams(PlayState* play, NewDawnPostFxParams* params) {
-    params->grassEnabled = CVarGetInteger("gNewDawn.Grass.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
+    // Outdoor time-of-day scenes only: interiors reuse "grass"-coloured rugs, planters and moss.
+    params->grassEnabled = CVarGetInteger("gNewDawn.Grass.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0) &&
+                           play->envCtx.lightMode == LIGHT_MODE_TIME;
     if (!params->grassEnabled) {
         return;
     }
