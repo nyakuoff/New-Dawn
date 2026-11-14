@@ -183,6 +183,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Atmos.Particles", false, 1.0f, 0.0f },
     { "gNewDawn.Atmos.Weather", false, 1.0f, 0.0f },
     { "gNewDawn.Atmos.Wind", false, 1.0f, 0.0f },
+    // Render-only HD fire, glows, embers, dust and spark sprites (CC0 art, see docs/VFX.md).
+    { "gNewDawn.Vfx.Enabled", false, 1.0f, 0.0f },
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
