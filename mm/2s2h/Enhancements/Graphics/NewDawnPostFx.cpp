@@ -816,19 +816,23 @@ static void NewDawnSky_Emit(PlayState* play, bool fillPass) {
     // Fully cursed Ikana only: while the curse lifts (D_801F4E74 fading) the native sky cross-fades in.
     const bool cursed = special && fillPass && play->skyboxId == SKYBOX_3 && D_801F4E74 >= 1.0f;
     const bool finalDay = special && !fillPass && gSaveContext.save.day == 3;
-    // Cutscenes and conversations keep the physical sky in Special mode; otherwise it would flip to the native sky.
-    const bool csBlocks = !special && (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play));
+    // Special mode keeps the physical sky through cutscenes, conversations, lighting overrides and skybox config
+    // changes: it only reads the fog colour, palette, sun direction and clock, which the scripts already drive.
+    // Scripted filter fills and fades are drawn by the game after this pass and cover it exactly as they cover the
+    // native sky. Without Special, any of these states falls back to the native skybox, as before.
+    const bool scripted = !special && (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play) ||
+                                       play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE ||
+                                       play->envCtx.changeSkyboxState != 0 ||
+                                       play->envCtx.skyboxConfig != play->envCtx.changeSkyboxNextConfig ||
+                                       play->envCtx.skyboxFilterColor[3] != 0);
     const bool dayBlocks = (finalDay || cursed) ? false : (gSaveContext.save.day < 1 || gSaveContext.save.day >= 3);
     const bool layerBlocks = (finalDay || cursed) ? false : gSaveContext.sceneLayer != 0;
     if (!CVarGetInteger("gNewDawn.Sky.Physical", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) ||
         CVarGetFloat("gNewDawn.Sky.Strength", 1.0f) <= 0.0f ||
         (fillPass ? !(winter || cursed) : play->skyboxId != SKYBOX_NORMAL_SKY) || play->skyboxCtx.shouldDraw ||
         play->envCtx.skyboxDisabled || (play->envCtx.sunDisabled && !cursed) ||
-        play->envCtx.lightMode != LIGHT_MODE_TIME ||
-        play->envCtx.lightSettingOverride != LIGHT_SETTING_OVERRIDE_NONE || play->envCtx.changeSkyboxState != 0 ||
-        play->envCtx.skyboxConfig != play->envCtx.changeSkyboxNextConfig ||
-        play->envCtx.sandstormState != SANDSTORM_OFF || play->envCtx.skyboxFilterColor[3] != 0 || dayBlocks ||
-        layerBlocks || csBlocks) {
+        play->envCtx.lightMode != LIGHT_MODE_TIME || play->envCtx.sandstormState != SANDSTORM_OFF || dayBlocks ||
+        layerBlocks || scripted) {
         return;
     }
 
@@ -853,6 +857,10 @@ static void NewDawnSky_Emit(PlayState* play, bool fillPass) {
             case SCENE_22DEKUCITY:
             case SCENE_F01:
                 break;
+            case SCENE_OKUJOU: // Clock Tower rooftop: the Moon's approach, Special mode only
+                if (special)
+                    break;
+                return;
             default:
                 return;
         }
