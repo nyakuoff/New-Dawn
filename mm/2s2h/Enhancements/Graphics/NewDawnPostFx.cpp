@@ -676,6 +676,37 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
     }
 }
 
+// Render-only 3D grass on grass-textured ground. Reads the player's position and the sun; changes nothing.
+static void NewDawnFillGrassParams(PlayState* play, NewDawnPostFxParams* params) {
+    params->grassEnabled = CVarGetInteger("gNewDawn.Grass.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
+    if (!params->grassEnabled) {
+        return;
+    }
+    params->grassDensity = NewDawnClampF(CVarGetFloat("gNewDawn.Grass.Density", 1.0f), 0.0f, 2.0f);
+    params->grassDistance = NewDawnClampF(CVarGetFloat("gNewDawn.Grass.Distance", 1000.0f), 200.0f, 4000.0f);
+    params->grassHeight = NewDawnClampF(CVarGetFloat("gNewDawn.Grass.Height", 1.0f), 0.2f, 4.0f);
+    Vec3f focus = play->view.eye;
+    Player* player = GET_PLAYER(play);
+    if (player != NULL) {
+        focus = player->actor.world.pos;
+    }
+    params->grassFocus[0] = focus.x;
+    params->grassFocus[1] = focus.y;
+    params->grassFocus[2] = focus.z;
+    if (!play->envCtx.sunDisabled && play->envCtx.lightMode == LIGHT_MODE_TIME) {
+        const LightDirectional* sun = &play->envCtx.dirLight1.params.dir;
+        float len = sqrtf((f32)(sun->x * sun->x + sun->y * sun->y + sun->z * sun->z));
+        if (len > 0.001f) {
+            params->grassSunDir[0] = sun->x / len;
+            params->grassSunDir[1] = sun->y / len;
+            params->grassSunDir[2] = sun->z / len;
+            for (int i = 0; i < 3; i++) {
+                params->grassSunColor[i] = sun->color[i] / 255.0f;
+            }
+        }
+    }
+}
+
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
@@ -703,6 +734,7 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnFillArtParams(play, params);
     NewDawnAtmos_Fill(play, params);
     NewDawnFillLocalLightParams(play, params);
+    NewDawnFillGrassParams(play, params);
     params->vfxEnabled = CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
     params->vfxStrength = CVarGetFloat("gNewDawn.Vfx.Strength", 1.0f);
     params->vfxEmbers = CVarGetFloat("gNewDawn.Vfx.Embers", 1.0f);
@@ -886,13 +918,13 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
         !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.GI.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Vfx.Enabled", 0)) {
+        !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric &&
-        !params->vfxEnabled) {
+        !params->vfxEnabled && !params->grassEnabled) {
         return;
     }
 
@@ -908,7 +940,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
         params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && !params->fogVolumetric &&
-        !params->atmosBiome && !params->giEnabled && !params->localEnabled) {
+        !params->atmosBiome && !params->giEnabled && !params->localEnabled && !params->grassEnabled) {
         return;
     }
 
