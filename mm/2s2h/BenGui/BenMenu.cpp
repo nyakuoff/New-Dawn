@@ -199,6 +199,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Shadows.Floor", true, 0.30f, 0.55f },
     { "gNewDawn.Shadows.Radius", true, 1500.0f, 1500.0f },
     { "gNewDawn.Shadows.MapSize", false, 4096.0f, 4096.0f },
+    { "gNewDawn.Shadows.Cascades", false, 4.0f, 1.0f }, // 4 tiles of the map: sharper near, reaches Shadows.Distance
     { "gNewDawn.Shadows.Foliage", false, 1.0f, 0.0f }, // leaves, fences and grass cast cut-out shadows
     { "gNewDawn.Fog.Volumetric", false, 1.0f, 0.0f }, // replaces shadow-marched shafts in eligible scenes
     { "gNewDawn.SunShafts.Enabled", false, 1.0f, 0.0f },
@@ -1101,6 +1102,17 @@ void BenMenu::AddSettings() {
                      .Tooltip("Shadow map resolution. Higher is sharper but costs more GPU time.")
                      .ComboMap(&shadowMapSizeOptions)
                      .DefaultIndex(4096));
+    AddWidget(path, "Shadow Cascades: %d", WIDGET_CVAR_SLIDER_INT)
+        .CVar("gNewDawn.Shadows.Cascades")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(IntSliderOptions().Min(1).Max(4).DefaultValue(1).Tooltip(
+            "1 keeps the single shadow map (Shadow Radius). 3 or 4 split the map into tiles: sharper shadows near the "
+            "camera and shadows out to Shadow Distance."));
+    AddWidget(path, "Shadow Distance: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Shadows.Distance")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(FloatSliderOptions().Min(1000.0f).Max(12000.0f).Step(250.0f).Format("%.0f").DefaultValue(7000.0f).Tooltip(
+            "How far from the camera cascaded shadows reach, in world units. Only used with 2 or more cascades."));
     AddWidget(path, "Foliage Shadows", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Shadows.Foliage")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })

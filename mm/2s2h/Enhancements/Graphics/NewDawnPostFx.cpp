@@ -71,6 +71,9 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     params->shadowStrength = strength;
     params->shadowRadius = radius;
     params->shadowMapSize = mapSize;
+    // 1 = the single map above; 3-4 split the map into tiles that cover the view out to Distance (view-axis units).
+    params->shadowCascades = (int)NewDawnClampF((float)CVarGetInteger("gNewDawn.Shadows.Cascades", 1), 1.0f, 4.0f);
+    params->shadowDistance = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Distance", 7000.0f), 1000.0f, 12000.0f);
     params->shadowSunDir[0] = dir.x;
     params->shadowSunDir[1] = dir.y;
     params->shadowSunDir[2] = dir.z;
