@@ -2,6 +2,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
 #include "CameraUtils.h"
+#include "MouseLook.h"
 
 extern "C" {
 #include "macros.h"
@@ -102,6 +103,8 @@ bool Camera_FreeLook(Camera* camera) {
                     (CVarGetFloat("gEnhancements.Camera.RightStick.CameraSensitivity.Y", 1.0f));
 
     yaw += yawDiff * GameInteractor_InvertControl(GI_INVERT_CAMERA_RIGHT_STICK_X);
+    yaw -= MouseLook_GetDeltaX();
+    pitch += MouseLook_GetDeltaY();
     pitch += pitchDiff * -GameInteractor_InvertControl(GI_INVERT_CAMERA_RIGHT_STICK_Y);
 
     s16 maxPitch = DEG_TO_BINANG(CVarGetFloat("gEnhancements.Camera.FreeLook.MaxPitch", 72.0f));
@@ -154,7 +157,8 @@ bool Camera_FreeLook(Camera* camera) {
 bool Camera_CanFreeLook(Camera* camera) {
     f32 camX = sCamPlayState->state.input[0].cur.right_stick_x * 10.0f;
     f32 camY = sCamPlayState->state.input[0].cur.right_stick_y * 10.0f;
-    if (!sCanFreeLook && (fabsf(camX) >= 15.0f || fabsf(camY) >= 15.0f)) {
+    if (!sCanFreeLook && (fabsf(camX) >= 15.0f || fabsf(camY) >= 15.0f ||
+                          MouseLook_GetDeltaX() != 0.0f || MouseLook_GetDeltaY() != 0.0f)) {
         sCanFreeLook = true;
     }
     // Pressing Z will "Reset" Camera
@@ -180,8 +184,13 @@ bool Camera_CanFreeLook(Camera* camera) {
     return sCanFreeLook;
 }
 
+static bool FreeLookWanted() {
+    return CVarGetInteger("gEnhancements.Camera.FreeLook.Enable", 0) ||
+           CVarGetInteger("gEnhancements.Camera.MouseLook.Enable", 0);
+}
+
 void RegisterCameraFreeLook() {
-    COND_VB_SHOULD(VB_USE_CUSTOM_CAMERA, CVarGetInteger("gEnhancements.Camera.FreeLook.Enable", 0), {
+    COND_VB_SHOULD(VB_USE_CUSTOM_CAMERA, FreeLookWanted(), {
         Camera* camera = va_arg(args, Camera*);
         switch (sCameraSettings[camera->setting].cameraModes[camera->mode].funcId) {
             case CAM_FUNC_NORMAL0:
@@ -216,8 +225,8 @@ void RegisterCameraFreeLook() {
         }
     });
 
-    COND_HOOK(OnCameraChangeModeFlags, CVarGetInteger("gEnhancements.Camera.FreeLook.Enable", 0),
+    COND_HOOK(OnCameraChangeModeFlags, FreeLookWanted(),
               [](Camera* camera) { UpdateFreeLookState(camera); });
 }
 
-static RegisterShipInitFunc initFunc(RegisterCameraFreeLook, { "gEnhancements.Camera.FreeLook.Enable" });
+static RegisterShipInitFunc initFunc(RegisterCameraFreeLook, { "gEnhancements.Camera.FreeLook.Enable", "gEnhancements.Camera.MouseLook.Enable" });

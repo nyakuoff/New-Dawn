@@ -1103,6 +1103,18 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+extern "C" void NewDawnPostFx_WaterXlu(PlayState* play) {
+    auto* params = NewDawnPostFx_AllocParams(play);
+    if (!params->waterEnabled) {
+        return;
+    }
+    // The native sun glare is a full-screen fill drawn after this marker, so it covers the water on its own.
+    params->waterSurfaceVisibility = 1.0f;
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_XLU_DISP++, NEWDAWN_POSTFX_STAGE_WATER_XLU, params);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 extern "C" void NewDawnPostFx_SceneEnd(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&

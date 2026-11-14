@@ -1,5 +1,8 @@
 #include "Menu.h"
 #include "UIWidgets.hpp"
+#include "NewDawnTheme.h"
+#include "NewDawnPresets.h"
+#include "build.h"
 #include "BenPort.h"
 #include "BenInputEditorWindow.h"
 #include <ship/window/gui/GuiElement.h>
@@ -125,7 +128,7 @@ Menu::Menu(const std::string& cVar, const std::string& name, uint8_t searchSideb
 }
 
 void Menu::InitElement() {
-    popped = CVarGetInteger("gSettings.Menu.Popout", 0);
+    popped = false; // the New Dawn menu is always a full-window overlay
     poppedSize.x = CVarGetInteger("gSettings.Menu.PoppedWidth", 1280);
     poppedSize.y = CVarGetInteger("gSettings.Menu.PoppedHeight", 800);
     poppedPos.x = CVarGetInteger("gSettings.Menu.PoppedPos.x", 0);
@@ -138,84 +141,51 @@ void Menu::UpdateElement() {
     menuThemeIndex = static_cast<UIWidgets::Colors>(CVarGetInteger("gSettings.Menu.Theme", defaultThemeIndex));
 }
 
-bool ModernMenuSidebarEntry(std::string label) {
-    ImGuiContext& g = *GImGui;
-    ImGuiWindow* window = g.CurrentWindow;
-    ImGuiStyle& style = ImGui::GetStyle();
-    ImVec2 pos = window->DC.CursorPos;
-    const ImGuiID sidebarId = window->GetID(std::string(label + "##Sidebar").c_str());
-    ImVec2 labelSize = ImGui::CalcTextSize(label.c_str(), ImGui::FindRenderedTextEnd(label.c_str()), true);
-    pos.y += style.FramePadding.y;
-    pos.x = window->WorkRect.GetCenter().x - labelSize.x / 2;
-    ImRect bb = { pos - style.FramePadding, pos + labelSize + style.FramePadding };
-    ImGui::ItemSize(bb, style.FramePadding.y);
-    ImGui::ItemAdd(bb, sidebarId);
-    bool hovered, held;
-    bool pressed = ImGui::ButtonBehavior(bb, sidebarId, &hovered, &held);
-    if (pressed) {
-        ImGui::MarkItemEdited(sidebarId);
-    }
-    window->DrawList->AddRectFilled(pos - style.FramePadding, pos + labelSize + style.FramePadding,
-                                    ImGui::GetColorU32((held && hovered) ? ImGuiCol_ButtonActive
-                                                       : hovered         ? ImGuiCol_ButtonHovered
-                                                                         : ImGuiCol_Button),
-                                    3.0f);
-    UIWidgets::RenderText(pos, label.c_str(), ImGui::FindRenderedTextEnd(label.c_str()), true);
-    return pressed;
+static uint32_t WrapChars() {
+    // WrappedText() wraps by character count; derive it from the free width so labels never run off the card.
+    float avail = ImGui::GetContentRegionAvail().x - 90.0f * NewDawn::Theme::Unit();
+    return static_cast<uint32_t>(std::max(28.0f, avail / (ImGui::GetFontSize() * 0.56f)));
 }
 
-bool ModernMenuHeaderEntry(std::string label) {
-    ImGuiContext& g = *GImGui;
-    ImGuiWindow* window = g.CurrentWindow;
-    ImGuiStyle& style = ImGui::GetStyle();
-    ImVec2 pos = window->DC.CursorPos;
-    const ImGuiID headerId = window->GetID(std::string(label + "##Header").c_str());
-    ImVec2 labelSize = ImGui::CalcTextSize(label.c_str(), ImGui::FindRenderedTextEnd(label.c_str()), true);
-    ImRect bb = { pos, pos + labelSize + style.FramePadding * 2 };
-    ImGui::ItemSize(bb, style.FramePadding.y);
-    ImGui::ItemAdd(bb, headerId);
-    bool hovered, held;
-    bool pressed = ImGui::ButtonBehavior(bb, headerId, &hovered, &held);
-    window->DrawList->AddRectFilled(bb.Min, bb.Max,
-                                    ImGui::GetColorU32((held && hovered) ? ImGuiCol_ButtonActive
-                                                       : hovered         ? ImGuiCol_ButtonHovered
-                                                                         : ImGuiCol_Button),
-                                    3.0f);
-    pos += style.FramePadding;
-    UIWidgets::RenderText(pos, label.c_str(), ImGui::FindRenderedTextEnd(label.c_str()), true);
-    return pressed;
+static std::string NormalizeSearch(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(), ::tolower);
+    text.erase(std::remove(text.begin(), text.end(), ' '), text.end());
+    return text;
 }
 
 uint32_t Menu::DrawSearchResults(std::string& menuSearchText) {
-    auto menuThemeIndex = static_cast<UIWidgets::Colors>(CVarGetInteger("gSettings.Menu.Theme", defaultThemeIndex));
-    ImGui::BeginChild("Search Results");
-    int searchCount = 0;
-    for (auto& menuLabel : menuOrder) {
-        auto& menuEntry = menuEntries.at(menuLabel);
-        for (auto& sidebarLabel : menuEntry.sidebarOrder) {
-            auto& sidebar = menuEntry.sidebars[sidebarLabel];
+    auto accent = static_cast<UIWidgets::Colors>(CVarGetInteger("gSettings.Menu.Theme", defaultThemeIndex));
+    const std::string needle = NormalizeSearch(menuSearchText);
+    uint32_t searchCount = 0;
+    const bool developer = NewDawn::IsDeveloperMode();
+    for (auto& page : menuPages) {
+        if (page.devOnly && !developer) {
+            continue;
+        }
+        for (auto& tab : page.tabs) {
+            auto entryIt = menuEntries.find(tab.entry);
+            if (entryIt == menuEntries.end() || !entryIt->second.sidebars.contains(tab.sidebar)) {
+                continue;
+            }
+            auto& sidebar = entryIt->second.sidebars.at(tab.sidebar);
             for (size_t i = 0; i < sidebar.columnWidgets.size(); i++) {
-                auto& column = sidebar.columnWidgets.at(i);
-                for (auto& info : column) {
+                for (auto& info : sidebar.columnWidgets.at(i)) {
                     if (info.type == WIDGET_SEARCH || info.type == WIDGET_SEPARATOR ||
                         info.type == WIDGET_SEPARATOR_TEXT || info.isHidden || info.hideInSearch) {
                         continue;
                     }
                     const char* tooltip = info.options->tooltip;
-                    std::string widgetStr = std::string(info.name) + std::string(tooltip != nullptr ? tooltip : "");
-                    std::transform(menuSearchText.begin(), menuSearchText.end(), menuSearchText.begin(), ::tolower);
-                    menuSearchText.erase(std::remove(menuSearchText.begin(), menuSearchText.end(), ' '),
-                                         menuSearchText.end());
-                    std::transform(widgetStr.begin(), widgetStr.end(), widgetStr.begin(), ::tolower);
-                    widgetStr.erase(std::remove(widgetStr.begin(), widgetStr.end(), ' '), widgetStr.end());
-                    if (widgetStr.find(menuSearchText) != std::string::npos) {
-                        MenuDrawItem(info, 90 / sidebar.columnCount, menuThemeIndex);
-                        ImGui::PushStyleColor(ImGuiCol_Text, UIWidgets::ColorValues.at(UIWidgets::Colors::Gray));
-                        std::string origin = fmt::format("  ({} -> {}, Col {})", menuEntry.label, sidebarLabel, i + 1);
-                        ImGui::Text("%s", origin.c_str());
-                        ImGui::PopStyleColor();
-                        searchCount++;
+                    std::string widgetStr =
+                        NormalizeSearch(info.name + std::string(tooltip != nullptr ? tooltip : "") + info.group);
+                    if (widgetStr.find(needle) == std::string::npos) {
+                        continue;
                     }
+                    MenuDrawItem(info, WrapChars(), accent);
+                    ImGui::PushStyleColor(ImGuiCol_Text, NewDawn::Theme::TextDim);
+                    ImGui::Text("   %s  >  %s", page.label.c_str(), tab.label.c_str());
+                    ImGui::PopStyleColor();
+                    ImGui::Dummy(ImVec2(0, 4.0f * NewDawn::Theme::Unit()));
+                    searchCount++;
                 }
             }
         }
@@ -225,14 +195,12 @@ uint32_t Menu::DrawSearchResults(std::string& menuSearchText) {
             entry.info.type == WIDGET_SEPARATOR_TEXT || entry.info.isHidden || entry.info.hideInSearch) {
             continue;
         }
-        std::string widgetStr = entry.info.name + entry.info.options->tooltip + entry.extraTerms + entry.sidebarName;
-        std::transform(widgetStr.begin(), widgetStr.end(), widgetStr.begin(), ::tolower);
-        widgetStr.erase(std::remove(widgetStr.begin(), widgetStr.end(), ' '), widgetStr.end());
-        if (widgetStr.find(menuSearchText) != std::string::npos) {
-            MenuDrawItem(entry.info, 400, menuThemeIndex);
-            ImGui::PushStyleColor(ImGuiCol_Text, UIWidgets::ColorValues.at(UIWidgets::Colors::Gray));
-            std::string origin = fmt::format("  ({} -> {}, {})", entry.menuName, entry.sidebarName, entry.location);
-            ImGui::Text("%s", origin.c_str());
+        std::string widgetStr =
+            NormalizeSearch(entry.info.name + entry.info.options->tooltip + entry.extraTerms + entry.sidebarName);
+        if (widgetStr.find(needle) != std::string::npos) {
+            MenuDrawItem(entry.info, WrapChars(), accent);
+            ImGui::PushStyleColor(ImGuiCol_Text, NewDawn::Theme::TextDim);
+            ImGui::Text("   %s  >  %s, %s", entry.menuName.c_str(), entry.sidebarName.c_str(), entry.location.c_str());
             ImGui::PopStyleColor();
             searchCount++;
         }
@@ -243,6 +211,10 @@ uint32_t Menu::DrawSearchResults(std::string& menuSearchText) {
 void Menu::AddMenuEntry(std::string entryName, const char* entryCvar) {
     menuEntries.emplace(entryName, MainMenuEntry{ entryName, entryCvar });
     menuOrder.push_back(entryName);
+}
+
+void Menu::AddPage(MenuPage page) {
+    menuPages.push_back(std::move(page));
 }
 
 void Menu::AddSearchWidget(SearchWidget widget) {
@@ -336,13 +308,7 @@ void Menu::MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors me
                 ImGui::Separator();
             } break;
             case WIDGET_SEPARATOR_TEXT: {
-                if (widget.options->color != UIWidgets::Colors::NoColor) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, UIWidgets::ColorValues.at(widget.options->color));
-                }
-                ImGui::SeparatorText(widget.name.c_str());
-                if (widget.options->color != UIWidgets::Colors::NoColor) {
-                    ImGui::PopStyleColor();
-                }
+                NewDawn::Theme::SectionHeader(widget.name.c_str());
             } break;
             case WIDGET_TEXT: {
                 if (widget.options->color != UIWidgets::Colors::NoColor) {
@@ -534,8 +500,146 @@ void Menu::Draw() {
     SyncVisibilityConsoleVariable();
 }
 
-static bool freshOpen = true;
+// Draws one column's widgets. Unless the sidebar is `plain`, every run of widgets that starts with a section
+// separator becomes a titled card.
+static void DrawWidgetList(Menu& menu, std::vector<WidgetInfo*>& widgets, bool plain, UIWidgets::Colors accent,
+                           const char* idPrefix) {
+    using namespace NewDawn::Theme;
+    bool cardOpen = false;
+    int cardIndex = 0;
+    auto endSectionCard = [&]() {
+        if (cardOpen) {
+            EndSectionCard();
+            ImGui::Dummy(ImVec2(0, 4.0f * Unit()));
+            cardOpen = false;
+        }
+    };
+    for (WidgetInfo* w : widgets) {
+        if (!plain) {
+            if (w->type == WIDGET_SEPARATOR_TEXT) {
+                endSectionCard();
+                BeginSectionCard(fmt::format("{}card{}", idPrefix, cardIndex++).c_str());
+                cardOpen = true;
+                SectionHeader(w->name.c_str());
+                continue;
+            }
+            if (!cardOpen) {
+                BeginSectionCard(fmt::format("{}card{}", idPrefix, cardIndex++).c_str());
+                cardOpen = true;
+            }
+        }
+        menu.MenuDrawItem(*w, WrapChars(), accent);
+    }
+    endSectionCard();
+}
+
+void Menu::DrawWidgetColumns(SidebarEntry& sidebar, UIWidgets::Colors accent) {
+    using namespace NewDawn::Theme;
+    const float u = Unit();
+    const float avail = ImGui::GetContentRegionAvail().x;
+    const int displayCols = (sidebar.columnWidgets.size() > 1 && avail >= 1020.0f * u) ? 2 : 1;
+    // Widget column j goes to display column j % displayCols; narrow windows stack everything.
+    std::vector<std::vector<WidgetInfo*>> perColumn(displayCols);
+    for (size_t j = 0; j < sidebar.columnWidgets.size(); j++) {
+        for (auto& w : sidebar.columnWidgets[j]) {
+            perColumn[j % displayCols].push_back(&w);
+        }
+    }
+    if (displayCols == 1) {
+        DrawWidgetList(*this, perColumn[0], sidebar.plain, accent, "c0");
+        return;
+    }
+    const float spacing = ImGui::GetStyle().ItemSpacing.x;
+    const float colW = (avail - spacing) / displayCols;
+    for (int d = 0; d < displayCols; d++) {
+        if (d > 0) {
+            ImGui::SameLine();
+        }
+        ImGui::BeginChild(fmt::format("dcol{}", d).c_str(), ImVec2(colW, 0),
+                          ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        DrawWidgetList(*this, perColumn[d], sidebar.plain, accent, fmt::format("c{}", d).c_str());
+        ImGui::EndChild();
+    }
+}
+
+// Widgets grouped by WidgetInfo::group under collapsing headers (the Graphics "Advanced" tab).
+void Menu::DrawGroupedWidgets(SidebarEntry& sidebar, UIWidgets::Colors accent) {
+    using namespace NewDawn::Theme;
+    const float u = Unit();
+    std::vector<std::string> order = sidebar.groupOrder;
+    std::unordered_map<std::string, std::vector<WidgetInfo*>> groups;
+    for (auto& column : sidebar.columnWidgets) {
+        for (auto& w : column) {
+            if (std::find(order.begin(), order.end(), w.group) == order.end()) {
+                order.push_back(w.group);
+            }
+            groups[w.group].push_back(&w);
+        }
+    }
+    for (auto& name : order) {
+        auto it = groups.find(name);
+        if (it == groups.end()) {
+            continue;
+        }
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(16.0f * u, 12.0f * u));
+        ImGui::PushStyleColor(ImGuiCol_Header, WithAlpha(Dusk, 0.22f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, WithAlpha(Dusk, 0.40f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, WithAlpha(Gold, 0.30f));
+        ImGui::PushStyleColor(ImGuiCol_Text, GoldHot);
+        PushHeading(24);
+        bool open = ImGui::CollapsingHeader(fmt::format("{}##grp", name).c_str());
+        PopHeading();
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar();
+        if (open) {
+            BeginSectionCard(fmt::format("grp_{}", name).c_str());
+            for (WidgetInfo* w : it->second) {
+                if (w->type == WIDGET_SEPARATOR_TEXT) {
+                    SectionHeader(w->name.c_str());
+                    continue;
+                }
+                MenuDrawItem(*w, WrapChars(), accent);
+            }
+            EndSectionCard();
+        }
+        ImGui::Dummy(ImVec2(0, 2.0f * u));
+    }
+}
+
+void Menu::DrawTabContent(const MenuTab& tab, UIWidgets::Colors accent) {
+    auto entryIt = menuEntries.find(tab.entry);
+    if (entryIt == menuEntries.end() || !entryIt->second.sidebars.contains(tab.sidebar)) {
+        ImGui::TextDisabled("This section is not available.");
+        return;
+    }
+    auto& updates = MenuInit::GetUpdateFuncs();
+    if (updates.contains(tab.entry) && updates[tab.entry].contains(tab.sidebar)) {
+        for (auto& updateFunc : updates[tab.entry][tab.sidebar]) {
+            updateFunc();
+        }
+    }
+    SidebarEntry& sidebar = entryIt->second.sidebars.at(tab.sidebar);
+    if (sidebar.grouped) {
+        DrawGroupedWidgets(sidebar, accent);
+    } else {
+        DrawWidgetColumns(sidebar, accent);
+    }
+}
+
+static void CloseMenuAndRefreshNav(Menu* menu) {
+    menu->ToggleVisibility();
+    // Update gamepad navigation after close based on if other menus are still visible
+    auto io = &ImGui::GetIO();
+    if (CVarGetInteger(CVAR_IMGUI_CONTROLLER_NAV, 0) &&
+        Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetMenuOrMenubarVisible()) {
+        io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    } else {
+        io->ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
+    }
+}
+
 void Menu::DrawElement() {
+    using namespace NewDawn::Theme;
     if (OTRGlobals::Instance->fontStandardLargest == nullptr) {
         return;
     }
@@ -545,357 +649,295 @@ void Menu::DrawElement() {
     for (auto& [reason, info] : disabledMap) {
         info.active = info.evaluation(info);
     }
-    auto menuThemeIndex = static_cast<UIWidgets::Colors>(CVarGetInteger("gSettings.Menu.Theme", defaultThemeIndex));
+    if (menuPages.empty()) {
+        return;
+    }
+    auto accent = static_cast<UIWidgets::Colors>(CVarGetInteger("gSettings.Menu.Theme", defaultThemeIndex));
+    const bool developer = NewDawn::IsDeveloperMode();
 
-    windowHeight = ImGui::GetMainViewport()->WorkSize.y;
-    windowWidth = ImGui::GetMainViewport()->WorkSize.x;
-    auto windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
-    bool popout = CVarGetInteger("gSettings.Menu.Popout", 0) && allowPopout;
-    if (popout) {
-        windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
-    }
-    if (popout != popped) {
-        if (popout) {
-            windowHeight = poppedSize.y;
-            windowWidth = poppedSize.x;
-            ImGui::SetNextWindowSize({ static_cast<float>(windowWidth), static_cast<float>(windowHeight) },
-                                     ImGuiCond_Always);
-            ImGui::SetNextWindowPos(poppedPos, ImGuiCond_Always);
-        } else if (popped) {
-            CVarSetFloat("gSettings.Menu.PoppedWidth", poppedSize.x);
-            CVarSetFloat("gSettings.Menu.PoppedHeight", poppedSize.y);
-            CVarSave();
+    // Resolve the active page (hidden developer pages fall back to the first one).
+    static std::string activePage = CVarGetString("gSettings.Menu.ActivePage", menuPages.front().id.c_str());
+    static std::unordered_map<std::string, int> activeTab;
+    auto pageVisible = [&](const MenuPage& p) { return !p.devOnly || developer; };
+    int pageIndex = -1;
+    for (size_t i = 0; i < menuPages.size(); i++) {
+        if (menuPages[i].id == activePage && pageVisible(menuPages[i])) {
+            pageIndex = static_cast<int>(i);
         }
     }
-    popped = popout;
-    auto windowCond = ImGuiCond_Always;
-    if (!popout) {
-        ImGui::SetNextWindowSize({ static_cast<float>(windowWidth), static_cast<float>(windowHeight) }, windowCond);
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), windowCond, { 0.5f, 0.5f });
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    if (pageIndex < 0) {
+        pageIndex = 0;
+        activePage = menuPages.front().id;
     }
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, CVarGetFloat("gSettings.Menu.BackgroundOpacity", 0.85f)));
-    if (!ImGui::Begin("Main Menu", NULL, windowFlags)) {
-        if (!popout) {
-            ImGui::PopStyleVar();
-        }
-        freshOpen = true;
-        ImGui::PopStyleColor();
+
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(vp->WorkPos);
+    ImGui::SetNextWindowSize(vp->WorkSize);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    bool open = ImGui::Begin("Main Menu", nullptr,
+                             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground |
+                                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    ImGui::PopStyleVar(3);
+    if (!open) {
         ImGui::End();
         return;
+    }
+
+    NewDawn::Theme::ReplayDebugClicks();
+    ImGui::PushFont(OTRGlobals::Instance->fontStandardLarger);
+    const float u = Unit();
+    DrawBackdrop(CVarGetFloat("gSettings.Menu.Dim", 0.55f));
+
+    // Panel geometry: 92% of the screen, capped so it stays a window rather than a wall on large displays.
+    ImVec2 panelSize = { std::min(vp->WorkSize.x * 0.94f, 1560.0f * u), std::min(vp->WorkSize.y * 0.92f, 980.0f * u) };
+    if (vp->WorkSize.x < 1100.0f * u) {
+        panelSize.x = vp->WorkSize.x - 20.0f * u;
+    }
+    if (vp->WorkSize.y < 700.0f * u) {
+        panelSize.y = vp->WorkSize.y - 16.0f * u;
+    }
+    const ImVec2 panelPos = vp->WorkPos + (vp->WorkSize - panelSize) * 0.5f;
+    const bool compact = panelSize.x < 1000.0f * u;
+    const float railW = (compact ? 80.0f : 288.0f) * u;
+
+    ImGui::SetCursorScreenPos(panelPos);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, WithAlpha(Panel, CVarGetFloat("gSettings.Menu.BackgroundOpacity", 0.95f)));
+    ImGui::PushStyleColor(ImGuiCol_Border, WithAlpha(GoldDim, 0.55f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 18.0f * u);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::BeginChild("ND Panel", panelSize, ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(2);
+
+    {   // decoration: rail tint, moonlit glow in the corner, hairline between rail and content
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImVec2 a = panelPos, b = panelPos + panelSize;
+        dl->AddRectFilled(a, ImVec2(a.x + railW, b.y), ImGui::GetColorU32(WithAlpha(Ink, 0.60f)), 18.0f * u,
+                          ImDrawFlags_RoundCornersLeft);
+        ImU32 glow = ImGui::GetColorU32(WithAlpha(Dusk, 0.16f));
+        ImU32 none = ImGui::GetColorU32(WithAlpha(Dusk, 0.0f));
+        dl->AddRectFilledMultiColor(ImVec2(a.x + railW, a.y), ImVec2(b.x, a.y + 220.0f * u), none, glow, none, none);
+        dl->AddLine(ImVec2(a.x + railW, a.y + 18.0f * u), ImVec2(a.x + railW, b.y - 18.0f * u),
+                    ImGui::GetColorU32(WithAlpha(Outline, 0.6f)), 1.0f);
+    }
+
+    // ---- Left rail: wordmark, pages, utility buttons -------------------------------------------------------
+    ImGui::SetCursorPos(ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f * u, 16.0f * u));
+    ImGui::BeginChild("ND Rail", ImVec2(railW, panelSize.y),
+                      ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_NavFlattened,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
+    ImGui::PopStyleVar();
+    const float innerRailW = railW - 28.0f * u;
+    if (!compact) {
+        // short windows get a smaller wordmark so every page fits in the rail
+        const float markW = panelSize.y < 800.0f * u ? innerRailW * 0.72f : innerRailW;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (innerRailW - markW) * 0.5f);
+        float h = DrawWordmark(markW);
+        if (h == 0.0f) {
+            PushHeading(36);
+            ImGui::TextColored(Gold, "New Dawn");
+            PopHeading();
+        }
+        ImGui::Dummy(ImVec2(0, 6.0f * u));
+    } else {
+        ImGui::Dummy(ImVec2(0, 20.0f * u));
+    }
+    const float footerH = (compact ? 100.0f : 112.0f) * u;
+    int visiblePages = 0, dividers = 0;
+    for (const MenuPage& p : menuPages) {
+        visiblePages += pageVisible(p) ? 1 : 0;
+        dividers += (pageVisible(p) && p.dividerBefore) ? 1 : 0;
+    }
+    // Shrink the rows on short windows so every page stays visible without scrolling the rail.
+    const float pagesHeight = ImGui::GetContentRegionAvail().y - footerH - dividers * 26.0f * u;
+    const float railItemH = std::clamp(pagesHeight / u / std::max(1, visiblePages) - 4.0f, 26.0f, 46.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 4.0f * u));
+    ImGui::BeginChild("ND Pages", ImVec2(0, ImGui::GetContentRegionAvail().y - footerH),
+                      ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground);
+    for (size_t i = 0; i < menuPages.size(); i++) {
+        const MenuPage& page = menuPages[i];
+        if (!pageVisible(page)) {
+            continue;
+        }
+        if (page.dividerBefore) {
+            ImGui::Dummy(ImVec2(0, 6.0f * u));
+            ImVec2 p = ImGui::GetCursorScreenPos();
+            ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + innerRailW, p.y), ImGui::GetColorU32(WithAlpha(Outline, 0.6f)));
+            ImGui::Dummy(ImVec2(0, 8.0f * u));
+        }
+        if (RailItem(("rail_" + page.id).c_str(), page.icon, compact ? "" : page.label.c_str(),
+                     static_cast<int>(i) == pageIndex, innerRailW, railItemH)) {
+            if (static_cast<int>(i) != pageIndex) {
+                activePage = page.id;
+                CVarSetString("gSettings.Menu.ActivePage", page.id.c_str());
+                CVarSave();
+                menuSearch.Clear();
+            }
+        }
+        if (compact && ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", page.label.c_str());
+        }
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+
+    // footer: version + reset/quit
+    ImGui::SetCursorPosY(panelSize.y - footerH + 4.0f * u);
+    ImGui::PushStyleColor(ImGuiCol_Text, TextDim);
+    if (gGitCommitTag[0] == 0) {
+        ImGui::Text("%s", compact ? "" : (const char*)gBuildVersion);
+    } else if (!compact) {
+        ImGui::Text("%s", (const char*)gBuildVersion);
     }
     ImGui::PopStyleColor();
-    if (popped != popout) {
-        if (!popout) {
-            ImGui::PopStyleVar();
+    {
+        UIWidgets::ButtonOptions resetOpts = {};
+        resetOpts.size = UIWidgets::Sizes::Inline;
+        resetOpts.color = UIWidgets::Colors::NewDawn;
+        resetOpts.tooltip = "Reset the game"
+#ifdef __APPLE__
+                            " (Command-R)"
+#elif !defined(__SWITCH__) && !defined(__WIIU__)
+                            " (Ctrl+R)"
+#endif
+            ;
+        if (UIWidgets::Button(compact ? ICON_FA_UNDO : ICON_FA_UNDO " Reset", resetOpts)) {
+            std::reinterpret_pointer_cast<Ship::ConsoleWindow>(
+                Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))
+                ->Dispatch("reset");
         }
-        CVarSetInteger("gSettings.Menu.Popout", popped);
-        CVarSetFloat("gSettings.Menu.PoppedWidth", poppedSize.x);
-        CVarSetFloat("gSettings.Menu.PoppedHeight", poppedSize.y);
-        CVarSetFloat("gSettings.Menu.PoppedPos.x", poppedSize.x);
-        CVarSetFloat("gSettings.Menu.PoppedPos.y", poppedSize.y);
-        CVarSave();
-        ImGui::End();
-        return;
-    }
-    ImGui::PushFont(OTRGlobals::Instance->fontStandardLargest);
-    ImGuiContext& g = *GImGui;
-    ImGuiWindow* window = g.CurrentWindow;
-    ImGuiStyle& style = ImGui::GetStyle();
-    windowHeight = window->WorkRect.GetHeight();
-    windowWidth = window->WorkRect.GetWidth();
-
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
-    const char* headerCvar = "gSettings.Menu.ActiveHeader";
-    std::string headerIndex = CVarGetString(headerCvar, "Settings");
-    if (GetVectorIndexOf(menuOrder, headerIndex) == menuOrder.size()) {
-        headerIndex = menuOrder.at(0);
-    }
-    ImVec2 pos = window->DC.CursorPos;
-    float centerX = pos.x + windowWidth / 2 - (style.ItemSpacing.x * (menuEntries.size() + 1));
-    std::vector<ImVec2> headerSizes;
-    float headerWidth = style.ItemSpacing.x;
-    bool headerSearch = !CVarGetInteger("gSettings.Menu.SidebarSearch", 0);
-    if (headerSearch) {
-        headerWidth += 200.0f + style.ItemSpacing.x + style.FramePadding.x;
-    }
-    for (auto& label : menuOrder) {
-        ImVec2 size = ImGui::CalcTextSize(label.c_str());
-        headerSizes.push_back(size);
-        headerWidth += size.x + style.FramePadding.x * 2;
-        if (label == headerIndex) {
-            headerWidth += style.ItemSpacing.x;
-        }
-    }
-    // Full screen menu with widths below 1280, heights below 800.
-    // 5% of screen width/height padding on both sides above those resolutions.
-    // Menu width will never exceed a 16:9 aspect ratio.
-    ImVec2 menuSize = { windowWidth, windowHeight };
-    if (windowWidth > 1280) {
-        menuSize.x = std::fminf(windowWidth * 0.9f, (windowHeight * 1.77f));
-    }
-    if (windowHeight > 800) {
-        menuSize.y = windowHeight * 0.9f;
-    }
-    pos += window->WorkRect.GetSize() / 2 - menuSize / 2;
-    ImGui::SetNextWindowPos(pos);
-    ImGui::BeginChild("Menu Block", menuSize,
-                      ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize,
-                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
-
-    std::unordered_map<std::string, SidebarEntry>* sidebar;
-    float headerHeight = headerSizes.at(0).y + style.FramePadding.y * 2;
-    ImVec2 buttonSize = ImGui::CalcTextSize(ICON_FA_TIMES_CIRCLE) + style.FramePadding * 2;
-    bool scrollbar = false;
-    if (headerWidth > menuSize.x - buttonSize.x * 3 - style.ItemSpacing.x * 3) {
-        headerHeight += style.ScrollbarSize;
-        scrollbar = true;
-    }
-    ImGui::SameLine();
-    ImGui::SetNextWindowSizeConstraints({ 0, headerHeight }, { headerWidth, headerHeight });
-    ImVec2 headerSelSize = { menuSize.x - buttonSize.x * 3 - style.ItemSpacing.x * 3, headerHeight };
-    if (scrollbar) {
-        headerSelSize.y += style.ScrollbarSize;
-    }
-    bool autoFocus = CVarGetInteger("gSettings.Menu.SearchAutofocus", 0);
-    ImGui::BeginChild("Header Selection", headerSelSize,
-                      ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize,
-                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_HorizontalScrollbar);
-    uint8_t curIndex = 0;
-    for (auto& label : menuOrder) {
-        if (curIndex != 0) {
+        if (!compact) {
             ImGui::SameLine();
         }
-        auto& entry = menuEntries.at(label);
-        std::string nextIndex = label;
-        UIWidgets::PushStyleButton(menuThemeIndex);
-        if (headerIndex != label) {
-            ImGui::PushStyleColor(ImGuiCol_Button, { 0, 0, 0, 0 });
-        }
-        if (ModernMenuHeaderEntry(entry.label)) {
-            if (headerSearch) {
-                menuSearch.Clear();
-            }
-            CVarSetString(headerCvar, label.c_str());
-            CVarSave();
-            nextIndex = label;
-        }
-        if (headerIndex != label) {
-            ImGui::PopStyleColor();
-        }
-        UIWidgets::PopStyleButton();
-        if (headerIndex == label) {
-            sidebar = &entry.sidebars;
-        }
-        if (nextIndex != label) {
-            headerIndex = nextIndex;
-        }
-        curIndex++;
-    }
-    std::string menuSearchText = "";
-    if (headerSearch) {
-        ImGui::SameLine();
-        if (autoFocus && freshOpen) {
-            ImGui::SetKeyboardFocusHere();
-        }
-        auto color = UIWidgets::ColorValues.at(menuThemeIndex);
-        color.w = 0.6f;
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, color);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-        menuSearch.Draw("##search", 200.0f);
-        menuSearchText = menuSearch.InputBuf;
-        menuSearchText.erase(std::remove(menuSearchText.begin(), menuSearchText.end(), ' '), menuSearchText.end());
-        if (menuSearchText.length() < 1) {
-            ImGui::SameLine(headerWidth - 200.0f + style.ItemSpacing.x);
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.4f), "Search...");
-        }
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor();
-    }
-    ImGui::EndChild();
-    ImGui::SameLine(menuSize.x - (buttonSize.x * 3) - style.ItemSpacing.x * 3);
-    UIWidgets::ButtonOptions options = {};
-    options.color = UIWidgets::Colors::Red;
-    options.size = UIWidgets::Sizes::Inline;
-    options.tooltip = "Quit 2S2H";
-    if (UIWidgets::Button(ICON_FA_POWER_OFF, options)) {
-        BenGui::mModalWindow->RegisterPopup(
-            "Quit 2S2H", "Are you sure you want to quit 2S2H?", "Quit", "Cancel",
-            []() {
-                std::shared_ptr<Menu> menu =
-                    static_pointer_cast<Menu>(Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetMenu());
-                if (!menu->IsMenuPopped()) {
+        UIWidgets::ButtonOptions quitOpts = {};
+        quitOpts.size = UIWidgets::Sizes::Inline;
+        quitOpts.color = UIWidgets::Colors::Red;
+        quitOpts.tooltip = "Quit New Dawn";
+        if (UIWidgets::Button(compact ? ICON_FA_POWER_OFF : ICON_FA_POWER_OFF " Quit", quitOpts)) {
+            BenGui::mModalWindow->RegisterPopup(
+                "Quit New Dawn", "Are you sure you want to quit New Dawn?", "Quit", "Cancel",
+                []() {
+                    std::shared_ptr<Menu> menu =
+                        static_pointer_cast<Menu>(Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetMenu());
                     menu->ToggleVisibility();
-                }
-                Ship::Context::GetRawInstance()->GetWindow()->Close();
-            },
-            nullptr);
+                    Ship::Context::GetRawInstance()->GetWindow()->Close();
+                },
+                nullptr);
+        }
     }
+    ImGui::EndChild(); // rail
+
+    // ---- Content --------------------------------------------------------------------------------------------
+    ImGui::SetCursorPos(ImVec2(railW, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(30.0f * u, 22.0f * u));
+    ImGui::BeginChild("ND Content", ImVec2(panelSize.x - railW, panelSize.y),
+                      ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_NavFlattened,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBackground);
     ImGui::PopStyleVar();
-    ImGui::SameLine();
-    UIWidgets::ButtonOptions options2 = {};
-    options2.color = UIWidgets::Colors::Red;
-    options2.size = UIWidgets::Sizes::Inline;
-    options2.tooltip = "Reset"
-#ifdef __APPLE__
-                       " (Command-R)"
-#elif !defined(__SWITCH__) && !defined(__WIIU__)
-                       " (Ctrl+R)"
-#else
-                       ""
-#endif
-        ;
-    if (UIWidgets::Button(ICON_FA_UNDO, options2)) {
-        std::reinterpret_pointer_cast<Ship::ConsoleWindow>(
-            Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))
-            ->Dispatch("reset");
+    const MenuPage& page = menuPages[pageIndex];
+    const float contentW = ImGui::GetContentRegionAvail().x;
+
+    // header: page title on the left, search and close on the right
+    const float searchW = 300.0f * u;
+    const float closeW = 46.0f * u;
+    static bool searchSeeded = false; // capture aid: gSettings.Menu.DebugSearch pre-fills the search box once
+    if (!searchSeeded && CVarGetString("gSettings.Menu.DebugSearch", "")[0] != '\0') {
+        snprintf(menuSearch.InputBuf, sizeof(menuSearch.InputBuf), "%s", CVarGetString("gSettings.Menu.DebugSearch", ""));
+        searchSeeded = true;
+    }
+    std::string searchText = menuSearch.InputBuf;
+    searchText.erase(std::remove(searchText.begin(), searchText.end(), ' '), searchText.end());
+    const bool searching = !searchText.empty();
+    ImVec2 titleStart = ImGui::GetCursorPos();
+    PushHeading(36);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextColored(Parchment, "%s", searching ? "Search" : page.label.c_str());
+    PopHeading();
+    ImGui::SetCursorPos(ImVec2(titleStart.x + contentW - searchW - closeW - ImGui::GetStyle().ItemSpacing.x, titleStart.y));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 22.0f * u);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(40.0f * u, 10.0f * u));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, WithAlpha(Ink, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_Border, WithAlpha(Outline, 0.8f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    menuSearch.Draw("##ndsearch", searchW);
+    const ImVec2 sMin = ImGui::GetItemRectMin(), sMax = ImGui::GetItemRectMax();
+    ImGui::PopStyleVar(3);
+    ImGui::PopStyleColor(2);
+    ImGui::GetWindowDrawList()->AddText(ImVec2(sMin.x + 15.0f * u, (sMin.y + sMax.y) * 0.5f - ImGui::GetFontSize() * 0.5f),
+                                        ImGui::GetColorU32(TextDim), ICON_FA_SEARCH);
+    if (!searching && !ImGui::IsItemActive()) {
+        ImGui::GetWindowDrawList()->AddText(ImVec2(sMin.x + 40.0f * u, (sMin.y + sMax.y) * 0.5f - ImGui::GetFontSize() * 0.5f),
+                                            ImGui::GetColorU32(WithAlpha(TextDim, 0.8f)), "Search settings");
     }
     ImGui::SameLine();
-    UIWidgets::ButtonOptions options3 = {};
-    options3.size = UIWidgets::Sizes::Inline;
-    options3.tooltip = "Close Menu (Esc)";
-    if (UIWidgets::Button(ICON_FA_TIMES_CIRCLE, options3)) {
-        ToggleVisibility();
-
-        // Update gamepad navigation after close based on if other menus are still visible
-        auto mImGuiIo = &ImGui::GetIO();
-        if (CVarGetInteger(CVAR_IMGUI_CONTROLLER_NAV, 0) &&
-            Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetMenuOrMenubarVisible()) {
-            mImGuiIo->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-        } else {
-            mImGuiIo->ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
+    {
+        UIWidgets::ButtonOptions closeOpts = {};
+        closeOpts.size = UIWidgets::Sizes::Inline;
+        closeOpts.color = UIWidgets::Colors::NewDawn;
+        closeOpts.tooltip = "Close menu (Esc)";
+        if (UIWidgets::Button(ICON_FA_TIMES, closeOpts)) {
+            CloseMenuAndRefreshNav(this);
         }
     }
 
-    pos.y += headerHeight + style.ItemSpacing.y;
-    pos.x = centerX - menuSize.x / 2 + (style.ItemSpacing.x * (menuEntries.size() + 1));
-    window->DrawList->AddRectFilled(pos, pos + ImVec2{ menuSize.x, 4 }, ImGui::GetColorU32({ 255, 255, 255, 255 }),
-                                    true, style.WindowRounding);
-    pos.y += style.ItemSpacing.y;
-    float sectionHeight = menuSize.y - headerHeight - 4 - style.ItemSpacing.y * 2;
-    float columnHeight = sectionHeight - style.ItemSpacing.y * 4;
-    ImGui::SetNextWindowPos(pos + style.ItemSpacing * 2);
-    float sidebarWidth = 200 - style.ItemSpacing.x;
-
-    const char* sidebarCvar = menuEntries.at(headerIndex).sidebarCvar;
-
-    std::string sectionIndex = CVarGetString(sidebarCvar, "");
-    if (GetVectorIndexOf(menuEntries[headerIndex].sidebarOrder, sectionIndex) ==
-        menuEntries[headerIndex].sidebarOrder.size()) {
-        sectionIndex = menuEntries[headerIndex].sidebarOrder.at(0);
+    // tabs
+    const std::string tabCvar = "gSettings.Menu.Tab." + page.id;
+    if (!activeTab.contains(page.id)) {
+        activeTab[page.id] = CVarGetInteger(tabCvar.c_str(), 0);
     }
-    float sectionCenterX = pos.x + (sidebarWidth / 2);
-    float topY = pos.y;
-    ImGui::SetNextWindowSizeConstraints({ sidebarWidth, 0 }, { sidebarWidth, columnHeight });
-    ImGui::BeginChild((menuEntries.at(headerIndex).label + " Section").c_str(), { sidebarWidth, columnHeight * 3 },
-                      ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize, ImGuiWindowFlags_NoTitleBar);
-    for (auto& sidebarLabel : menuEntries.at(headerIndex).sidebarOrder) {
-        std::string nextIndex = "";
-        UIWidgets::PushStyleButton(menuThemeIndex);
-        if (sectionIndex != sidebarLabel) {
-            ImGui::PushStyleColor(ImGuiCol_Button, { 0, 0, 0, 0 });
-        }
-        if (ModernMenuSidebarEntry(sidebarLabel)) {
-            if (headerSearch) {
-                menuSearch.Clear();
-            }
-            CVarSetString(sidebarCvar, sidebarLabel.c_str());
-            CVarSave();
-            nextIndex = sidebarLabel;
-        }
-        if (sectionIndex != sidebarLabel) {
-            ImGui::PopStyleColor();
-        }
-        UIWidgets::PopStyleButton();
-        if (nextIndex != "") {
-            sectionIndex = nextIndex;
-        }
-    }
-    ImGui::EndChild();
-
-    ImGui::PushFont(OTRGlobals::Instance->fontMonoLarger);
-    pos = ImVec2{ sectionCenterX + (sidebarWidth / 2), topY } + style.ItemSpacing * 2;
-    window->DrawList->AddRectFilled(pos, pos + ImVec2{ 4, sectionHeight - style.FramePadding.y * 2 },
-                                    ImGui::GetColorU32({ 255, 255, 255, 255 }), true, style.WindowRounding);
-    pos.x += 4 + style.ItemSpacing.x;
-    ImGui::SetNextWindowPos(pos + style.ItemSpacing);
-    float sectionWidth = menuSize.x - sidebarWidth - 4 - style.ItemSpacing.x * 4;
-    std::string sectionMenuId = sectionIndex + " Settings";
-    int columns = sidebar->at(sectionIndex).columnCount;
-    size_t columnFuncs = sidebar->at(sectionIndex).columnWidgets.size();
-    if (windowWidth < 800) {
-        columns = 1;
-    }
-    float columnWidth = (sectionWidth - style.ItemSpacing.x * columns) / columns;
-    bool useColumns = columns > 1;
-    if (!useColumns || (headerSearch && menuSearchText.length() > 0)) {
-        ImGui::SameLine();
-        ImGui::SetNextWindowSizeConstraints({ sectionWidth, 0 }, { sectionWidth, columnHeight });
-        ImGui::BeginChild(sectionMenuId.c_str(), { sectionWidth, windowHeight * 4 }, ImGuiChildFlags_AutoResizeY,
-                          ImGuiWindowFlags_NoTitleBar);
-    }
-    if (headerSearch && menuSearchText.length() > 0) {
-        uint32_t searchCount = DrawSearchResults(menuSearchText);
-        if (searchCount == 0) {
-            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize("No results found").x) / 2);
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.4f), "No results found");
-        }
-        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize("Clear Search").x) / 2 - 10.0f);
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
-        UIWidgets::ButtonOptions clearBtnOpts = {};
-        clearBtnOpts.size = UIWidgets::Sizes::Inline;
-        if (UIWidgets::Button("Clear Search", clearBtnOpts)) {
-            menuSearch.Clear();
-        }
-
-        ImGui::EndChild();
-    } else {
-        std::string menuLabel = menuEntries.at(headerIndex).label;
-        if (MenuInit::GetUpdateFuncs().contains(menuLabel)) {
-            if (MenuInit::GetUpdateFuncs()[menuLabel].contains(sectionIndex)) {
-                for (auto& updateFunc : MenuInit::GetUpdateFuncs()[menuLabel][sectionIndex]) {
-                    updateFunc();
-                }
-            }
-        }
-        for (size_t i = 0; i < columnFuncs; i++) {
-            std::string sectionId = fmt::format("{} Column {}", sectionMenuId, i);
-            if (useColumns) {
-                ImGui::SetNextWindowSizeConstraints({ columnWidth, 0 }, { columnWidth, columnHeight });
-                ImGui::BeginChild(sectionId.c_str(), { columnWidth, windowHeight * 4 }, ImGuiChildFlags_AutoResizeY,
-                                  ImGuiWindowFlags_NoTitleBar);
-            }
-            // for (auto& entryName : sidebar->at(sectionIndex).sidebarOrder) {
-            for (auto& entry : sidebar->at(sectionIndex).columnWidgets.at(i)) {
-                MenuDrawItem(entry, 90 / sidebar->at(sectionIndex).columnCount, menuThemeIndex);
-            }
-            //}
-            if (useColumns) {
-                ImGui::EndChild();
-            }
-            if (i < columns - 1) {
+    int& tabIndex = activeTab[page.id];
+    tabIndex = std::clamp(tabIndex, 0, static_cast<int>(page.tabs.size()) - 1);
+    if (!searching && page.tabs.size() > 1) {
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.0f * u, 0));
+        const float tabsLeft = ImGui::GetCursorScreenPos().x;
+        for (size_t t = 0; t < page.tabs.size(); t++) {
+            // wrap to a second row instead of running off the panel (the Developer page has 11 tabs)
+            const float tabW = ImGui::CalcTextSize(page.tabs[t].label.c_str()).x + 28.0f * u;
+            if (t > 0 && ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + tabW <= tabsLeft + contentW) {
                 ImGui::SameLine();
             }
+            if (TabItem(fmt::format("tab_{}_{}", page.id, t).c_str(), page.tabs[t].label.c_str(),
+                        static_cast<int>(t) == tabIndex)) {
+                tabIndex = static_cast<int>(t);
+                CVarSetInteger(tabCvar.c_str(), tabIndex);
+                CVarSave();
+            }
         }
-    }
-    if (!useColumns || menuSearchText.length() > 0) {
-        ImGui::EndChild();
-    }
-    ImGui::PopFont();
-    ImGui::PopFont();
-
-    if (!popout) {
         ImGui::PopStyleVar();
     }
-    ImGui::EndChild();
-    if (popout) {
-        poppedSize = ImGui::GetWindowSize();
-        poppedPos = ImGui::GetWindowPos();
+    {
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(p.x, p.y + 2.0f * u), ImVec2(p.x + contentW, p.y + 2.0f * u),
+                                            ImGui::GetColorU32(WithAlpha(Outline, 0.7f)));
+        ImGui::Dummy(ImVec2(0, 10.0f * u));
     }
-    if (freshOpen) {
-        freshOpen = false;
+
+    // body
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2.0f * u, 6.0f * u));
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 10.0f * u);
+    ImGui::BeginChild("ND Body", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_NavFlattened,
+                      ImGuiWindowFlags_NoBackground);
+    ImGui::PopStyleVar(2);
+    if (searching) {
+        std::string text = menuSearch.InputBuf;
+        uint32_t count = DrawSearchResults(text);
+        if (count == 0) {
+            ImGui::PushStyleColor(ImGuiCol_Text, TextDim);
+            ImGui::TextWrapped("Nothing matches \"%s\".", menuSearch.InputBuf);
+            ImGui::PopStyleColor();
+        }
+    } else {
+        DrawTabContent(page.tabs[tabIndex], accent);
     }
+    ImGui::EndChild(); // body
+    ImGui::EndChild(); // content
+    ImGui::EndChild(); // panel
+    ImGui::PopFont();
     ImGui::End();
 }
 } // namespace Ship

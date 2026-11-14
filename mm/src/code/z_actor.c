@@ -3476,6 +3476,7 @@ void Actor_DrawAll(PlayState* play, ActorContext* actorCtx) {
         }
     }
 
+    NewDawnPostFx_WaterXlu(play);
     Effect_DrawAll(play->state.gfxCtx);
     EffectSs_DrawAll(play);
     EffFootmark_Draw(play);

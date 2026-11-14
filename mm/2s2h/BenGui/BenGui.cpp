@@ -10,6 +10,7 @@
 #include "2s2h/Enhancements/ModMenu/ModMenu.h"
 #include "CosmeticEditor.h"
 #include "Notification.h"
+#include "NewDawnTheme.h"
 #include "2s2h/Rando/CheckTracker/CheckTracker.h"
 
 #ifdef __APPLE__
@@ -80,10 +81,8 @@ void SetupMenu() {
     mBenMenu = std::make_shared<BenMenu>("gWindows.Menu", "Settings Menu");
     gui->SetMenu(mBenMenu);
 
-    auto& style = ImGui::GetStyle();
-    style.FramePadding = ImVec2(4.0f, 6.0f);
-    style.ItemSpacing = ImVec2(8.0f, 6.0f);
-    style.Colors[ImGuiCol_MenuBarBg] = UIWidgets::ColorValues.at(UIWidgets::Colors::DarkGray);
+    // New Dawn look for every ImGui window (the menu, the F1 bar, the editors and the developer tools).
+    NewDawn::Theme::ApplyStyle();
 
     mModalWindow = std::make_shared<BenModalWindow>("gWindows.ModalWindow", "Modal Window");
     gui->AddGuiWindow(mModalWindow);
@@ -107,7 +106,7 @@ void SetupGuiElements() {
         std::make_shared<LUS::GfxDebuggerWindow>("gOpenWindows.GfxDebugger", "Gfx Debugger", ImVec2(520, 600));
     gui->AddGuiWindow(mGfxDebuggerWindow);
 
-    mInputEditorWindow = gui->GetGuiWindow("2S2H Input Editor");
+    mInputEditorWindow = gui->GetGuiWindow("Input Editor");
     if (mInputEditorWindow == nullptr) {
         SPDLOG_ERROR("Could not find input editor window");
     }
