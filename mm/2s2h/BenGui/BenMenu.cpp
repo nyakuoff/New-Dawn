@@ -215,6 +215,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Water.Refraction", false, 1.0f, 0.0f },
     { "gNewDawn.Water.RefractionStrength", true, 1.0f, 1.0f },
     { "gNewDawn.Water.Restyle", false, 1.0f, 0.0f },
+    { "gNewDawn.Water.Caustics", false, 1.0f, 0.0f },
+    { "gNewDawn.Water.Underwater", false, 1.0f, 0.0f },
 };
 
 // Applies the preset (or returns the same cvars to their defaults) and persists the config.
@@ -1192,6 +1194,28 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Water.RefractionStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
             "How strong the refraction and depth absorption are."));
+    AddWidget(path, "Water Caustics", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Caustics")
+        .Options(CheckboxOptions()
+                     .Tooltip("Animated sunlight caustics on the sea bed, pool floors and submerged walls, fading with "
+                              "depth and tinted by the water, plus a faint reflected shimmer just above the waterline. "
+                              "Sunlit areas only. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Caustics Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.CausticsStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How bright the caustics are."));
+    AddWidget(path, "Underwater Look", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Underwater")
+        .Options(CheckboxOptions()
+                     .Tooltip("When the camera is below the surface: depth absorption and fog in the area's water "
+                              "colour, soft light shafts from the surface, a gentle wavy distortion and floating "
+                              "particles. Needs HDR for the particles. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Underwater Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.UnderwaterStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How strong the underwater look is."));
 
     path.sidebarName = "Controls";
     AddSidebarEntry("Settings", "Controls", 1);
