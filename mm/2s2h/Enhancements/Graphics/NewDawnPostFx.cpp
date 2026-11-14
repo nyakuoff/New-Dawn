@@ -1,4 +1,5 @@
 #include "NewDawnPostFx.h"
+#include "NewDawnAtmos.h"
 
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <fast/newdawn_postfx.h>
@@ -383,7 +384,26 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnFillShadowParams(play, params);
     NewDawnFillFogParams(play, params);
     NewDawnFillWaterParams(play, params);
+    NewDawnAtmos_Fill(play, params);
     return params;
+}
+
+extern "C" void NewDawnHDR_WeatherScope(PlayState* play, int begin) {
+    if (!CVarGetInteger("gNewDawn.Atmos.Weather", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    auto* params = NewDawnPostFx_AllocParams(play);
+    if (!params->atmosWeather) return;
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WEATHER_BEGIN : NEWDAWN_POSTFX_STAGE_WEATHER_END, params);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+extern "C" void NewDawnHDR_WindScope(PlayState* play, int begin) {
+    if (!CVarGetInteger("gNewDawn.Atmos.Wind", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    static NewDawnPostFxParams sUnused; // the command only needs a non-null pointer
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END, &sUnused);
+    gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END, &sUnused);
+    CLOSE_DISPS(play->state.gfxCtx);
 }
 
 extern "C" void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int begin) {
@@ -524,12 +544,13 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
+        !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
         !CVarGetInteger("gNewDawn.Fog.Volumetric", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
-    if (!params->shadowEnabled && !params->waterEnabled && !params->fogVolumetric) {
+    if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric) {
         return;
     }
 
@@ -544,7 +565,8 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
-        params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && !params->fogVolumetric) {
+        params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && !params->fogVolumetric &&
+        !params->atmosBiome) {
         return;
     }
 

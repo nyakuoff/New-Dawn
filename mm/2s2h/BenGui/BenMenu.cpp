@@ -175,6 +175,10 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Sky.Clouds", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Coverage", true, 0.55f, 0.55f },
     { "gNewDawn.Sky.CloudStrength", true, 1.0f, 1.0f },
+    // Render-only atmosphere; native game weather and actor updates remain unchanged.
+    { "gNewDawn.Atmos.Particles", false, 1.0f, 0.0f },
+    { "gNewDawn.Atmos.Weather", false, 1.0f, 0.0f },
+    { "gNewDawn.Atmos.Wind", false, 1.0f, 0.0f },
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
@@ -876,6 +880,21 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Cloud Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Sky.CloudStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Ambient Dust, Pollen and Fireflies (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Atmos.Particles")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Floating sunlight-lit motes and biome-specific pollen/fireflies. Read-only scene lights. Requires HDR."));
+    AddWidget(path, "Modern Rain, Snow and Wet Surfaces (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Atmos.Weather")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Soft rain/flakes, roof shelter, splashes and wet reflections driven by existing weather. Requires HDR."));
+    AddWidget(path, "Wind: Foliage Sway and Rain Slant (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Atmos.Wind")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Gusting wind shared by clouds, ambient particles and new rain/snow; foliage sways and its shadows follow."));
+    AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Atmos.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
     AddWidget(path, "Bloom", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Bloom.Enabled")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
