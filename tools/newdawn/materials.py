@@ -25,11 +25,12 @@ try:
 except ImportError:
     np = None
 
-VERSION = "1.1.0"
+VERSION = "1.6.0"
 TEXTURE_TYPE = 0x4F544558
 EXPANDED_TYPES = {1, 2, 5, 6, 7, 8, 9}
+# "relief" (0..1) is the parallax depth range stored in the roughness map's G channel (0.5 = flat).
 DEFAULTS = {"height_scale": 0.025, "normal_strength": 1.0,
-            "invert": False, "roughness_range": [0.65, 0.95]}
+            "invert": False, "roughness_range": [0.65, 0.95], "relief": 0.0}
 
 
 @dataclass
@@ -193,17 +194,28 @@ def generate(pixels, width, height, recipe):
     squared = lum*lum if np is not None else array("f", (v*v for v in lum))
     mean_squared = box_blur(squared, width, height, radii[1])
     if np is not None:
-        h = np.clip(0.5 + sign*(0.6*softened[0]+0.3*softened[1]+0.1*softened[2]-broad), 0, 1)
+        d_fine = sign*(0.6*softened[0]+0.3*softened[1]+0.1*softened[2]-broad)
+        h = np.clip(0.5 + d_fine, 0, 1)
+        # Parallax height: a band-pass of joints and cracks. Fine noise (ray marching amplifies it) and
+        # slab-scale swells (they read as melted dough) are both removed; plateaus stay at the local mean.
+        d = sign*(0.25*softened[0]+0.75*softened[1]-softened[2])
         rough = lo + (hi-lo)*np.clip(np.sqrt(np.maximum(0, mean_squared-mean*mean))*4, 0, 1)
-        rh = np.rint(np.stack((rough, h), axis=-1)*255).astype(np.uint8).tobytes()
+        # Parallax height: the band-passed relief (broad painted shading already removed) normalised
+        # by its robust range, so the class gain, not the albedo contrast, sets the depth.
+        norm = max(float(np.percentile(np.abs(d), 97)), 1e-4)
+        g = 0.5 + 0.5*recipe["relief"]*np.clip(d/norm, -1, 1)
+        rh = np.rint(np.stack((rough, g), axis=-1)*255).astype(np.uint8).tobytes()
     else:
-        h = array("f", (min(1, max(0, 0.5 + sign*(0.6*a+0.3*b+0.1*c-d)))
-                        for a, b, c, d in zip(*softened, broad)))
+        h = array("f", (min(1, max(0, 0.5 + sign*(0.6*a+0.3*b+0.1*c-e)))
+                        for a, b, c, e in zip(*softened, broad)))
+        d = array("f", (sign*(0.25*a+0.75*b-c) for a, b, c in zip(*softened)))
+        ranked = sorted(abs(v) for v in d)
+        norm = max(ranked[min(len(ranked)-1, int(len(ranked)*0.97))], 1e-4)
         rh = bytearray(width*height*2)
-        for i, (m, m2, hv) in enumerate(zip(mean, mean_squared, h)):
+        for i, (m, m2, v) in enumerate(zip(mean, mean_squared, d)):
             rough = lo + (hi-lo)*min(1, math.sqrt(max(0, m2-m*m))*4)
             rh[2*i] = round(rough*255)
-            rh[2*i+1] = round(hv*255)
+            rh[2*i+1] = round((0.5 + 0.5*recipe["relief"]*max(-1, min(1, v/norm)))*255)
         rh = bytes(rh)
     return normal_map(h, width, height, recipe["height_scale"] * recipe["normal_strength"]), rh
 
@@ -240,6 +252,9 @@ def preview(path, pixels, normal, rh, width, height):
 def validate_recipe(recipe):
     if set(recipe) != set(DEFAULTS):
         raise ValueError("unknown or missing recipe keys")
+    if isinstance(recipe["relief"], bool) or not isinstance(recipe["relief"], (int, float)) \
+            or not 0 <= recipe["relief"] <= 1:
+        raise ValueError("relief must be within [0,1]")
     for key in ("height_scale", "normal_strength"):
         v = recipe[key]
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
@@ -335,13 +350,18 @@ def self_check():
             pixels = bytes(v for y in range(10) for x in range(12)
                            for v in ((x*17+y*5) % 256, x*11, y*23, 255))
             reduced = half_rgba(pixels, 12, 10)
-            n, rh = generate(reduced, 6, 5, DEFAULTS)
+            n, rh = generate(reduced, 6, 5, DEFAULTS | {"relief": 0.8})
+            brick = bytes(v for y in range(64) for x in range(64)
+                          for v in ((40 if x % 16 < 2 or y % 8 < 2 else 180),)*3 + (255,))
+            _, relief = generate(brick, 64, 64, DEFAULTS | {"relief": 0.8})
+            assert max(relief[1::2]) - min(relief[1::2]) > 100  # mortar sinks, bricks stand
+            assert set(generate(brick, 64, 64, DEFAULTS)[1][1::2]) == {128}
             assert len(n) == len(rh) == 60
             assert min(rh[::2]) >= round(DEFAULTS["roughness_range"][0]*255)
             assert max(rh[::2]) <= round(DEFAULTS["roughness_range"][1]*255)
-            flat_n, inverted = generate(reduced, 6, 5, DEFAULTS | {"normal_strength": 0, "invert": True})
+            flat_n, inverted = generate(reduced, 6, 5, DEFAULTS | {"normal_strength": 0, "invert": True, "relief": 0.8})
             assert flat_n == bytes([128, 128])*30
-            assert all(abs(a+b-255) <= 1 for a, b in zip(rh[1::2], inverted[1::2]))
+            assert all(abs(a+b-255) <= 2 for a, b in zip(rh[1::2], inverted[1::2]))
             assert rh[::2] == inverted[::2]
             results.append((n, rh))
         if len(results) == 2:
