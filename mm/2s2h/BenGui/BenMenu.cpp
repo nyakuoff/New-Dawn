@@ -897,6 +897,17 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Atmos.Wind")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Gusting wind shared by clouds, ambient particles and new rain/snow; foliage sways and its shadows follow."));
+    AddWidget(path, "HD Fire, Embers and Glows (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Vfx.Enabled")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Replaces the low-resolution torch/brazier flames and light glows with HD HDR sprites and rising embers. "
+            "Render-only; effects keep their game-driven positions and timing. Requires HDR."));
+    AddWidget(path, "Effect Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Vfx.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Ember Density: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Vfx.Embers")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
     AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Atmos.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
