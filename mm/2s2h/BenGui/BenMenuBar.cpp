@@ -37,7 +37,7 @@ void DrawMenuBarIcon() {
 }
 
 void DrawBenMenu() {
-    if (UIWidgets::BeginMenu("2Ship")) {
+    if (UIWidgets::BeginMenu("New Dawn")) {
         if (UIWidgets::MenuItem("Hide Menu Bar",
 #if !defined(__SWITCH__) && !defined(__WIIU__)
                                 "F1"
@@ -95,12 +95,8 @@ void BenMenuBar::DrawElement() {
 
         ImGui::SetCursorPosY(0.0f);
 
-        if (UIWidgets::BeginMenu("New Menu")) {
-            ImGui::PushStyleColor(ImGuiCol_Text, UIWidgets::ColorValues.at(UIWidgets::Colors::Orange));
-            ImGui::SeparatorText("NOTICE");
-            ImGui::PopStyleColor();
-            ImGui::Text(
-                "All settings have now been moved to the new menu,\nwhich can be accessed with the Esc button.");
+        if (UIWidgets::BeginMenu("Settings")) {
+            ImGui::TextUnformatted("All settings live in the menu: press Esc to open it.");
             ImGui::EndMenu();
         }
 

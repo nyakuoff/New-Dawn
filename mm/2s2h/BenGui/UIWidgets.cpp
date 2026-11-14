@@ -1,4 +1,5 @@
 #include "UIWidgets.hpp"
+#include "NewDawnTheme.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 #include <string>
@@ -58,13 +59,20 @@ void Tooltip(const char* text) {
     }
 }
 
-void PushStyleMenu(const ImVec4& color) {
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(color.x, color.y, color.z, 0.5f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, ColorValues.at(Colors::DarkGray));
-    ImGui::PushStyleColor(ImGuiCol_Border, ColorValues.at(Colors::DarkGray));
+// New Dawn look: surfaces are the night-blue palette; the widget colour is only an accent (borders, fills when
+// active, grab handles). NoColor falls back to the moon-amber accent.
+static ImVec4 Accent(const ImVec4& c) {
+    return c.w <= 0.0f ? NewDawn::Theme::Gold : c;
+}
+
+void PushStyleMenu(const ImVec4& color_) {
+    const ImVec4 color = Accent(color_);
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(color.x, color.y, color.z, 0.30f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 0.50f));
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.070f, 0.080f, 0.168f, 0.98f));
+    ImGui::PushStyleColor(ImGuiCol_Border, NewDawn::Theme::Outline);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 15.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 3.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 1.0f);
 }
 
 void PushStyleMenu(Colors color) {
@@ -87,8 +95,9 @@ bool BeginMenu(const char* label, Colors color) {
     return dirty;
 }
 
-void PushStyleMenuItem(const ImVec4& color) {
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, color);
+void PushStyleMenuItem(const ImVec4& color_) {
+    const ImVec4 color = Accent(color_);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 0.50f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(20.0f, 15.0f));
 }
 
@@ -111,14 +120,16 @@ bool MenuItem(const char* label, const char* shortcut, Colors color) {
     return dirty;
 }
 
-void PushStyleButton(const ImVec4& color, const ImVec2 padding) {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.3f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+void PushStyleButton(const ImVec4& color_, const ImVec2 padding) {
+    using namespace NewDawn::Theme;
+    const ImVec4 color = Accent(color_);
+    ImGui::PushStyleColor(ImGuiCol_Button, Mix(Frame, color, 0.30f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Mix(Frame, color, 0.52f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, Mix(Frame, color, 0.72f));
+    ImGui::PushStyleColor(ImGuiCol_Border, WithAlpha(color, 0.60f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, padding);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 }
 
 void PushStyleButton(Colors color, ImVec2 padding) {
@@ -130,17 +141,19 @@ void PopStyleButton() {
     ImGui::PopStyleColor(4);
 }
 
-void PushStyleInput(const ImVec4& color) {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.3f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5.0f);
+void PushStyleInput(const ImVec4& color_) {
+    using namespace NewDawn::Theme;
+    const ImVec4 color = Accent(color_);
+    ImGui::PushStyleColor(ImGuiCol_Button, Mix(Frame, color, 0.30f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Mix(Frame, color, 0.52f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, Mix(Frame, color, 0.72f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, Frame);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, FrameHot);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, Mix(FrameHot, color, 0.25f));
+    ImGui::PushStyleColor(ImGuiCol_Border, WithAlpha(color, 0.45f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 8.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 }
 
 void PushStyleInput(Colors color) {
@@ -152,10 +165,11 @@ void PopStyleInput() {
     ImGui::PopStyleColor(7);
 }
 
-void PushStyleHeader(const ImVec4& color) {
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(color.x, color.y, color.z, 0.6f));
+void PushStyleHeader(const ImVec4& color_) {
+    const ImVec4 color = Accent(color_);
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(color.x, color.y, color.z, 0.40f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 0.55f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(color.x, color.y, color.z, 0.70f));
 }
 
 void PushStyleHeader(Colors color) {
@@ -229,15 +243,17 @@ bool WindowButton(const char* label, const char* cvarName, std::shared_ptr<Ship:
     return dirty;
 }
 
-void PushStyleCheckbox(const ImVec4& color, ImVec2 padding) {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.3f));
-    ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(1.0f, 1.0f, 1.0f, 0.7f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+void PushStyleCheckbox(const ImVec4& color_, ImVec2 padding) {
+    using namespace NewDawn::Theme;
+    const ImVec4 color = Accent(color_);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, Mix(Frame, ImVec4(1, 1, 1, 1), 0.08f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, Mix(FrameHot, ImVec4(1, 1, 1, 1), 0.08f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, Mix(FrameHot, color, 0.30f));
+    ImGui::PushStyleColor(ImGuiCol_Border, WithAlpha(Mix(Outline, color, 0.45f), 0.95f));
+    ImGui::PushStyleColor(ImGuiCol_CheckMark, Mix(color, ImVec4(1, 1, 1, 1), 0.25f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 7.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, padding);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 }
 
 void PushStyleCheckbox(Colors color, ImVec2 padding) {
@@ -467,11 +483,16 @@ bool Checkbox(const char* _label, bool* value, const CheckboxOptions& options) {
     }
     const ImRect check_bb(checkPos, checkPos + ImVec2(square_sz, square_sz));
     ImGui::RenderNavHighlight(total_bb, id);
-    ImGui::RenderFrame(check_bb.Min, check_bb.Max,
-                       ImGui::GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive
-                                          : hovered         ? ImGuiCol_FrameBgHovered
-                                                            : ImGuiCol_FrameBg),
-                       true, style.FrameRounding);
+    ImU32 frameCol = ImGui::GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive
+                                        : hovered         ? ImGuiCol_FrameBgHovered
+                                                          : ImGuiCol_FrameBg);
+    if (*value) {
+        // Checked boxes fill with the accent so the on/off state reads at a glance.
+        const ImVec4 accent = Accent(ColorValues.at(options.color));
+        frameCol = ImGui::GetColorU32(NewDawn::Theme::Mix(ImGui::ColorConvertU32ToFloat4(frameCol), accent,
+                                                          hovered ? 0.50f : 0.38f));
+    }
+    ImGui::RenderFrame(check_bb.Min, check_bb.Max, frameCol, true, style.FrameRounding);
     ImU32 check_col = ImGui::GetColorU32(ImGuiCol_CheckMark);
     bool mixed_value = (g.LastItemData.ItemFlags & ImGuiItemFlags_MixedValue) != 0;
     if (mixed_value) {
@@ -571,20 +592,22 @@ float CalcComboWidth(const char* preview_value, ImGuiComboFlags flags) {
     return w;
 }
 
-void PushStyleCombobox(const ImVec4& color) {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(color.x, color.y, color.z, 0.5f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+void PushStyleCombobox(const ImVec4& color_) {
+    using namespace NewDawn::Theme;
+    const ImVec4 color = Accent(color_);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, Frame);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, FrameHot);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, FrameHot);
+    ImGui::PushStyleColor(ImGuiCol_Button, Mix(Frame, color, 0.30f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Mix(Frame, color, 0.50f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, Mix(Frame, color, 0.65f));
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(color.x, color.y, color.z, 0.30f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 0.45f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(color.x, color.y, color.z, 0.60f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 7.0f));
 }
 
 void PushStyleCombobox(Colors color) {
@@ -596,17 +619,18 @@ void PopStyleCombobox() {
     ImGui::PopStyleColor(9);
 }
 
-void PushStyleTabs(const ImVec4& color) {
-    ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(color.x, color.y, color.z, 0.5f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+void PushStyleTabs(const ImVec4& color_) {
+    const ImVec4 color = Accent(color_);
+    ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(color.x, color.y, color.z, 0.30f));
+    ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(color.x, color.y, color.z, 0.55f));
+    ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(color.x, color.y, color.z, 0.60f));
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(color.x, color.y, color.z, 0.40f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(color.x, color.y, color.z, 0.55f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(color.x, color.y, color.z, 0.65f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 7.0f));
 }
 
 void PushStyleTabs(Colors color) {
@@ -619,17 +643,19 @@ void PopStyleTabs() {
 }
 
 void PushStyleSlider(Colors color_) {
-    const ImVec4& color = ColorValues.at(color_);
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(1.0, 1.0, 1.0, 0.4f));
-    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(1.0, 1.0, 1.0, 0.5f));
-    ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    using namespace NewDawn::Theme;
+    const ImVec4 color = Accent(ColorValues.at(color_));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, Frame);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, FrameHot);
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, FrameHot);
+    ImGui::PushStyleColor(ImGuiCol_Border, WithAlpha(color, 0.45f));
+    // Translucent so the value printed over the handle stays readable.
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, WithAlpha(color, 0.55f));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, WithAlpha(Mix(color, ImVec4(1, 1, 1, 1), 0.25f), 0.80f));
+    ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 8.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 }
 
 void PopStyleSlider() {

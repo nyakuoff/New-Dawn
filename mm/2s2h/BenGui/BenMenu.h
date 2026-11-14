@@ -24,6 +24,7 @@ class BenMenu : public Ship::Menu {
     void AddSettings();
     void AddEnhancements();
     void AddDevTools();
+    void AddPages();
 
   private:
     bool mMenuElementsInitialized = false;
