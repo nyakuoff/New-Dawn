@@ -647,8 +647,9 @@ void OTRGlobals::Initialize() {
 
     context->InitCrashHandler();
 
-    context->GetWindow()->SetAutoCaptureMouse(CVarGetInteger("gSettings.EnableMouse", 0) &&
-                                              CVarGetInteger("gSettings.AutoCaptureMouse", 1));
+    context->GetWindow()->SetAutoCaptureMouse((CVarGetInteger("gSettings.EnableMouse", 0) &&
+                                               CVarGetInteger("gSettings.AutoCaptureMouse", 1)) ||
+                                              CVarGetInteger("gEnhancements.Camera.MouseLook.Enable", 0));
     context->GetWindow()->SetForceCursorVisibility(CVarGetInteger("gSettings.CursorVisibility", 0));
 
     context->InitAudio({ .SampleRate = 32000, .SampleLength = 1024, .DesiredBuffered = 1680 });
