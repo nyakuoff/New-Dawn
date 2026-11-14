@@ -175,6 +175,10 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Sky.Clouds", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Coverage", true, 0.55f, 0.55f },
     { "gNewDawn.Sky.CloudStrength", true, 1.0f, 1.0f },
+    // Render-only atmosphere; native game weather and actor updates remain unchanged.
+    { "gNewDawn.Atmos.Particles", false, 1.0f, 0.0f },
+    { "gNewDawn.Atmos.Weather", false, 1.0f, 0.0f },
+    { "gNewDawn.Atmos.Wind", false, 1.0f, 0.0f },
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
@@ -887,7 +891,7 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Wind: Foliage Sway and Rain Slant (HDR)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Atmos.Wind")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Render-only gusting wind swaying cut-out foliage in the scene (shadows follow) and slanting new rain."));
+            "Gusting wind shared by clouds, ambient particles and new rain/snow; foliage sways and its shadows follow."));
     AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Atmos.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));

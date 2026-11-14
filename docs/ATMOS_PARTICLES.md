@@ -1,9 +1,9 @@
-# Ambient particles (A1, experimental)
+# Ambient particles (A1)
 
 Base: game `dd4c4a108`, renderer `d2ae82aa`. OpenGL desktop only; HDR required.
 
-`gNewDawn.Atmos.Particles` defaults to **0** and remains **out of the preset** because the exact-main
-frozen-Inn identity gate is open. The New Dawn menu includes a toggle and `gNewDawn.Atmos.Strength`
+`gNewDawn.Atmos.Particles` defaults to **0** and is **1 in the New Dawn preset**. The exact-main
+frozen-Inn identity gate passes; see the integration update below. The New Dawn menu includes a toggle and `gNewDawn.Atmos.Strength`
 (default 1, range 0–2; zero skips the pass). `gNewDawn.Atmos.SpritePath` and `.LeafPath` accept absolute
 paths or paths relative to the application directories; restart after changing a texture path. Packaged defaults
 are `assets/newdawn/atmos/{dust_64,leaf_64}.png`. The build copies these small CC0 files beside the executable.
@@ -56,16 +56,36 @@ Evidence: `~/dev/ghm-mods/work/atmos/a1-{field-*,southern_swamp_cleared,woodfall
 south_clock_town,swamp-night,clock-rain,on-inn}/`, contact sheets `a1-after-matrix.jpg`, `a1-after-crops.png`;
 matched splits in `~/dev/ghm-mods/showcase/atmos/a1/`.
 
-## Open gate and limits
+## Original fixture attempts and limits
 
-**Exact-main disabled identity is NOT established.** The exact base was rebuilt from unchanged sources and
+**Historical failed fixture (superseded by the integration update below).** The exact base was rebuilt from unchanged sources and
 archived as `main-reference/`; an older existing executable was rejected as stale. The first frozen-Inn comparison
 differed at 23,756/2,073,600 pixels (mostly one RGB code value; 61 pixels exceeded two values; RMSE .129/255).
 Subsequent attempts alternated between the same two stable image hashes across both binaries. A private debugger
 fixture fixing the renderer noise counter did not resolve it. The three-attempt limit was reached; investigation
 stopped. Interpolation phase is a remaining hypothesis, not a verified explanation. No shipped freeze/debug code
-was added. Keep the toggle out of the preset until the integration owner resolves this gate.
+was added. Fixing interpolation to 20 FPS subsequently resolved this gate.
 
 Point lights lack local shadow visibility. Sun visibility inherits existing camera-culled shadow casters. There is
 no particle collision or ground settling; depth rejects hidden particles, rather than simulating their interaction
 with geometry. Static captures and coarse camera bursts cannot prove high-frame-rate motion safety.
+
+## Integration update, 2026-11-14
+
+Visibility was retuned before this handoff: sparse warm-white motes with varied brightness, slow
+meandering hover, near-camera softness and twinkle; yellow-green fireflies blink with soft halos.
+Full frames and 1:1 crops through preset fog: `~/dev/ghm-mods/showcase/atmos/a1v2/`.
+With `Atmos.Wind=1`, cloud and particle drift now share the integrated gust from `newdawn_wind.h`;
+with Wind off, the original particle clock/drift path remains active. No additional assets or samplers.
+
+Exact-main off identity: main `f7f8b1f1c` / renderer `e4aba70e`, 12:00 Inn, game frame 30,
+`gMatchRefreshRate=0`, `gInterpolationFPS=20`, preset and full mods. Two captures per binary:
+all four PNG SHA-256 `46ad33f92c94c188f017961d297107a7295ca957e83e1ce39ec54ea04103329d`.
+The earlier fixture had left interpolation at the display rate. Evidence and build details:
+`ATMOS_WIND.md`, `~/dev/ghm-mods/showcase/atmos/final/identity-*.png`.
+
+Final integration: ambient-particle stage 11 **0.006–0.019 ms GPU**, including night rain,
+night fireflies and the close grass view with weather and wind also enabled. Near sprites
+are deliberately blurred and can read as large bokeh. The shared-wind burst, final preset
+proof and firefly frame are in `~/dev/ghm-mods/showcase/atmos/final/`. Interior near-light dust
+and torch-specific embers remain unverified/unimplemented as described above. No game state, animation, collision, RNG or save behavior is modified.
