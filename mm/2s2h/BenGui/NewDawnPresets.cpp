@@ -52,7 +52,7 @@ const Row kRows[] = {
     { "gNewDawn.PostFx.Dither.Enabled",                I, { 1,     1,     1,     1,     0 } },
     // Modern (linear) lighting pipeline and display transform; SDR output.
     { "gNewDawn.HDR.Enabled",                          I, { 1,     1,     1,     1,     0 } },
-    { "gNewDawn.HDR.Exposure",                         F, { 0.3f,  0.3f,  0.3f,  0.3f,  -0.2f } },
+    { "gNewDawn.HDR.Exposure",                         F, { 0.05f, 0.05f, 0.05f, 0.05f, -0.2f } },
     { "gNewDawn.HDR.SunIntensity",                     F, { 1.2f,  1.2f,  1.2f,  1.2f,  1.8f } },
     { "gNewDawn.HDR.AmbientFill",                      F, { 0.72f, 0.72f, 0.72f, 0.72f, 0.4f } },
     { "gNewDawn.HDR.SkyIntensity",                     F, { 0.85f, 0.85f, 0.85f, 0.85f, 1.0f } },

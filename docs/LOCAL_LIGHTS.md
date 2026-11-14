@@ -47,13 +47,40 @@ Other cvars: `.LocalStrength` (0–3, 1), `.LocalContrast` (0–1.5, 1; 0 only a
 - **Flicker burst** (16 shots, South Clock Town torch pool): ±7% around the mean, largest step 10.7% — a slow drift, no strobing.
   The measured region includes the native flame sprite.
 
+## Dark-area fix (#81, 2026-11-14)
+Playtest: dark scenes and the opening looked grey, lifted, miscoloured and "oversharp". Bisected with per-feature cvars:
+- Darkening was **zero in every cutscene** (the opening is mostly cutscenes), so Lost Woods, the tunnel and the Clock Tower
+  interior kept the flat authored light with 4K textures at full crispness. Cutscenes now get 85% of the normal value, eased
+  over about a second (`sDarken` in `NewDawnFillLocalLightParams`) so a cutscene start or end never pops.
+- The luminance floor (0.009 linear, about 25/255) pinned every dark pixel, so p5 sat at 0.004-0.008 in every dark scene
+  whatever else was on. Now 0.0055; the interior darkening is 0.58 (was 0.70).
+- The darkening multiplied fogged distance too, giving a black ground band against the undarkened sky (opening forest). It now
+  fades with the native fog factor.
+- The art grade added a fixed lift, a gamma below 1 and a blue/violet shadow tint to true blacks. They now fade in above the
+  deepest shadows (`dk` mask, tint mask), so blacks stay black and unshifted.
+- Woodfall Temple volumetric fog density 1.6 to 0.5 (a teal veil over the whole temple).
+- Preset exposure +0.3 to +0.05 EV (about -0.25 EV; daytime Termina mean -9%).
+- Tatl and other fairies light with pure white (255,255,255): now tinted by the fairy colour Tatl is showing, range x0.75 and
+  `localBoost` 0.3 (was white rgb 4.04 at range 130; now rgb about 1.2/0.9/0.8 at range 98).
+Materials, parallax, sky reflections, AO and GI were toggled and make no visible difference in the darks (1:1 crops); the
+crispness came from the missing darkening plus the lift, not from a sharpen step (there is none). Luminance (mean / p5 / p50 /
+p95, before to after): Lost Woods .0142/.0041/.0090/.0298 to .0144/.0029/.0091/.0353; tunnel .0256/.0074/.0103/.1034 to
+.0199/.0040/.0109/.0531; Clock Town 00:00 .0373/.0077/.0170/.1146 to .0304/.0039/.0134/.0903; Inn .0469/.0059/.0135/.1883 to
+.0442/.0039/.0148/.1633; Woodfall .0569/.0082/.0138/.2829 to .0322/.0035/.0060/.1391; Termina 12:00 (guard)
+.2249/.0139/.1068/.7537 to .2041/.0115/.1072/.7156. Images: `~/dev/ghm-mods/showcase/fix-81/`.
+
+Banding report (Inn doorway "concentric bands", blotchy wall and hat): not a render-chain precision bug. Every post target
+after the HDR resolve is RGBA16F (R11G11B10F for bloom mips); only the final display target is RGB8, with the dither added
+last in the composite. The reported screenshot contains exactly 256 unique colours in the whole frame (it was
+palette-quantized in transit): 17 distinct G levels in the doorway, against 86-91 in a real capture of the same view
+(165k unique colours). `showcase/fix-81/inn_banding_histogram.txt`.
+
 ## Limits
 - Screen-space: lights and contact shadows only see what is on screen; no cube shadow maps (stretch goal not done).
 - The actor mask relies on the character-lighting classifier (per-pixel lighting + Characters on); unlit or classifier-missed actors get only the luminance floor. Enemies were not present in the captured views, so the mask is verified on Link and NPCs only.
 - The darkening is a per-class constant, not an adaptive exposure; a few bright interiors may read dim.
 - Tatl and other white game lights light their surroundings too (they are point lights).
 - Transparent (XLU) surfaces drawn after the opaque-end marker are not lit or darkened.
-- Clock Tower interior opens with a cutscene (no darkening by design); not captured in play.
 - Not run: Ikana Castle (no capture point); the Ikana Graveyard at night has no point lights at its start.
 
 ## Flicker and character softening (fix #82, 2026-11-14)

@@ -398,7 +398,7 @@ static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
         params->fogVolumetric = 2;
         params->fogBaseHeight = -1200.0f;
         params->fogHeight = 800.0f;
-        params->fogDensityScale = 1.6f;
+        params->fogDensityScale = 0.5f; // was 1.6: the teal medium veiled the whole temple
         float scores[NEWDAWN_FOG_POINT_LIGHTS];
         for (auto& score : scores)
             score = 1e30f;
@@ -731,7 +731,7 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
     params->localFlicker = NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalFlicker", 1.0f), 0.0f, 1.0f);
     // Darkening of the unlit scene, from the game's own clock and light mode (read only). Outdoors (time-of-day
     // lighting) it follows a smooth dusk/dawn ramp; interiors and dungeons (fixed light settings) get a milder, constant
-    // pull so their lamps shape the room. Cutscenes keep their authored look.
+    // pull so their lamps shape the room. Cutscenes get a slightly lighter version of the same.
     {
         const float hour = gSaveContext.save.time * (24.0f / 65536.0f);
         const auto smooth = [](float a, float b, float x) {
@@ -740,12 +740,24 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
         };
         const float night = hour >= 12.0f ? smooth(17.5f, 19.5f, hour) : 1.0f - smooth(4.5f, 6.5f, hour);
         const bool outdoor = play->envCtx.lightMode == LIGHT_MODE_TIME;
-        float darken = outdoor ? 0.62f * night : 0.70f;
+        float darken = outdoor ? 0.62f * night : 0.58f;
         params->localGain = outdoor ? 1.0f : 1.5f;
+        // Cutscenes (most of the opening) get the same moody treatment, a little lighter, so their flat authored light is
+        // not left grey. The value eases over about a second so a cutscene starting or ending never pops.
         if (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
-            darken = 0.0f;
+            darken *= 0.85f;
         }
-        params->localDarken = darken * NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalContrast", 1.0f), 0.0f, 1.5f);
+        static float sDarken = 0.0f;
+        static s16 sScene = -1;
+        static u32 sFrame = 0;
+        if (sScene != play->sceneId || play->gameplayFrames < sFrame) {
+            sDarken = darken; // scene change (fades through black): start from the target
+            sScene = play->sceneId;
+        } else if (play->gameplayFrames != sFrame) {
+            sDarken += (darken - sDarken) * 0.08f;
+        }
+        sFrame = play->gameplayFrames;
+        params->localDarken = sDarken * NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalContrast", 1.0f), 0.0f, 1.5f);
     }
     float scores[NEWDAWN_LOCAL_LIGHTS];
     for (float& score : scores)
@@ -773,6 +785,22 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
         params->localLights[slot][3] = light.radius;
         for (int i = 0; i < 3; ++i)
             params->localColors[slot][i] = light.color[i] / 255.0f;
+        params->localBoost[slot] = 1.0f;
+        // Tatl and other fairies light with pure white (255, 255, 255): as a point light that is a white floodlight.
+        // Give them a soft glow in the fairy's own colour (the actor-category colour Tatl is currently showing).
+        if (light.color[0] == 255 && light.color[1] == 255 && light.color[2] == 255) {
+            const Attention* att = &play->actorCtx.attention;
+            float tint[3] = { 0.35f * att->tatlInnerColor.r + 0.65f * att->tatlOuterColor.r,
+                              0.35f * att->tatlInnerColor.g + 0.65f * att->tatlOuterColor.g,
+                              0.35f * att->tatlInnerColor.b + 0.65f * att->tatlOuterColor.b };
+            const float peak = fmaxf(tint[0], fmaxf(tint[1], tint[2]));
+            if (peak > 1.0f) {
+                for (int i = 0; i < 3; ++i)
+                    params->localColors[slot][i] = tint[i] / peak;
+            }
+            params->localLights[slot][3] = light.radius * 0.75f;
+            params->localBoost[slot] = 0.3f;
+        }
         if (slot >= params->localCount)
             params->localCount = slot + 1;
     }
