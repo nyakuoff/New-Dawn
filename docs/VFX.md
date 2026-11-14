@@ -41,7 +41,7 @@ native effects. Art is not committed (only the authoring scripts are).
 - Off identical to main: frozen Stock Pot Inn (12:00, frame 30, `gMatchRefreshRate=0`, `gInterpolationFPS=20`),
   main `a358fa2d6` build vs this branch, 2 runs each: all four PNG SHA-256 `440c1ac3…`; also identical with VFX on (no
   recorded effects in that view). 0 GL errors (`MESA_DEBUG=context`) over all 19 capture points with VFX on.
-- GPU stage 15 (`gNewDawn.PostFx.Debug.Stats=1`; stage 14 is GI): **0.004–0.007 ms** with one torch + glow + embers (Clock Town, night).
+- GPU stage 15 (`gNewDawn.PostFx.Debug.Stats=1`; stage 14 is GI): **0.002–0.012 ms** with one torch + glow + embers (Clock Town, night; after the GI merge).
 - Before/after: `~/dev/ghm-mods/showcase/vfx/`.
 
 ## Limits
