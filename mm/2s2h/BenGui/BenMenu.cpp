@@ -166,7 +166,7 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.PostFx.Dither.Enabled", false, 1.0f, 1.0f },
     // Linear HDR world and display transform. Defaults stay opt-in outside this preset.
     { "gNewDawn.HDR.Enabled", false, 1.0f, 0.0f },
-    { "gNewDawn.HDR.Exposure", true, 0.3f, -0.2f },
+    { "gNewDawn.HDR.Exposure", true, 0.05f, -0.2f },
     { "gNewDawn.HDR.SunIntensity", true, 1.2f, 1.8f },
     { "gNewDawn.HDR.AmbientFill", true, 0.72f, 0.4f },
     { "gNewDawn.HDR.SkyIntensity", true, 0.85f, 1.0f },
