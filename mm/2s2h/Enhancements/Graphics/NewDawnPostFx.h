@@ -21,6 +21,9 @@ void NewDawnSky_DrawOvercast(PlayState* play);
 
 void NewDawnShadows_Begin(PlayState* play);
 
+// Room geometry is drawn, actors are not yet: the grass takes its ground colour here. Call right before Actor_DrawAll.
+void NewDawnPostFx_GroundEnd(PlayState* play);
+
 // Ambient occlusion and/or real-time shadows of everything opaque drawn so far. Call right after Actor_DrawAll,
 // which is the end of the opaque list's world drawing.
 void NewDawnPostFx_OpaqueEnd(PlayState* play);

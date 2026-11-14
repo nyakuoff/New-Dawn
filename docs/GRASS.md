@@ -25,7 +25,7 @@ stream, the player's position and the sun; there is no collision, hitbox, RNG or
    self-rendered 2×2 atlas of side-view tufts (`tools/newdawn/grass-tufts/render_tufts.py`; asset pack
    `~/dev/ghm-mods/assets/grass/`, loaded from `<gNewDawn.Assets.Path>/grass/tuft_atlas.png`; the feature stays off and
    logs a warning if the file is missing). Alpha-to-coverage with a sharpened ramp at MSAA > 1, a 0.45 cut-out otherwise.
-4. **Colour and light.** Each tuft samples the **finished ground colour behind its root** (a single-sample copy of the
+4. **Colour and light.** Each tuft samples the **ground colour behind its root**, copied at the ground-end marker, before any actor is drawn (a single-sample copy of the
    HDR world: 5 taps, ±5 px), multiplies it with the atlas shading (dark root, bright tip), slightly saturates it, applies
    a slow world-space dry-straw ↔ lush-green patch variation and a small per-tuft hue drift, and adds a sun-behind
    translucency term. Because the ground colour already contains per-pixel lighting, fog, time of day and local tint, the
@@ -34,7 +34,7 @@ stream, the player's position and the sun; there is no collision, hitbox, RNG or
 5. **Wind.** The shared `newdawn_wind.h` direction, gust and analytic travel integral drive a travelling wave, a cross
    ripple and a fast flutter. Tips move and roots stay planted (bend weight is height squared). Amplitude follows
    `gNewDawn.Atmos.WindScale`; the grass sways whether or not `gNewDawn.Atmos.Wind` is on.
-6. **Player.** Tufts within about 10–55 units of Link are laid lower (to 40 %), render-only.
+6. **Player.** Tufts within about 16–85 units of Link are laid low (to 15 % height, 60 % width), render-only.
 
 ## Measurements (RX 7800 XT, 1080p, preset, MSAA 4)
 
@@ -59,5 +59,5 @@ no-op marker flag check; the interpreter records nothing and the renderer does n
 - Placement follows classified textures only. The classification is a hypothesis (hue/saturation based), so a texture
   that is mossy stone or dirt but classified grass would get tufts; check `gNewDawn.Grass.Debug`. Ground whose real
   texture is classified `other`/`dirt` (parts of the ranch, Clock Town lawns) gets none.
-- Blades that sit directly behind an actor take that actor's colour at their root.
+- Ground colour is copied at a new `GROUND_END` marker (after the room, before `Actor_DrawAll`), so tufts never take Link's or any actor's colours; it also lacks anything actor-drawn (trees, props), which simply show their own colour. Without the marker the copy falls back to the finished scene.
 - No grass on 4K tiles whose draws are cut-out or translucent.

@@ -1437,6 +1437,8 @@ void Play_DrawMain(PlayState* this) {
                 Environment_FillScreen(gfxCtx, 0, 0, 0, this->bgCoverAlpha, FILL_SCREEN_OPA);
             }
 
+            NewDawnPostFx_GroundEnd(this);
+
             if (1) {
                 Actor_DrawAll(this, &this->actorCtx);
             }

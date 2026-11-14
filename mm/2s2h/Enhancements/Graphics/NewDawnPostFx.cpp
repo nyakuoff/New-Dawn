@@ -1059,6 +1059,19 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+extern "C" void NewDawnPostFx_GroundEnd(PlayState* play) {
+    if (!CVarGetInteger("gNewDawn.Grass.Enabled", 0)) {
+        return;
+    }
+    auto* params = NewDawnPostFx_AllocParams(play);
+    if (!params->grassEnabled) {
+        return;
+    }
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_GROUND_END, params);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
     const bool postFxAo =
         CVarGetInteger("gNewDawn.PostFx.Enabled", 1) && CVarGetInteger("gNewDawn.PostFx.AO.Enabled", 1);
