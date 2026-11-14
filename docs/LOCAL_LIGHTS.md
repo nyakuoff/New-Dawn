@@ -69,6 +69,12 @@ p95, before to after): Lost Woods .0142/.0041/.0090/.0298 to .0144/.0029/.0091/.
 .0442/.0039/.0148/.1633; Woodfall .0569/.0082/.0138/.2829 to .0322/.0035/.0060/.1391; Termina 12:00 (guard)
 .2249/.0139/.1068/.7537 to .2041/.0115/.1072/.7156. Images: `~/dev/ghm-mods/showcase/fix-81/`.
 
+Banding report (Inn doorway "concentric bands", blotchy wall and hat): not a render-chain precision bug. Every post target
+after the HDR resolve is RGBA16F (R11G11B10F for bloom mips); only the final display target is RGB8, with the dither added
+last in the composite. The reported screenshot contains exactly 256 unique colours in the whole frame (it was
+palette-quantized in transit): 17 distinct G levels in the doorway, against 86-91 in a real capture of the same view
+(165k unique colours). `showcase/fix-81/inn_banding_histogram.txt`.
+
 ## Limits
 - Screen-space: lights and contact shadows only see what is on screen; no cube shadow maps (stretch goal not done).
 - The actor mask relies on the character-lighting classifier (per-pixel lighting + Characters on); unlit or classifier-missed actors get only the luminance floor. Enemies were not present in the captured views, so the mask is verified on Link and NPCs only.
