@@ -368,7 +368,7 @@ static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
 // ---------------------------------------------------------------------------------------------------------------
 // Art-directed grade (gNewDawn.Grade.ArtDirection). A "look" is a small set of identity-centred colour controls.
 // The final look = region mood + time-of-day delta (+ per-band extras), cross-faded when the scene changes and
-// scaled by gNewDawn.Grade.ArtStrength. Render-only: it reads the scene id, the clock and two story flags.
+// scaled by gNewDawn.Grade.ArtStrength. Render-only: it reads the scene id, the clock and the Woodfall clear flag.
 // ---------------------------------------------------------------------------------------------------------------
 struct NewDawnLook {
     float gain, warmth, tint, lift, gamma, contrast, sat; // warmth + = orange, - = blue; tint + = green, - = magenta
@@ -376,27 +376,31 @@ struct NewDawnLook {
     float greenShift, greenSat;                             // green hue range: + towards yellow, - towards teal
 };
 static constexpr int kArtFloats = sizeof(NewDawnLook) / sizeof(float);
+static_assert(sizeof(NewDawnLook) == 15 * sizeof(float));
 static constexpr NewDawnLook kArtIdentity = { 1, 0, 0, 0, 1, 0, 1, { 0, 0, 0 }, { 0, 0, 0 }, 0, 1 };
 // Deltas are expressed against the identity, so adding them to a mood is a plain float-wise sum.
 static NewDawnLook ArtAdd(const NewDawnLook& a, const NewDawnLook& d, float w) {
     NewDawnLook out;
-    const float* pa = &a.gain;
-    const float* pd = &d.gain;
-    const float* pi = &kArtIdentity.gain;
-    float* po = &out.gain;
+    // Copy to actual arrays: indexing past a scalar struct member is undefined in C++.
+    float pa[kArtFloats], pd[kArtFloats], pi[kArtFloats], po[kArtFloats];
+    memcpy(pa, &a, sizeof(a));
+    memcpy(pd, &d, sizeof(d));
+    memcpy(pi, &kArtIdentity, sizeof(kArtIdentity));
     for (int i = 0; i < kArtFloats; i++) {
         po[i] = pa[i] + w * (pd[i] - pi[i]);
     }
+    memcpy(&out, po, sizeof(out));
     return out;
 }
 static NewDawnLook ArtMix(const NewDawnLook& a, const NewDawnLook& b, float t) {
     NewDawnLook out;
-    const float* pa = &a.gain;
-    const float* pb = &b.gain;
-    float* po = &out.gain;
+    float pa[kArtFloats], pb[kArtFloats], po[kArtFloats];
+    memcpy(pa, &a, sizeof(a));
+    memcpy(pb, &b, sizeof(b));
     for (int i = 0; i < kArtFloats; i++) {
         po[i] = pa[i] + (pb[i] - pa[i]) * t;
     }
+    memcpy(&out, po, sizeof(out));
     return out;
 }
 
@@ -404,9 +408,9 @@ enum { ART_DAWN, ART_DAY, ART_DUSK, ART_NIGHT };
 // What the clock does to every outdoor scene: warm low sun at dawn and dusk, cool blue moonlight at night.
 static const NewDawnLook sArtTod[4] = {
     // gain warm tint lift gamma contr sat    shadow                  high                  grn   grnSat
-    { 1.00f, 0.45f, 0.0f, 0.000f, 1.00f, 0.00f, 1.04f, { 0.000f, 0.000f, 0.014f }, { 0.018f, 0.004f, -0.012f }, 0.10f, 1.00f }, // dawn
+    { 1.00f, 0.25f, 0.0f, 0.000f, 1.00f, 0.00f, 1.02f, { 0.000f, 0.000f, 0.014f }, { 0.018f, 0.004f, -0.012f }, 0.10f, 1.00f }, // dawn
     { 1.00f, 0.00f, 0.0f, 0.000f, 1.00f, 0.00f, 1.00f, { 0.000f, 0.000f, 0.000f }, { 0.000f, 0.000f, 0.000f }, 0.00f, 1.00f },  // day
-    { 0.99f, 0.70f, 0.0f, 0.000f, 1.00f, 0.02f, 1.08f, { 0.012f, 0.000f, 0.022f }, { 0.022f, 0.004f, -0.020f }, 0.10f, 1.00f }, // dusk
+    { 0.99f, 0.35f, 0.0f, 0.000f, 1.00f, 0.02f, 1.02f, { 0.012f, 0.000f, 0.022f }, { 0.022f, 0.004f, -0.020f }, 0.10f, 1.00f }, // dusk
     { 1.02f, -0.60f, 0.0f, 0.006f, 1.00f, 0.03f, 0.92f, { -0.006f, 0.004f, 0.026f }, { 0.004f, 0.004f, 0.006f }, -0.20f, 0.95f }, // night
 };
 
@@ -417,33 +421,39 @@ struct NewDawnArtMood {
 #define ART_ID kArtIdentity
 #define ART_NO_EXTRA { ART_ID, ART_ID, ART_ID, ART_ID }
 //                                            gain   warm   tint   lift   gamma  contr  sat    shadow                    high                     grn    grnSat
-static const NewDawnArtMood sArtOutdoor = { { 1.00f, 0.15f, 0.00f, 0.000f, 0.98f, 0.05f, 1.06f, { 0, 0, 0.006f }, { 0.008f, 0.004f, -0.006f }, 0.08f, 1.08f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtOutdoor = { { 1.00f, 0.25f, 0.00f, 0.000f, 0.98f, 0.08f, 1.10f, { 0, 0, 0.010f }, { 0.012f, 0.006f, -0.010f }, 0.12f, 1.12f }, ART_NO_EXTRA };
 // Termina Field, ranches, roads: lush, a touch golden.
-static const NewDawnArtMood sArtField = { { 1.00f, 0.20f, 0.00f, 0.000f, 0.98f, 0.06f, 1.10f, { 0, 0, 0.008f }, { 0.012f, 0.006f, -0.008f }, 0.16f, 1.14f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtField = { { 1.00f, 0.24f, 0.00f, 0.000f, 0.97f, 0.09f, 1.12f, { 0, 0, 0.012f }, { 0.018f, 0.010f, -0.012f }, 0.20f, 1.12f }, ART_NO_EXTRA };
 // Clock Town: warm plaster and sun by day; at night cool moonlit shadows with warm lamplight in the highlights.
 static const NewDawnArtMood sArtClockTown = {
-    { 1.00f, 0.25f, 0.00f, 0.000f, 0.98f, 0.06f, 1.08f, { 0, 0, 0.006f }, { 0.012f, 0.006f, -0.008f }, 0.10f, 1.06f },
-    { ART_ID, ART_ID, ART_ID, { 1.00f, 0.00f, 0.0f, 0.000f, 1.00f, 0.03f, 1.06f, { 0.000f, 0.004f, 0.012f }, { 0.040f, 0.018f, -0.030f }, 0.0f, 1.0f } } };
+    { 1.00f, 0.40f, 0.00f, 0.000f, 0.97f, 0.09f, 1.14f, { 0, 0, 0.010f }, { 0.020f, 0.010f, -0.014f }, 0.14f, 1.10f },
+    { ART_ID, ART_ID, ART_ID, { 1.00f, -0.20f, 0.0f, 0.000f, 1.00f, 0.04f, 1.08f, { 0.000f, 0.006f, 0.020f }, { 0.070f, 0.030f, -0.050f }, 0.0f, 1.0f } } };
 // Southern Swamp while poisoned (and Woodfall before its temple is cleared): sickly but beautiful. Murky violet
 // shadows, toxic yellow-green foliage, drained saturation elsewhere.
-static const NewDawnArtMood sArtPoison = { { 0.98f, -0.10f, 0.06f, 0.008f, 1.04f, 0.09f, 0.84f, { 0.016f, 0.000f, 0.026f }, { 0.024f, 0.018f, -0.024f }, 0.50f, 0.92f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtPoison = { { 1.03f, -0.14f, 0.10f, 0.014f, 1.00f, 0.10f, 0.82f, { 0.024f, 0.006f, 0.045f }, { 0.030f, 0.030f, -0.030f }, 0.65f, 1.06f }, ART_NO_EXTRA };
 // Cleared swamp / Woodfall / Deku Palace: lush, golden-green, sun-dappled.
-static const NewDawnArtMood sArtLush = { { 1.02f, 0.35f, 0.00f, 0.000f, 0.96f, 0.07f, 1.16f, { 0, 0.004f, 0.010f }, { 0.026f, 0.014f, -0.020f }, 0.26f, 1.22f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtLush = {
+    { 1.02f, 0.32f, 0.00f, 0.000f, 0.94f, 0.10f, 1.13f, { 0, 0.006f, 0.014f }, { 0.040f, 0.022f, -0.030f }, 0.25f, 1.14f },
+    // The original night vertex colours are strongly green: restrain them rather than amplifying lime grass.
+    { ART_ID, ART_ID, ART_ID, { 1.00f, 0.05f, 0.0f, 0.000f, 1.00f, 0.00f, 0.88f, { 0, 0, 0 }, { 0, 0, 0 }, -0.10f, 0.78f } } };
 // Woods of Mystery, Woodfall temple: mossy, humid green-gold.
-static const NewDawnArtMood sArtMoss = { { 1.00f, 0.20f, 0.04f, 0.004f, 1.00f, 0.09f, 1.10f, { 0, 0.008f, 0.016f }, { 0.030f, 0.018f, -0.024f }, 0.22f, 1.12f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtMoss = { { 1.02f, 0.24f, 0.06f, 0.012f, 0.94f, 0.10f, 1.12f, { 0, 0.012f, 0.024f }, { 0.040f, 0.026f, -0.030f }, 0.24f, 1.12f }, ART_NO_EXTRA };
 // Ikana: bleached and haunted. Chalky highlights, cold violet-teal shadows, little saturation.
-static const NewDawnArtMood sArtIkana = { { 1.02f, -0.18f, 0.00f, 0.014f, 1.06f, 0.10f, 0.74f, { 0.004f, 0.012f, 0.030f }, { 0.016f, 0.014f, 0.010f }, -0.05f, 0.80f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtIkana = { { 1.08f, -0.25f, 0.00f, 0.026f, 0.94f, 0.10f, 0.64f, { 0.010f, 0.022f, 0.050f }, { 0.022f, 0.022f, 0.018f }, -0.10f, 0.65f }, ART_NO_EXTRA };
 // Stone Tower (outside) and its temple: parched gold and rust below, cold mystic violet when inverted.
-static const NewDawnArtMood sArtStoneTower = { { 1.00f, 0.15f, 0.00f, 0.004f, 1.02f, 0.10f, 1.08f, { 0.010f, 0.000f, 0.026f }, { 0.020f, 0.008f, -0.012f }, 0.0f, 1.0f }, ART_NO_EXTRA };
-static const NewDawnArtMood sArtStoneInverted = { { 1.00f, -0.35f, -0.04f, 0.006f, 1.02f, 0.11f, 1.10f, { 0.012f, 0.000f, 0.040f }, { 0.016f, 0.004f, 0.016f }, -0.1f, 1.0f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtStoneTower = { { 1.00f, 0.30f, 0.00f, 0.006f, 1.04f, 0.14f, 1.14f, { 0.016f, 0.000f, 0.040f }, { 0.030f, 0.012f, -0.020f }, 0.0f, 1.0f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtStoneInverted = { { 1.00f, -0.70f, -0.08f, 0.010f, 1.04f, 0.15f, 1.16f, { 0.020f, 0.000f, 0.060f }, { 0.024f, 0.008f, 0.026f }, -0.2f, 1.0f }, ART_NO_EXTRA };
 // Great Bay (coast, cape, temple): clear teal-leaning blues, sunlit.
-static const NewDawnArtMood sArtBay = { { 1.00f, 0.08f, 0.00f, 0.000f, 0.98f, 0.06f, 1.12f, { -0.004f, 0.008f, 0.016f }, { 0.012f, 0.008f, -0.004f }, -0.12f, 1.06f }, ART_NO_EXTRA };
-static const NewDawnArtMood sArtBayTemple = { { 1.00f, -0.15f, 0.02f, 0.004f, 1.00f, 0.10f, 1.12f, { -0.006f, 0.014f, 0.024f }, { 0.016f, 0.018f, 0.006f }, -0.16f, 1.08f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtBay = { { 1.00f, 0.15f, 0.00f, 0.000f, 0.97f, 0.09f, 1.20f, { -0.006f, 0.012f, 0.024f }, { 0.018f, 0.012f, -0.006f }, -0.30f, 1.14f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtBayTemple = { { 1.00f, -0.22f, 0.04f, 0.010f, 0.94f, 0.12f, 1.12f, { -0.010f, 0.022f, 0.036f }, { 0.024f, 0.028f, 0.010f }, -0.35f, 1.16f }, ART_NO_EXTRA };
 // Snowhead and its mountains in winter: crisp blue-white, cool shadows, clean highlights.
-static const NewDawnArtMood sArtSnow = { { 1.03f, -0.40f, 0.00f, 0.006f, 0.98f, 0.08f, 0.90f, { -0.004f, 0.004f, 0.030f }, { 0.004f, 0.008f, 0.016f }, -0.1f, 0.9f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtSnow = {
+    { 1.03f, -0.50f, 0.00f, 0.006f, 0.98f, 0.10f, 0.88f, { -0.008f, 0.008f, 0.050f }, { 0.004f, 0.008f, 0.010f }, -0.2f, 0.85f },
+    // Snow is already violet-blue at night; retain the cold mood without doubling that cast.
+    { ART_ID, ART_ID, ART_ID, { 1.00f, 0.35f, 0.0f, 0.000f, 1.00f, 0.00f, 1.00f, { 0, 0, 0 }, { 0, 0, 0 }, 0.0f, 1.0f } } };
 // Interiors and everything else enclosed: warm, a little more contrast and colour than the flat original.
-static const NewDawnArtMood sArtInterior = { { 1.00f, 0.22f, 0.00f, 0.004f, 0.98f, 0.10f, 1.10f, { 0.004f, 0.000f, 0.012f }, { 0.014f, 0.006f, -0.010f }, 0.06f, 1.06f }, ART_NO_EXTRA };
-static const NewDawnArtMood sArtDungeon = { { 1.00f, 0.05f, 0.00f, 0.004f, 1.00f, 0.11f, 1.10f, { 0.000f, 0.006f, 0.020f }, { 0.016f, 0.010f, -0.008f }, 0.04f, 1.08f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtInterior = { { 1.00f, 0.32f, 0.00f, 0.006f, 0.97f, 0.12f, 1.08f, { 0.006f, 0.000f, 0.020f }, { 0.024f, 0.010f, -0.016f }, 0.10f, 1.10f }, ART_NO_EXTRA };
+static const NewDawnArtMood sArtDungeon = { { 1.00f, 0.10f, 0.00f, 0.006f, 1.00f, 0.15f, 1.16f, { 0.000f, 0.010f, 0.034f }, { 0.026f, 0.016f, -0.012f }, 0.08f, 1.14f }, ART_NO_EXTRA };
 
 static const NewDawnArtMood* NewDawnArtMoodFor(s16 sceneId, bool woodfallCleared) {
     switch (sceneId) {
@@ -551,7 +561,7 @@ static void NewDawnFillArtParams(PlayState* play, NewDawnPostFxParams* params) {
     static bool sLastValid = false;
 
     params->artEnabled = 0;
-    if (!CVarGetInteger("gNewDawn.Grade.ArtDirection", 0)) {
+    if (!CVarGetInteger("gNewDawn.PostFx.Enabled", 1) || !CVarGetInteger("gNewDawn.Grade.ArtDirection", 0)) {
         sInit = false;
         return;
     }

@@ -49,6 +49,10 @@ point('stock_pot_inn', 0xbc00, 0, (149, 0, 303), 23040, 'Z2_YADOYA spawn 0 (entr
 point('woodfall_temple', 0x3000, 2, (0, -1185, 2370), 23078, 'Z2_MITURIN spawn 0 (entrance 0x3000)')
 point('great_bay_temple', 0x8c00, 13, (0, -210, 2654), 23081, 'Z2_SEA spawn 0 (entrance 0x8c00)')
 point('stone_tower_temple', 0x2600, 0, (0, 90, 810), 23086, 'Z2_INISIE_N spawn 0 (entrance 0x2600)')
+point('ikana_graveyard', 0x8000, 0, (-45, -49, 864), 23040, 'Z2_BOTI spawn 0 (entrance 0x8000)')
+point('stone_tower', 0xaa00, 0, (0, -3000, 2810), 23040, 'Z2_F40 spawn 0 (entrance 0xaa00)')
+point('snowhead_temple', 0x3c00, 0, (0, 0, 1650), 23109, 'Z2_HAKUGIN spawn 0, 345 units inside exit (entrance 0x3c00)')
+point('stone_tower_inverted', 0x2a00, 0, (0, -210, 810), 23082, 'Z2_INISIE_R spawn 0 (entrance 0x2a00)')
 # POINTS-TABLE-END
 # fmt: on
 

@@ -158,6 +158,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.PostFx.Grade.Enabled", false, 1.0f, 1.0f },
     { "gNewDawn.PostFx.Grade.Contrast", true, 1.08f, 1.06f },
     { "gNewDawn.PostFx.Grade.Saturation", true, 1.12f, 1.08f },
+    { "gNewDawn.Grade.ArtDirection", false, 1.0f, 0.0f },
+    { "gNewDawn.Grade.ArtStrength", true, 1.0f, 1.0f },
     { "gNewDawn.PostFx.Debug.View", false, 0.0f, 0.0f },
     { "gNewDawn.PostFx.Dither.Enabled", false, 1.0f, 1.0f },
     // Linear HDR world and display transform. Defaults stay opt-in outside this preset.
@@ -916,6 +918,17 @@ void BenMenu::AddSettings() {
         })
         .Options(FloatSliderOptions().Min(0.0f).Max(1.6f).Step(0.01f).Format("%.2f").DefaultValue(1.08f).Tooltip(
             "1.00 leaves colours unchanged."));
+    AddWidget(path, "Art Direction", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Grade.ArtDirection")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(CheckboxOptions().Tooltip(
+            "A per-area, time-of-day colour grade: sickly swamp, lush Woodfall, bleached Ikana, crisp Snowhead, "
+            "warm lamplight against cool moonlight in Clock Town. Colour only; gameplay is unchanged."));
+    AddWidget(path, "Art Direction Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Grade.ArtStrength")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.5f).Step(0.01f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How strongly the per-area grade is applied. 0 is off."));
     AddWidget(path, "Debug View", WIDGET_CVAR_COMBOBOX)
         .CVar("gNewDawn.PostFx.Debug.View")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
