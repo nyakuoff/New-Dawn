@@ -630,6 +630,12 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     params->fogNear = play->lightCtx.fogNear;
     params->fogFar = (fogFar <= 1000) ? 1000 : fogFar;
     params->flags = 0;
+    params->giEnabled = CVarGetInteger("gNewDawn.GI.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
+    params->giStrength = NewDawnClampF(CVarGetFloat("gNewDawn.GI.Strength", 1.0f), 0.0f, 2.0f);
+    params->giSceneId = play->sceneId;
+    params->giCameraEye[0] = play->view.eye.x;
+    params->giCameraEye[1] = play->view.eye.y;
+    params->giCameraEye[2] = play->view.eye.z;
     NewDawnFillShadowParams(play, params);
     NewDawnFillFogParams(play, params);
     NewDawnFillWaterParams(play, params);
@@ -814,7 +820,7 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
-        !CVarGetInteger("gNewDawn.Fog.Volumetric", 0)) {
+        !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.GI.Enabled", 0)) {
         return;
     }
 
@@ -835,7 +841,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
         params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && !params->fogVolumetric &&
-        !params->atmosBiome) {
+        !params->atmosBiome && !params->giEnabled) {
         return;
     }
 
