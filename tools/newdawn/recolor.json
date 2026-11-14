@@ -1,0 +1,299 @@
+{
+  "version": 1,
+  "description": "Curated opaque environment albedos inspected against the local MM Reloaded pack. No assets included. Hue is degrees of YIQ chroma rotation; gamma < 1 lifts midtones. Never broad-match character, UI, water, signs or puzzle-colour textures.",
+  "classes": {
+    "swamp_rock": {
+      "saturation": 0.62,
+      "gamma": 0.92,
+      "gain": [
+        0.9,
+        1.04,
+        1.12
+      ]
+    },
+    "swamp_moss": {
+      "saturation": 1.14,
+      "gamma": 0.94,
+      "gain": [
+        0.87,
+        1.06,
+        0.94
+      ]
+    },
+    "silvered_timber": {
+      "saturation": 0.7,
+      "gamma": 0.92,
+      "gain": [
+        0.98,
+        1.02,
+        1.08
+      ]
+    },
+    "woodfall_moss": {
+      "saturation": 1.18,
+      "gamma": 0.88,
+      "gain": [
+        0.9,
+        1.06,
+        0.98
+      ]
+    },
+    "ikana_chalk": {
+      "saturation": 0.38,
+      "gamma": 0.84,
+      "gain": [
+        1.08,
+        1.06,
+        1.06
+      ]
+    },
+    "graveyard_sage": {
+      "saturation": 0.5,
+      "gamma": 0.92,
+      "gain": [
+        0.88,
+        1.0,
+        1.1
+      ]
+    },
+    "bay_metal": {
+      "saturation": 0.55,
+      "gamma": 0.9,
+      "gain": [
+        0.78,
+        1.02,
+        1.23
+      ]
+    },
+    "tower_sandstone": {
+      "saturation": 0.8,
+      "gamma": 0.93,
+      "gain": [
+        1.08,
+        1.02,
+        0.94
+      ]
+    },
+    "town_ochre": {
+      "saturation": 0.78,
+      "gamma": 0.97,
+      "gain": [
+        1.05,
+        0.98,
+        0.92
+      ]
+    }
+  },
+  "textures": [
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI/Z2_20SICHITAITex_00D360",
+      "class": "swamp_rock",
+      "label": "Swamp cliff: separate cool stone from green moss"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI2/Z2_20SICHITAI2Tex_00BCF0",
+      "class": "swamp_rock",
+      "label": "Cleared swamp cliff, same material correction"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI/Z2_20SICHITAI_room_00Tex_0137B8",
+      "class": "swamp_moss",
+      "label": "Swamp moss: greener organic detail, less grey-yellow"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI2/Z2_20SICHITAI2Tex_00C8F0",
+      "class": "swamp_moss",
+      "label": "Cleared swamp moss, same material correction"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI/Z2_20SICHITAI_room_00Tex_011BB8",
+      "class": "silvered_timber",
+      "label": "Swamp bamboo: aged silver-green timber"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI/Z2_20SICHITAI_room_00Tex_011DB8",
+      "class": "silvered_timber",
+      "label": "Swamp bamboo: aged silver-green timber"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI/Z2_20SICHITAI_room_00Tex_011FB8",
+      "class": "silvered_timber",
+      "label": "Swamp bamboo: aged silver-green timber"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI/Z2_20SICHITAITex_010960",
+      "class": "silvered_timber",
+      "label": "Swamp bamboo: aged silver-green timber"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI2/Z2_20SICHITAI2_room_00Tex_011228",
+      "class": "silvered_timber",
+      "label": "Cleared swamp bamboo and planks, same material correction"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI2/Z2_20SICHITAI2_room_00Tex_011428",
+      "class": "silvered_timber",
+      "label": "Cleared swamp bamboo and planks, same material correction"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI2/Z2_20SICHITAI2_room_00Tex_011628",
+      "class": "silvered_timber",
+      "label": "Cleared swamp bamboo and planks, same material correction"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_20SICHITAI2/Z2_20SICHITAI2Tex_00F9F0",
+      "class": "silvered_timber",
+      "label": "Cleared swamp bamboo and planks, same material correction"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_21MITURINMAE/Z2_21MITURINMAETex_0065D0",
+      "class": "silvered_timber",
+      "label": "Woodfall trunks: silvered bark, retain painted detail"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_21MITURINMAE/Z2_21MITURINMAETex_007ED0",
+      "class": "silvered_timber",
+      "label": "Woodfall trunks: silvered bark, retain painted detail"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_21MITURINMAE/Z2_21MITURINMAETex_0092D0",
+      "class": "silvered_timber",
+      "label": "Woodfall trunks: silvered bark, retain painted detail"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_MITURIN/Z2_MITURINTex_015090",
+      "class": "woodfall_moss",
+      "label": "Woodfall masonry: humid moss-green, lifted carved detail"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_MITURIN/Z2_MITURINTex_016990",
+      "class": "woodfall_moss",
+      "label": "Woodfall masonry: humid moss-green, lifted carved detail"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_MITURIN/Z2_MITURINTex_016D90",
+      "class": "woodfall_moss",
+      "label": "Woodfall masonry: humid moss-green, lifted carved detail"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_MITURIN/Z2_MITURIN_room_02Tex_005CC0",
+      "class": "woodfall_moss",
+      "label": "Woodfall masonry: humid moss-green, lifted carved detail"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_022D58",
+      "class": "ikana_chalk",
+      "label": "Ikana foreground cliff and path: pale weathered stone, verified scene bindings"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_022E40",
+      "class": "ikana_chalk",
+      "label": "Ikana foreground cliff and path: pale weathered stone, verified scene bindings"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_01C440",
+      "class": "ikana_chalk",
+      "label": "Ikana foreground cliff and path: pale weathered stone, verified scene bindings"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_017258",
+      "class": "ikana_chalk",
+      "label": "Ikana cliff: chalk and ash instead of ochre mud"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_017340",
+      "class": "ikana_chalk",
+      "label": "Ikana cliff: chalk and ash instead of ochre mud"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_014358",
+      "class": "graveyard_sage",
+      "label": "Ikana dry grass: subdued sage instead of lime"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_014440",
+      "class": "graveyard_sage",
+      "label": "Ikana dry grass: subdued sage instead of lime"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_BOTI/Z2_BOTITex_00BDD0",
+      "class": "graveyard_sage",
+      "label": "Graveyard moss: cool sage, retain haunted setting"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_BOTI/Z2_BOTITex_00A2B0",
+      "class": "ikana_chalk",
+      "label": "Graveyard cliff: weathered pale stone"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_BOTI/Z2_BOTI_room_00Tex_0087D0",
+      "class": "ikana_chalk",
+      "label": "Graveyard cliff: weathered pale stone"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_SEA/Z2_SEATex_019CC0",
+      "class": "bay_metal",
+      "label": "Great Bay metal: blue-grey patina, retain warm lights and route colours"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_SEA/Z2_SEATex_01A0C0",
+      "class": "bay_metal",
+      "label": "Great Bay metal: blue-grey patina, retain warm lights and route colours"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_SEA/Z2_SEATex_01A1C0",
+      "class": "bay_metal",
+      "label": "Great Bay metal: blue-grey patina, retain warm lights and route colours"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_SEA/Z2_SEATex_01ADC0",
+      "class": "bay_metal",
+      "label": "Great Bay metal: blue-grey patina, retain warm lights and route colours"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_SEA/Z2_SEA_room_13Tex_002D40",
+      "class": "bay_metal",
+      "label": "Great Bay metal: blue-grey patina, retain warm lights and route colours"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_INISIE_N/Z2_INISIE_NTex_0106B0",
+      "class": "tower_sandstone",
+      "label": "Stone Tower plaster: warm sandstone distinct from rust and violet shade"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_INISIE_N/Z2_INISIE_NTex_00E0B0",
+      "class": "tower_sandstone",
+      "label": "Stone Tower plaster: warm sandstone distinct from rust and violet shade"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_INISIE_N/Z2_INISIE_NTex_0111B0",
+      "class": "tower_sandstone",
+      "label": "Stone Tower plaster: warm sandstone distinct from rust and violet shade"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_INISIE_N/Z2_INISIE_NTex_010FB0",
+      "class": "tower_sandstone",
+      "label": "Stone Tower plaster: warm sandstone distinct from rust and violet shade"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00D880",
+      "class": "town_ochre",
+      "label": "Clock Town brick: controlled terracotta/ochre"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00E080",
+      "class": "town_ochre",
+      "label": "Clock Town brick: controlled terracotta/ochre"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_YADOYA/Z2_YADOYATex_00E480",
+      "class": "silvered_timber",
+      "label": "Inn planks: neutral timber rather than olive stain"
+    },
+    {
+      "resource": "scenes/nonmq/Z2_IKANA/Z2_IKANA_room_00Tex_01C358",
+      "class": "ikana_chalk",
+      "label": "Ikana path, matching alternate state variant"
+    }
+  ]
+}

@@ -160,6 +160,8 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.PostFx.Grade.Enabled", false, 1.0f, 1.0f },
     { "gNewDawn.PostFx.Grade.Contrast", true, 1.08f, 1.06f },
     { "gNewDawn.PostFx.Grade.Saturation", true, 1.12f, 1.08f },
+    { "gNewDawn.Grade.ArtDirection", false, 1.0f, 0.0f },
+    { "gNewDawn.Grade.ArtStrength", true, 1.0f, 1.0f },
     { "gNewDawn.PostFx.Debug.View", false, 0.0f, 0.0f },
     { "gNewDawn.PostFx.Dither.Enabled", false, 1.0f, 1.0f },
     // Linear HDR world and display transform. Defaults stay opt-in outside this preset.
@@ -177,6 +179,10 @@ static const NewDawnPresetCVar sNewDawnPresetCvars[] = {
     { "gNewDawn.Sky.Clouds", false, 1.0f, 0.0f },
     { "gNewDawn.Sky.Coverage", true, 0.55f, 0.55f },
     { "gNewDawn.Sky.CloudStrength", true, 1.0f, 1.0f },
+    // Render-only atmosphere; native game weather and actor updates remain unchanged.
+    { "gNewDawn.Atmos.Particles", false, 1.0f, 0.0f },
+    { "gNewDawn.Atmos.Weather", false, 1.0f, 0.0f },
+    { "gNewDawn.Atmos.Wind", false, 1.0f, 0.0f },
     // Lighting.
     { "gNewDawn.Lighting.PerPixel", false, 1.0f, 0.0f },         // smooth lighting on low-poly surfaces
     { "gNewDawn.Lighting.PointLightQuality", true, 0.5f, 0.0f }, // smoother point-light falloff
@@ -879,6 +885,21 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Cloud Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Sky.CloudStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Ambient Dust, Pollen and Fireflies (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Atmos.Particles")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Floating sunlight-lit motes and biome-specific pollen/fireflies. Read-only scene lights. Requires HDR."));
+    AddWidget(path, "Modern Rain, Snow and Wet Surfaces (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Atmos.Weather")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Soft rain/flakes, roof shelter, splashes and wet reflections driven by existing weather. Requires HDR."));
+    AddWidget(path, "Wind: Foliage Sway and Rain Slant (HDR)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Atmos.Wind")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Gusting wind shared by clouds, ambient particles and new rain/snow; foliage sways and its shadows follow."));
+    AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Atmos.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
     AddWidget(path, "Bloom", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Bloom.Enabled")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
@@ -919,6 +940,17 @@ void BenMenu::AddSettings() {
         })
         .Options(FloatSliderOptions().Min(0.0f).Max(1.6f).Step(0.01f).Format("%.2f").DefaultValue(1.08f).Tooltip(
             "1.00 leaves colours unchanged."));
+    AddWidget(path, "Art Direction", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Grade.ArtDirection")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(CheckboxOptions().Tooltip(
+            "A per-area, time-of-day colour grade: sickly swamp, lush Woodfall, bleached Ikana, crisp Snowhead, "
+            "warm lamplight against cool moonlight in Clock Town. Colour only; gameplay is unchanged."));
+    AddWidget(path, "Art Direction Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Grade.ArtStrength")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.5f).Step(0.01f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How strongly the per-area grade is applied. 0 is off."));
     AddWidget(path, "Debug View", WIDGET_CVAR_COMBOBOX)
         .CVar("gNewDawn.PostFx.Debug.View")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })

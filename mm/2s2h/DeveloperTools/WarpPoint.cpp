@@ -8,6 +8,7 @@
 #include "BenJsonConversions.hpp"
 
 extern "C" {
+#include <libultraship/bridge/consolevariablebridge.h>
 #include "z64.h"
 #include "macros.h"
 #include "functions.h"
@@ -53,9 +54,18 @@ void Warp(WarpPoint& warpPoint) {
         gSaveContext.sceneLayer = 0;
         gSaveContext.save.time = CLOCK_TIME(8, 0);
         gSaveContext.save.day = 1;
+        // Capture/debug only: boot at another hour (and optionally with the Woodfall temple cleared).
+        float bootHour = CVarGetFloat("gNewDawn.Debug.BootHour", -1.0f);
+        if (bootHour >= 0.0f) {
+            gSaveContext.save.time = (u16)(bootHour * (0x10000 / 24.0f));
+        }
         gSaveContext.save.cutsceneIndex = 0;
         gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
         gSaveContext.save.linkAge = 0;
+
+        if (CVarGetInteger("gNewDawn.Debug.BootWoodfallCleared", 0)) {
+            SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE);
+        }
 
         // Need to unset flag values that are outside of `.save`
         // Normally would happened in the MapSelect_LoadGame, but is skipped because of the dummy file num below

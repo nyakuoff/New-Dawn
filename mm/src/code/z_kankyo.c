@@ -2132,6 +2132,7 @@ void Environment_DrawRainImpl(PlayState* play, View* view, GraphicsContext* gfxC
         }
     }
 
+    NewDawnHDR_WeatherScope(play, true);
     OPEN_DISPS(gfxCtx);
 
     temp.x = view->at.x - view->eye.x;
@@ -2195,6 +2196,7 @@ void Environment_DrawRainImpl(PlayState* play, View* view, GraphicsContext* gfxC
     }
 
     CLOSE_DISPS(gfxCtx);
+    NewDawnHDR_WeatherScope(play, false);
 }
 
 void Environment_DrawRain(PlayState* play, View* view, GraphicsContext* gfxCtx) {

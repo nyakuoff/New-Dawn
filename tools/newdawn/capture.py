@@ -38,6 +38,7 @@ def point(name, entrance, room, pos, rot, src, intro=False):
 point('south_clock_town', 0x1c00, 0, (-279, 0, 627), 23040, 'Z2_CLOCKTOWER spawn 1 (entrance 0xd810); entrance id replaced, see INTRO', intro=True)
 point('termina_field', 0x54d0, 0, (2044, 48, -477), 3460, 'Z2_00KEIKOKU spawn 13 (entrance 0x54d0)')
 point('southern_swamp_cleared', 0x0c00, 0, (-191, 61, -1410), 0, 'Z2_20SICHITAI2 spawn 0 (entrance 0x0c00)')
+point('woods_of_mystery', 0xc200, 1, (274, 0, 0), -30976, 'Z2_26SARUNOMORI spawn 0, entrance 0: room 1')
 point('woodfall_exterior', 0x8600, 0, (-41, 12, -1353), 0, 'Z2_21MITURINMAE spawn 0 (entrance 0x8600)')
 point('southern_swamp', 0x8400, 0, (-191, 61, -1410), 0, 'Z2_20SICHITAI spawn 0 (entrance 0x8400)')
 point('mountain_village_winter', 0x9a80, 0, (-649, 8, -196), 14336, 'Z2_10YUKIYAMANOMURA spawn 8 (entrance 0x9a80)')
@@ -49,6 +50,10 @@ point('stock_pot_inn', 0xbc00, 0, (149, 0, 303), 23040, 'Z2_YADOYA spawn 0 (entr
 point('woodfall_temple', 0x3000, 2, (0, -1185, 2370), 23078, 'Z2_MITURIN spawn 0 (entrance 0x3000)')
 point('great_bay_temple', 0x8c00, 13, (0, -210, 2654), 23081, 'Z2_SEA spawn 0 (entrance 0x8c00)')
 point('stone_tower_temple', 0x2600, 0, (0, 90, 810), 23086, 'Z2_INISIE_N spawn 0 (entrance 0x2600)')
+point('ikana_graveyard', 0x8000, 0, (-45, -49, 864), 23040, 'Z2_BOTI spawn 0 (entrance 0x8000)')
+point('stone_tower', 0xaa00, 0, (0, -3000, 2810), 23040, 'Z2_F40 spawn 0 (entrance 0xaa00)')
+point('snowhead_temple', 0x3c00, 0, (0, 0, 1650), 23109, 'Z2_HAKUGIN spawn 0, 345 units inside exit (entrance 0x3c00)')
+point('stone_tower_inverted', 0x2a00, 0, (0, -210, 810), 23082, 'Z2_INISIE_R spawn 0 (entrance 0x2a00)')
 # POINTS-TABLE-END
 # fmt: on
 
