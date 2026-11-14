@@ -29,6 +29,7 @@
 | Character lighting (rim + bounded metal specular on actors) | `gNewDawn.Lighting.Characters/CharactersStrength` | `docs/CHARACTER_LIGHTING.md`. Render-state classifier (non-identity matrix, 2+ matrix loads after the actor's lights); +0.01 ms GPU; off is pixel-identical. In the preset. |
 | Screen-space bounce light (SSGI) | `gNewDawn.GI.Enabled/Strength/Debug` | `docs/SSGI.md`. One-bounce screen-space diffuse gather from this frame's opaque colour, bilateral + history filter, additive composite; 0.56-0.88 ms; off byte-identical to main (frozen Inn). In the preset. Local branch `feature/ssgi`, not pushed. |
 | Local lights and night contrast | `gNewDawn.Lighting.Local/LocalStrength/LocalContrast/LocalFlicker` | `docs/LOCAL_LIGHTS.md`. Screen-space HDR pass at opaque-end: game point lights + VFX flames, inverse-square, flicker, contact shadow; darkens unlit night/interior. 0.13-0.29 ms; off byte-identical to main (frozen Inn). In the preset. Local branch `feature/local-lights`, not pushed. |
+| 3D grass (render-only tufts) | `gNewDawn.Grass.Enabled/Density/Distance/Height` | `docs/GRASS.md`. Grass-classified ground triangles are recorded, scattered in a world-stable hash grid, drawn as swaying alpha-tested tuft cards that take the ground's finished colour; 0.4–0.8 ms GPU in meadows; off is a no-op. In the preset. Local branch `feature/render-grass`. |
 | New Dawn graphics preset buttons | the `sNewDawnPresetCvars` table in BenMenu.cpp | #17 |
 | Capture tool, branding, docs | `tools/newdawn/`, `docs/images` | #8, #9, #11 |
 
