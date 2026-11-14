@@ -298,8 +298,13 @@ swells are removed). Regenerate the archive with `materials.py` (VERSION 1.4.0);
 near-flat G and show little parallax.
 
 `gNewDawn.Materials.Parallax` (0/1, preset 1) enables a steep-parallax ray march with bisection refinement in
-`default.shader.glsl` (12-48 layers by shift length, depth fades out from ~385 to 700 game units;
+`default.shader.glsl` (14-64 layers by shift length and N.V, a linear intersection estimate plus bisection, depth eased out toward grazing and faded from ~385 to 700 game units;
 `.ParallaxDistance`). `gNewDawn.Materials.ParallaxScale` (default 0.04) is the depth as a fraction of the
 texture's world size, which is capped at 28 units. The albedo and companion lookups of the material tile use the
 displaced UV; the camera position comes from a new `uMaterialEye` uniform (vertex positions are world-space).
-Measured cost: +0.16 to +0.46 ms of world-pass GPU (`gNewDawn.Materials.Debug.Stats=1`, 1080p, RX 7800 XT).
+Measured cost: +0.27 to +0.57 ms of world-pass GPU (the high end is a close brick wall) (`gNewDawn.Materials.Debug.Stats=1`, 1080p, RX 7800 XT).
+
+The local working set (`~/dev/ghm-mods/sets/full/zz-newdawn-materials.o2r`) is generated with the recolour overlay
+(`--overlay-pack ~/dev/ghm-mods/sets/full/zy-newdawn-recolor.o2r`), so recoloured textures keep matching companions;
+the previous archive is kept at `~/dev/ghm-mods/work/pom/zz-newdawn-materials.o2r.bak`. Material specular now uses the
+real camera position (`uMaterialEye`) as the view vector instead of the direction to the world origin.
