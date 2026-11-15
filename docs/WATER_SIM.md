@@ -114,7 +114,7 @@ did not show their water; their numbers are the analytic ones).
 - Possible later optimisation: scissor the trace pass to the ripple window when waves are off (ripples-only cost at Zora Hall).
 
 ## Rivers and waterfalls (`feature/rivers-waterfalls`)
-Controls (Advanced → Water; Ultra and High): `gNewDawn.Water.Rivers` + `RiverStrength` (0-2), `gNewDawn.Water.Waterfalls` + `FallStrength`.
+Controls (Advanced → Water; Rivers on in Ultra and High; Waterfalls OFF in every look until a real fall is verified): `gNewDawn.Water.Rivers` + `RiverStrength` (0-2), `gNewDawn.Water.Waterfalls` + `FallStrength`.
 Evidence: `~/dev/ghm-mods/showcase/rivers/`.
 
 **Flow direction comes from the game's own texture scroll.** The interpreter (`RecordFlowTriangle`) reads the per-(texture, tile)
