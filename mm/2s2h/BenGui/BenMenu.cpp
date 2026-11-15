@@ -13,6 +13,8 @@
 #include "NewDawnPresets.h"
 #include "NewDawnTheme.h"
 #include "2s2h/NewDawn/RuntimeMaterials.h"
+#include "2s2h/NewDawn/Mm3dCharacters.h"
+#include "2s2h/Extractor/portable-file-dialogs.h"
 #include "2s2h/Enhancements/Trackers/DisplayOverlay.h"
 #include <variant>
 #include <ship/utils/StringHelper.h>
@@ -524,6 +526,72 @@ static void RenderRuntimeMaterials() {
     }
 }
 
+// 3DS character models: the player's own Majora's Mask 3D RomFS, converted on this computer (docs/MM3D_CHARACTERS.md).
+static void RenderMm3dCharacters() {
+    static std::unique_ptr<pfd::select_folder> picker;
+    static char pathBuf[1024] = {};
+    static std::string shownPath;
+    const std::string cvarPath = NewDawnMm3d::DumpPath();
+    if (cvarPath != shownPath) { // follow the config (first frame, or changed elsewhere)
+        shownPath = cvarPath;
+        snprintf(pathBuf, sizeof(pathBuf), "%s", cvarPath.c_str());
+    }
+    const auto progress = NewDawnMm3d::GetProgress();
+    const bool running = progress.state == NewDawnMm3d::State::Running;
+    const bool valid = NewDawnMm3d::DumpValid(shownPath);
+
+    if (!NewDawnMm3d::Available()) {
+        ImGui::BeginDisabled();
+    }
+    UIWidgets::CVarCheckbox("3DS character models (requires your MM3D dump)", "gNewDawn.MM3D.Characters",
+                            UIWidgets::CheckboxOptions()
+                                .Color(UIWidgets::Colors::NewDawn)
+                                .DefaultValue(true)
+                                .Tooltip("Replaces the models of many townspeople and enemies with the ones from your own "
+                                         "Majora's Mask 3D, driven by the original animations. Needs the RomFS folder below. "
+                                         "Nothing from the 3DS game is stored in this install; it is converted on this computer."));
+    if (!NewDawnMm3d::Available()) {
+        ImGui::EndDisabled();
+    }
+    ImGui::TextWrapped("%s", NewDawnMm3d::StatusText().c_str());
+    if (running && progress.total) {
+        ImGui::ProgressBar((float)progress.done / (float)progress.total, ImVec2(-1.0f, 0.0f));
+    }
+    ImGui::SetNextItemWidth(-1.0f);
+    if (ImGui::InputText("##mm3dromfs", pathBuf, sizeof(pathBuf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+        CVarSetString("gNewDawn.MM3D.RomFS", pathBuf);
+        CVarSave();
+    }
+    if (!valid && pathBuf[0]) {
+        ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.35f, 1.0f), "No actors/zelda2_sdn.gar.lzs in that folder.");
+    }
+    if (picker && picker->ready(0)) {
+        const std::string chosen = picker->result();
+        picker.reset();
+        if (!chosen.empty()) {
+            CVarSetString("gNewDawn.MM3D.RomFS", chosen.c_str());
+            CVarSave();
+        }
+    }
+    UIWidgets::ButtonOptions options = {};
+    options.color = UIWidgets::Colors::NewDawn;
+    options.tooltip = "Pick the folder that contains \"actors\" (the decrypted RomFS of your own Majora's Mask 3D).";
+    if (UIWidgets::Button("Choose RomFS Folder", options) && !picker) {
+        picker = std::make_unique<pfd::select_folder>("Majora's Mask 3D RomFS", shownPath.empty() ? "." : shownPath);
+    }
+    ImGui::SameLine();
+    options.tooltip = "Converts the character models in the background (a few seconds). Restart the game afterwards.";
+    if (running || !valid) {
+        ImGui::BeginDisabled();
+    }
+    if (UIWidgets::Button("Convert 3DS Characters", options)) {
+        NewDawnMm3d::Regenerate();
+    }
+    if (running || !valid) {
+        ImGui::EndDisabled();
+    }
+}
+
 static void RenderAboutPage() {
     using namespace NewDawn::Theme;
     const float u = Unit();
@@ -907,6 +975,9 @@ void BenMenu::AddSettings() {
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Uses local converted 3DS room geometry in supported scenes. Original collision and gameplay remain active. "
             "Set gNewDawn.MM3D.Path to your converted asset directory. OpenGL only."));
+    AddWidget(path, "3DS Character Models", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        RenderMm3dCharacters();
+    });
     path.group = "Image & Colour";
     AddWidget(path, "Scene Post-Processing", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Enabled")
