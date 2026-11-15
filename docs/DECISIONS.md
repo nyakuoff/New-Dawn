@@ -123,3 +123,16 @@ Record only decisions that materially constrain future work. Avoid logs, specula
   - Our own generic stylised material library (plan C) is allowed because it depicts no Nintendo designs.
   - Commissioned character art (plan D) is out.
 - **Next:** spikes before committing to a pipeline: texture screen coverage plus local restore with detail injection, and an MM3D conversion of the Clock Town guard and Anju bound to the N64 limbs. A skinning prototype follows if the MM3D spike needs smooth weights.
+
+### ND-014 — Art direction: the 2026 *Ocarina of Time* remake look, not cartoony (supersedes ND-013's visual target)
+- **Date:** 2026-11-15
+- **Status:** Accepted (maintainer)
+- **Target:** the art direction of Nintendo's 2026 *Ocarina of Time* remake (Switch 2):
+  - **Environments:** hyper-detailed and tactile, with "the analog feel of practical-effects films", like a richly crafted physical set or miniature, in a dark, beautiful world.
+  - **Characters:** deliberately doll- or puppet-like, simpler and colourful, set against that world.
+  - **Not cartoony, not smooth clay.** ND-013's "stylised current-gen" target, with Link's Awakening 2019 as the example, is withdrawn; a spike built on it read as cartoony.
+- **Unchanged from ND-013:** local-only IP, an optional MM3D dump, and no native upgrades (assets are replaced, not restored).
+- **Consequences:**
+  - **Environment textures:** generic environment materials come from art-directed CC0 PBR libraries (ambientCG, Poly Haven): recoloured to each original's palette on the player's machine, scaled to the original UVs, with tactile wear, grime and moss.
+  - **Character models:** they follow the MM3D conversion plus character shading with fabric, felt and wood-like tactile detail.
+  - **Shelved:** the smooth procedural "clay" library from the first spike; its tiling, colour-matching and mapping tools are reused.
