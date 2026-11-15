@@ -78,6 +78,9 @@ const Row kRows[] = {
     { "gNewDawn.Grass.Enabled",                        I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Grass.Density",                        F, { 1.0f,  0.8f,  0.5f,  0.3f,  1.0f } },
     { "gNewDawn.Grass.Distance",                       F, { 1000.0f, 850.0f, 650.0f, 450.0f, 1000.0f } },
+    { "gNewDawn.Grass.Bend",                           I, { 1,     1,     1,     0,     0 } },
+    { "gNewDawn.Grass.Flowers",                        I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Foliage.Light",                        I, { 1,     1,     1,     0,     0 } },
     // Lighting and materials.
     { "gNewDawn.Lighting.PerPixel",                    I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Lighting.PointLightQuality",           F, { 0.5f,  0.5f,  0.5f,  0.25f, 0.0f } },

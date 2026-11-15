@@ -1008,6 +1008,121 @@ static bool NewDawnSceneIsIndoors(PlayState* play) {
            (play->interfaceCtx.restrictions.songOfStorms == 3 && play->interfaceCtx.restrictions.songOfDoubleTime == 3);
 }
 
+// Render-only grass bending: who pushes the blades aside. Positions only, read from the live actor lists; the renderer
+// keeps the short trail that makes them spring back. Link first, then the nearest grounded NPCs and enemies that move.
+static void NewDawnFillGrassPushers(PlayState* play, NewDawnPostFxParams* params, Player* player) {
+    params->grassBend = CVarGetInteger("gNewDawn.Grass.Bend", 0);
+    params->grassPushCount = 0;
+    if (!params->grassBend || player == NULL) {
+        return;
+    }
+    auto add = [&](Actor* a, float radius) {
+        const int n = params->grassPushCount++;
+        params->grassPush[n][0] = a->world.pos.x;
+        params->grassPush[n][1] = a->world.pos.y;
+        params->grassPush[n][2] = a->world.pos.z;
+        params->grassPush[n][3] = radius;
+        params->grassPushKey[n] = (uint32_t)(((uintptr_t)a) >> 4);
+    };
+    add(&player->actor, 24.0f);
+    static const int kCats[] = { ACTORCAT_NPC, ACTORCAT_ENEMY, ACTORCAT_BOSS };
+    struct Near { Actor* a; float d; } best[NEWDAWN_GRASS_PUSHERS];
+    int found = 0;
+    for (int cat : kCats) {
+        for (Actor* a = play->actorCtx.actorLists[cat].first; a != NULL; a = a->next) {
+            if (a->update == NULL || a->draw == NULL || a->speed < 0.8f || a->world.pos.y - a->floorHeight > 24.0f) {
+                continue;
+            }
+            const float dx = a->world.pos.x - player->actor.world.pos.x, dz = a->world.pos.z - player->actor.world.pos.z;
+            const float d = dx * dx + dz * dz;
+            if (d > 700.0f * 700.0f) {
+                continue;
+            }
+            int slot = found < NEWDAWN_GRASS_PUSHERS - 1 ? found++ : -1; // keep the nearest ones
+            if (slot < 0) {
+                int worst = 0;
+                for (int i = 1; i < found; i++) {
+                    if (best[i].d > best[worst].d) {
+                        worst = i;
+                    }
+                }
+                if (best[worst].d <= d) {
+                    continue;
+                }
+                slot = worst;
+            }
+            best[slot] = { a, d };
+        }
+    }
+    for (int i = 0; i < found; i++) {
+        add(best[i].a, 18.0f);
+    }
+}
+
+// Ground cover where grass spawns: how much, and which kinds, depends on the region (weights: daisy, buttercup,
+// wildflower, clover). Winter scenes and the poisoned swamp get none.
+static void NewDawnFillGrassFlowers(PlayState* play, NewDawnPostFxParams* params) {
+    params->grassFlowers = CVarGetInteger("gNewDawn.Grass.Flowers", 0);
+    if (!params->grassFlowers) {
+        return;
+    }
+    float density = 0.5f;
+    float mix[4] = { 0.30f, 0.25f, 0.20f, 0.25f };
+    auto region = [&](float d, float a, float b, float c, float e) {
+        density = d;
+        mix[0] = a; mix[1] = b; mix[2] = c; mix[3] = e;
+    };
+    switch (play->sceneId) {
+        case SCENE_00KEIKOKU: region(1.0f, 0.35f, 0.30f, 0.15f, 0.20f); break;  // Termina Field
+        case SCENE_F01: region(1.1f, 0.25f, 0.20f, 0.35f, 0.20f); break;         // Romani Ranch: the richest meadow
+        case SCENE_ROMANYMAE: region(0.8f, 0.30f, 0.25f, 0.25f, 0.20f); break;  // Milk Road
+        case SCENE_20SICHITAI2: region(0.8f, 0.20f, 0.10f, 0.35f, 0.35f); break; // cleared swamp
+        case SCENE_26SARUNOMORI: region(0.45f, 0.05f, 0.0f, 0.35f, 0.60f); break; // Woods of Mystery: mostly clover
+        case SCENE_10YUKIYAMANOMURA2:
+        case SCENE_11GORONNOSATO2:
+        case SCENE_17SETUGEN2: region(0.55f, 0.35f, 0.15f, 0.30f, 0.20f); break; // spring
+        case SCENE_TOWN:
+        case SCENE_ICHIBA:
+        case SCENE_BACKTOWN:
+        case SCENE_CLOCKTOWER: region(0.45f, 0.40f, 0.25f, 0.05f, 0.30f); break; // Clock Town
+        case SCENE_IKANA:
+        case SCENE_IKANAMAE:
+        case SCENE_BOTI: region(0.18f, 0.0f, 0.65f, 0.0f, 0.35f); break;        // sparse, dry yellow
+        case SCENE_20SICHITAI:                                                    // poisoned swamp
+        case SCENE_10YUKIYAMANOMURA:                                              // winter scenes
+        case SCENE_11GORONNOSATO:
+        case SCENE_17SETUGEN:
+        case SCENE_14YUKIDAMANOMITI:
+        case SCENE_12HAKUGINMAE:
+        case SCENE_13HUBUKINOMITI: density = 0.0f; break;
+        default: break;
+    }
+    params->grassFlowerDensity = density * NewDawnClampF(CVarGetFloat("gNewDawn.Grass.FlowerDensity", 1.0f), 0.0f, 2.0f);
+    std::copy(mix, mix + 4, params->grassFlowerMix);
+}
+
+// Sun seen through the leaves; the same sun the grass uses (direction towards the light, its own colour).
+static void NewDawnFillFoliageParams(PlayState* play, NewDawnPostFxParams* params) {
+    params->foliageLight = CVarGetInteger("gNewDawn.Foliage.Light", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0) &&
+                           !NewDawnSceneIsIndoors(play);
+    if (!params->foliageLight) {
+        return;
+    }
+    params->foliageStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Foliage.Strength", 1.0f), 0.0f, 3.0f);
+    if (!play->envCtx.sunDisabled && play->envCtx.lightMode == LIGHT_MODE_TIME) {
+        const LightDirectional* sun = &play->envCtx.dirLight1.params.dir;
+        float len = sqrtf((f32)(sun->x * sun->x + sun->y * sun->y + sun->z * sun->z));
+        if (len > 0.001f) {
+            params->foliageSunDir[0] = sun->x / len;
+            params->foliageSunDir[1] = sun->y / len;
+            params->foliageSunDir[2] = sun->z / len;
+            for (int i = 0; i < 3; i++) {
+                params->foliageSunColor[i] = sun->color[i] / 255.0f;
+            }
+        }
+    }
+}
+
 // Render-only 3D grass on grass-textured ground. Reads the player's position and the sun; changes nothing.
 static void NewDawnFillGrassParams(PlayState* play, NewDawnPostFxParams* params) {
     // Outdoor time-of-day scenes only: interiors reuse "grass"-coloured rugs, planters and moss.
@@ -1027,6 +1142,8 @@ static void NewDawnFillGrassParams(PlayState* play, NewDawnPostFxParams* params)
     params->grassFocus[0] = focus.x;
     params->grassFocus[1] = focus.y;
     params->grassFocus[2] = focus.z;
+    NewDawnFillGrassPushers(play, params, player);
+    NewDawnFillGrassFlowers(play, params);
     if (!play->envCtx.sunDisabled && play->envCtx.lightMode == LIGHT_MODE_TIME) {
         const LightDirectional* sun = &play->envCtx.dirLight1.params.dir;
         float len = sqrtf((f32)(sun->x * sun->x + sun->y * sun->y + sun->z * sun->z));
@@ -1202,6 +1319,7 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnAtmos_Fill(play, params);
     NewDawnFillLocalLightParams(play, params);
     NewDawnFillGrassParams(play, params);
+    NewDawnFillFoliageParams(play, params);
     NewDawnFillWorldGiParams(play, params);
     params->vfxEnabled = CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
     params->vfxStrength = CVarGetFloat("gNewDawn.Vfx.Strength", 1.0f);
@@ -1276,7 +1394,10 @@ extern "C" void NewDawnGI_RoomScope(PlayState* play, Room* room, int begin) {
 }
 
 extern "C" void NewDawnHDR_WindScope(PlayState* play, int begin, int room) {
-    if (!CVarGetInteger("gNewDawn.Atmos.Wind", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    const bool sway = CVarGetInteger("gNewDawn.Atmos.Wind", 0) != 0;
+    const bool light = CVarGetInteger("gNewDawn.Foliage.Light", 0) != 0 && !NewDawnSceneIsIndoors(play);
+    if (!sway && !light) return;
     // Room geometry only sways outdoors (and then only plant textures); foliage actors keep their own scope anywhere.
     if (room && NewDawnSceneIsIndoors(play)) return;
     static NewDawnPostFxParams sUnused; // the command only needs a non-null pointer
@@ -1284,10 +1405,13 @@ extern "C" void NewDawnHDR_WindScope(PlayState* play, int begin, int room) {
     const int stage = begin ? NEWDAWN_POSTFX_STAGE_WIND_BEGIN : NEWDAWN_POSTFX_STAGE_WIND_END;
     Gfx* opa = POLY_OPA_DISP++;
     gSPNewDawnPostFx(opa, stage, &sUnused);
-    opa->words.w0 |= (uint32_t)(room != 0) << NEWDAWN_POSTFX_WIND_ROOM_SHIFT;
+    const uint32_t bits = ((uint32_t)(room != 0) << NEWDAWN_POSTFX_WIND_ROOM_SHIFT) |
+                          ((uint32_t)sway << NEWDAWN_POSTFX_WIND_SWAY_SHIFT) |
+                          ((uint32_t)light << NEWDAWN_POSTFX_WIND_FOLIAGE_SHIFT);
+    opa->words.w0 |= bits;
     Gfx* xlu = POLY_XLU_DISP++;
     gSPNewDawnPostFx(xlu, stage, &sUnused);
-    xlu->words.w0 |= (uint32_t)(room != 0) << NEWDAWN_POSTFX_WIND_ROOM_SHIFT;
+    xlu->words.w0 |= bits;
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
@@ -1565,8 +1689,8 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric &&
-        !params->vfxEnabled && !params->grassEnabled && !params->interiorEnabled && !params->emissiveEnabled &&
-        !params->localShadows && !params->giWorld) {
+        !params->vfxEnabled && !params->grassEnabled && !params->foliageLight && !params->interiorEnabled &&
+        !params->emissiveEnabled && !params->localShadows && !params->giWorld) {
         return;
     }
 

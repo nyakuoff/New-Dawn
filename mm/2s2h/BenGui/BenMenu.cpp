@@ -1069,6 +1069,27 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Grass Height: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Grass.Height")
         .Options(FloatSliderOptions().Min(0.3f).Max(3.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Grass Bends Around Link and Actors", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Grass.Bend")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Blades lean away from Link and nearby walkers, then spring back over about a second. Render-only; "
+            "positions are only read. Requires 3D Grass."));
+    AddWidget(path, "Flowers and Clover in the Grass", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Grass.Flowers")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Patches of daisies, buttercups, wildflowers and clover where the grass grows. Plentiful around Romani "
+            "Ranch and Termina Field, sparse in Ikana, none in winter or the poisoned swamp. Requires 3D Grass."));
+    AddWidget(path, "Flower Density: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Grass.FlowerDensity")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Light Through Leaves", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Foliage.Light")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Backlit trees, bushes and grass glow where the sun shines through them, and canopies darken towards the "
+            "trunk. Render-only. Requires the Modern Lighting Pipeline."));
+    AddWidget(path, "Light Through Leaves Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Foliage.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).DefaultValue(1.0f));
     path.group = "Atmosphere";
     AddWidget(path, "Ambient Particle Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Atmos.Strength")
