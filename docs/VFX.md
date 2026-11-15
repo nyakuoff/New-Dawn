@@ -23,7 +23,7 @@ Render-only OpenGL feature, HDR required. `gNewDawn.Vfx.Enabled` defaults to **0
 | class | native texture | replacement |
 | --- | --- | --- |
 | flame | `gEffFireTex`, `gEffEnemyDeathFlame*`, `gameplay_keep_Tex_01A8B0/01AAB0` (En_Light's small candle flame, `VFX_CANDLE`: forced alpha because that draw leaves prim alpha at 0) | animated **fire flipbook** (64-frame loop, two cross-offset layers), the game's prim/env colours, additive and partly transparent, native size and bottom anchor, plus embers. Covers every actor/effect that draws through `gEffFire1DL/2DL` (torches, chandeliers, Poes, burning enemies, burning Link) |
-| glow | `gameplay_keep_Tex_08FBE0` (Lights_DrawGlow, alpha 50 only) | soft HDR halo (`circle_05`) |
+| glow | `gameplay_keep_Tex_08FBE0` (Lights_DrawGlow, alpha 50 only) | with `gNewDawn.Lighting.FlameLight` (Ultra/High/Medium/Low): an analytic **flame bloom** (small hot core + falloff halo on a quad 0.5x the native disc, `gNewDawn.Vfx.GlowRadius`), see `docs/LOCAL_LIGHTS.md`; with it off the old soft `circle_05` halo disc |
 | dust | `gEffDust1-8`, `gEffHitmarkDust1-8` | two lit smoke layers (`smoke_04/07`) |
 | bomb | `gEffBombExplosion1-8` | HDR fireball (`fire_01/02`) cooling to a dark smoke layer (`smoke_01`) + flash. Verified with a real thrown bomb (fixture below) |
 | hit | `gEffHitmarkRed/WhiteMetal1-8` | HDR spark + star (`spark_01`, `star_01`) |
