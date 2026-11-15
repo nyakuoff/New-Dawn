@@ -13,6 +13,9 @@ extern "C" {
 #include "global.h"
 #include "overlays/actors/ovl_En_Arrow/z_en_arrow.h"
 #include "overlays/actors/ovl_En_Fall/z_en_fall.h"
+
+static float sMaskFlash[4];
+static u32 sMaskFlashFrame = ~0u;
 s32 Environment_IsSceneUpsideDown(PlayState* play);
 }
 
@@ -1332,7 +1335,34 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     params->vfxEnabled = CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
     params->vfxStrength = CVarGetFloat("gNewDawn.Vfx.Strength", 1.0f);
     params->vfxEmbers = CVarGetFloat("gNewDawn.Vfx.Embers", 1.0f);
+    if (sMaskFlashFrame == play->state.frames) {
+        memcpy(params->vfxFlash, sMaskFlash, sizeof(sMaskFlash));
+    }
     return params;
+}
+
+extern "C" int NewDawnVfx_MaskFlash(PlayState* play, u8 r, u8 g, u8 b, u8 a) {
+    // The transformation sequence sets the fill to (220, 220, 220); other users of the fill keep the native draw.
+    if (a == 0 || r != 220 || g != 220 || b != 220 || !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) ||
+        !CVarGetInteger("gNewDawn.HDR.Enabled", 0) || !CVarGetInteger("gNewDawn.Vfx.MaskFlash", 1)) {
+        return 0;
+    }
+    // A faint tint of the form being entered (human: none).
+    static const float kTint[PLAYER_FORM_MAX][3] = {
+        { 0.85f, 0.80f, 1.00f }, // Fierce Deity
+        { 1.00f, 0.80f, 0.58f }, // Goron
+        { 0.66f, 0.90f, 1.00f }, // Zora
+        { 0.82f, 1.00f, 0.66f }, // Deku
+        { 1.00f, 1.00f, 1.00f }, // Human
+    };
+    const u32 form = GET_PLAYER(play)->transformation;
+    const float* t = kTint[form < PLAYER_FORM_MAX ? form : PLAYER_FORM_HUMAN];
+    for (int i = 0; i < 3; i++) {
+        sMaskFlash[i] = 0.9f * (0.45f + 0.55f * t[i]);
+    }
+    sMaskFlash[3] = a / 255.0f;
+    sMaskFlashFrame = play->state.frames;
+    return 1;
 }
 
 extern "C" void NewDawnHDR_WeatherScope(PlayState* play, int begin) {
