@@ -99,6 +99,7 @@ const Row kRows[] = {
     { "gNewDawn.SunShafts.Mode",                       I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.SunShafts.Strength",                   F, { 0.30f, 0.30f, 0.30f, 0.30f, 0.4f } },
     { "gNewDawn.GI.Enabled",                           I, { 1,     0,     0,     0,     0 } },
+    { "gNewDawn.GI.World",                             I, { 2,     1,     0,     0,     0 } },
     // Water.
     { "gNewDawn.Water.Enabled",                        I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Water.Strength",                       F, { 0.5f,  0.5f,  0.5f,  0.5f,  0.5f } },

@@ -1031,6 +1031,52 @@ static void NewDawnFillGrassParams(PlayState* play, NewDawnPostFxParams* params)
     }
 }
 
+// World-space GI (docs/WORLD_GI.md). Read-only snapshot: the volume the renderer's grids cover (the scene's collision
+// bounds), the directional light with the same fades the shadows use, and the outdoor ambient colour as sky fill.
+static void NewDawnFillWorldGiParams(PlayState* play, NewDawnPostFxParams* params) {
+    const int tier = CVarGetInteger("gNewDawn.GI.World", 0);
+    if (tier <= 0 || !CVarGetInteger("gNewDawn.HDR.Enabled", 0) || play->colCtx.colHeader == NULL) {
+        return;
+    }
+    params->giWorld = tier > 2 ? 2 : tier;
+    params->giWorldStrength = NewDawnClampF(CVarGetFloat("gNewDawn.GI.WorldStrength", 1.0f), 0.0f, 3.0f);
+    const Vec3f* lo = &play->colCtx.minBounds;
+    const Vec3f* hi = &play->colCtx.maxBounds;
+    params->giWorldBoundsMin[0] = lo->x, params->giWorldBoundsMin[1] = lo->y, params->giWorldBoundsMin[2] = lo->z;
+    params->giWorldBoundsMax[0] = hi->x, params->giWorldBoundsMax[1] = hi->y, params->giWorldBoundsMax[2] = hi->z;
+    // Interiors and dungeons (fixed light settings) have no sun or sky: only their local lights are injected.
+    if (play->envCtx.sunDisabled || play->envCtx.lightMode != LIGHT_MODE_TIME) {
+        return;
+    }
+    for (int i = 0; i < 3; i++) {
+        params->giWorldSkyColor[i] = play->lightCtx.ambientColor[i] / 255.0f;
+    }
+    const LightDirectional* sun = &play->envCtx.dirLight1.params.dir;
+    float dir[3];
+    if (!NewDawnSunDirection(play, dir)) {
+        return;
+    }
+    // The same fades as NewDawnFillShadowParams: out towards the horizon and with the light's own colour, then the
+    // Moon (cool, dim) once the sun is down.
+    float fade = NewDawnClampF((dir[1] - 0.03f) / 0.25f, 0.0f, 1.0f) *
+                 NewDawnClampF((sun->color[0] + sun->color[1] + sun->color[2]) / 255.0f, 0.0f, 1.0f);
+    float color[3] = { sun->color[0] / 255.0f, sun->color[1] / 255.0f, sun->color[2] / 255.0f };
+    if (fade <= 0.001f) {
+        const float dark = NewDawnClampF((-dir[1] - 0.03f) / 0.27f, 0.0f, 1.0f);
+        float moonDir[3] = { -dir[0], -dir[1], -dir[2] }, moonRadius;
+        NewDawnFindMoon(play, moonDir, &moonRadius);
+        fade = dark * dark * (3.0f - 2.0f * dark) * NewDawnClampF((moonDir[1] - 0.05f) / 0.25f, 0.0f, 1.0f) * 0.25f;
+        color[0] = 0.30f, color[1] = 0.40f, color[2] = 0.68f;
+        for (int i = 0; i < 3; i++) {
+            dir[i] = moonDir[i];
+        }
+    }
+    for (int i = 0; i < 3; i++) {
+        params->giWorldSunDir[i] = dir[i];
+        params->giWorldSunColor[i] = color[i] * fade;
+    }
+}
+
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
@@ -1059,6 +1105,7 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnAtmos_Fill(play, params);
     NewDawnFillLocalLightParams(play, params);
     NewDawnFillGrassParams(play, params);
+    NewDawnFillWorldGiParams(play, params);
     params->vfxEnabled = CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0);
     params->vfxStrength = CVarGetFloat("gNewDawn.Vfx.Strength", 1.0f);
     params->vfxEmbers = CVarGetFloat("gNewDawn.Vfx.Embers", 1.0f);
@@ -1071,6 +1118,17 @@ extern "C" void NewDawnHDR_WeatherScope(PlayState* play, int begin) {
     if (!params->atmosWeather) return;
     OPEN_DISPS(play->state.gfxCtx);
     gSPNewDawnPostFx(POLY_XLU_DISP++, begin ? NEWDAWN_POSTFX_STAGE_WEATHER_BEGIN : NEWDAWN_POSTFX_STAGE_WEATHER_END, params);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+// World GI: marks the static room geometry (opaque list) so the renderer can copy it into its voxel grid. The marker
+// draws nothing and changes no state; with the feature off it is not emitted.
+extern "C" void NewDawnGI_RoomScope(PlayState* play, int begin) {
+    if (!CVarGetInteger("gNewDawn.GI.World", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
+    static NewDawnPostFxParams sUnused; // the command only needs a non-null pointer
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, begin ? NEWDAWN_POSTFX_STAGE_GI_ROOM_BEGIN : NEWDAWN_POSTFX_STAGE_GI_ROOM_END,
+                     &sUnused);
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
@@ -1345,13 +1403,14 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
         !CVarGetInteger("gNewDawn.Water.Caustics", 0) && !CVarGetInteger("gNewDawn.Water.Underwater", 0) &&
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
         !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.GI.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0)) {
+        !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0) &&
+        !CVarGetInteger("gNewDawn.GI.World", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric &&
-        !params->vfxEnabled && !params->grassEnabled) {
+        !params->vfxEnabled && !params->grassEnabled && !params->giWorld) {
         return;
     }
 
@@ -1381,7 +1440,8 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
     if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
         params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && params->waterCaustics <= 0.0f &&
         !params->fogVolumetric &&
-        !params->atmosBiome && !params->giEnabled && !params->localEnabled && !params->grassEnabled) {
+        !params->atmosBiome && !params->giEnabled && !params->localEnabled && !params->grassEnabled &&
+        !params->giWorld) {
         return;
     }
 

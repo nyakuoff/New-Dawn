@@ -114,6 +114,12 @@ static const std::vector<const char*> newDawnDebugViewOptions = {
     "Ambient occlusion buffer",
 };
 
+static const std::unordered_map<int32_t, const char*> worldGiOptions = {
+    { 0, "Off" },
+    { 1, "High" },
+    { 2, "Ultra" },
+};
+
 static const std::vector<const char*> textureFilteringOptions = {
     "Three-Point", // Fast::FILTER_THREE_POINT,
     "Linear",      // Fast::FILTER_LINEAR
@@ -916,6 +922,16 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Bounce Strength", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.GI.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).DefaultValue(1.0f).Tooltip("Indirect diffuse intensity, bounded to preserve dark interiors."));
+    AddWidget(path, "World Global Illumination", WIDGET_CVAR_COMBOBOX)
+        .CVar("gNewDawn.GI.World")
+        .Options(ComboboxOptions().ComboMap(&worldGiOptions).DefaultIndex(0).Tooltip(
+            "Light bounces through the whole loaded area, not only what is on screen: sunlight off walls into alleys, "
+            "torchlight filling a room, colour from grass and stone. Stays stable when the camera turns. Ultra uses a "
+            "finer grid and more rays. Requires the Modern Lighting Pipeline and OpenGL 4.3."));
+    AddWidget(path, "World Bounce Strength", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.GI.WorldStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).DefaultValue(1.0f).Tooltip(
+            "Intensity of the world-space bounce light."));
     path.group = "Image & Colour";
     AddWidget(path, "Ambient Occlusion", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.AO.Enabled")
