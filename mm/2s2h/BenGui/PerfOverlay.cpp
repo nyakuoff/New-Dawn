@@ -158,6 +158,9 @@ void PerfOverlay::Draw() {
         return;
     }
 
+    // Hidden while the menu or any popup/modal is open so it never covers them (the stats keep running).
+    const bool hidden = CVarGetInteger("gWindows.Menu", 0) != 0 ||
+                        ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
     const double now = Now();
     const double threadCpu = CpuSeconds(CLOCK_THREAD_CPUTIME_ID);
     if (sLastFrameT > 0 && sLastTextT > 0) {
@@ -186,7 +189,7 @@ void PerfOverlay::Draw() {
         sCpuMsAccum = 0;
         sDrawsSinceText = 0;
     }
-    if (sLines.empty()) {
+    if (sLines.empty() || hidden) {
         return;
     }
 
