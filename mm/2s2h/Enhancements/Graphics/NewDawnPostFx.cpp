@@ -5,6 +5,7 @@
 #include <fast/newdawn_postfx.h>
 #include <fast/newdawn_wind.h>
 #include <spdlog/spdlog.h>
+#include <algorithm>
 #include <filesystem>
 #include <string>
 
@@ -912,6 +913,15 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
         return;
     }
     params->localEnabled = 1;
+    // Shadow-casting point lights: how many (0..2), and the player whose surroundings decide which ones.
+    params->localShadows = (int)NewDawnClampF((float)CVarGetInteger("gNewDawn.Shadows.PointLights", 0), 0.0f, 2.0f);
+    {
+        Player* player = GET_PLAYER(play);
+        const Vec3f focus = player != NULL ? player->actor.world.pos : play->view.eye;
+        params->localFocus[0] = focus.x;
+        params->localFocus[1] = focus.y;
+        params->localFocus[2] = focus.z;
+    }
     params->localStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalStrength", 1.0f), 0.0f, 3.0f);
     params->localFlicker = NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalFlicker", 1.0f), 0.0f, 1.0f);
     // Darkening of the unlit scene, from the game's own clock and light mode (read only). Outdoors (time-of-day
@@ -1077,6 +1087,92 @@ static void NewDawnFillWorldGiParams(PlayState* play, NewDawnPostFxParams* param
     }
 }
 
+// Render-only windows: these interiors have no real windows, so the remaster adds a few (a visible pane with its frame,
+// and the light it lets in). Coordinates are world space, n is the horizontal inward normal, half extents in world
+// units, panes across and down. Placement was checked on screen against each room.
+struct NewDawnWindow {
+    s16 scene;
+    float x, y, z, nx, nz, hw, hh;
+    u8 panesU, panesV;
+};
+static const NewDawnWindow sNewDawnWindows[] = {
+    // Stock Pot Inn lobby (side walls x = 30 and 330)
+    { SCENE_YADOYA, 30.6f, 100, 175, 1, 0, 34, 30, 2, 2 },
+    { SCENE_YADOYA, 329.4f, 100, 205, -1, 0, 34, 30, 2, 2 },
+    // Mayor's Residence lobby (a hall 210 wide, walls x = +-105)
+    { SCENE_SONCHONOIE, 104.4f, 102, 190, -1, 0, 36, 30, 2, 2 },
+    { SCENE_SONCHONOIE, -104.4f, 102, 140, 1, 0, 26, 28, 2, 2 },
+    // Milk Bar (left wall x = -140)
+    { SCENE_MILK_BAR, -139.4f, 104, 70, 1, 0, 32, 28, 2, 2 },
+    { SCENE_MILK_BAR, -139.4f, 104, 235, 1, 0, 32, 28, 2, 2 },
+    // Swordsman's School: clerestory windows high on both long walls (x = +-195)
+    { SCENE_DOUJOU, -194.4f, 120, 60, 1, 0, 38, 24, 2, 2 },
+    { SCENE_DOUJOU, -194.4f, 120, 235, 1, 0, 38, 24, 2, 2 },
+    { SCENE_DOUJOU, 194.4f, 120, 60, -1, 0, 38, 24, 2, 2 },
+    { SCENE_DOUJOU, 194.4f, 120, 235, -1, 0, 38, 24, 2, 2 },
+    // Bomb Shop (left wall x = -15, back wall z = 390)
+    { SCENE_BOMYA, -14.4f, 100, 230, 1, 0, 32, 28, 2, 2 },
+    { SCENE_BOMYA, 190, 100, 389.4f, 0, -1, 40, 24, 2, 2 },
+    // Trading Post (walls x = +-210)
+    { SCENE_8ITEMSHOP, -209.4f, 125, 40, 1, 0, 40, 30, 2, 2 },
+    { SCENE_8ITEMSHOP, 209.4f, 125, 40, -1, 0, 40, 30, 2, 2 },
+    // Post Office (walls x = +-200)
+    { SCENE_POSTHOUSE, -199.4f, 125, 100, 1, 0, 36, 28, 2, 2 },
+    { SCENE_POSTHOUSE, 199.4f, 125, 100, -1, 0, 36, 28, 2, 2 },
+};
+
+// Interior polish (render only): the light that comes through windows and doorways, and the emissive surfaces.
+// Reads the game clock and weather; the openings themselves are recorded by the renderer from the draw stream.
+static void NewDawnFillInteriorParams(PlayState* play, NewDawnPostFxParams* params) {
+    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
+        return;
+    }
+    const float hour = gSaveContext.save.time * (24.0f / 65536.0f);
+    const auto smooth = [](float a, float b, float x) {
+        const float t = NewDawnClampF((x - a) / (b - a), 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
+    };
+    params->interiorDebug = CVarGetInteger("gNewDawn.Interior.Debug", 0);
+    params->emissiveEnabled = CVarGetInteger("gNewDawn.Interior.Emissive", 0);
+    params->emissiveStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Interior.EmissiveStrength", 1.0f), 0.0f, 3.0f);
+    params->emissiveNight = hour >= 12.0f ? smooth(17.5f, 19.5f, hour) : 1.0f - smooth(4.5f, 6.5f, hour);
+    if (!CVarGetInteger("gNewDawn.Interior.Windows", 0) || !NewDawnSceneIsIndoors(play)) {
+        return;
+    }
+    // Light enters at the sun's elevation (high at noon, low near dawn and dusk); the horizontal direction follows each
+    // opening's own normal, since interior scenes have no meaningful compass.
+    const float day = smooth(5.5f, 7.5f, hour) * (1.0f - smooth(16.5f, 18.5f, hour));
+    const float dayPhase = NewDawnClampF((hour - 6.0f) / 12.0f, 0.0f, 1.0f);
+    const float elevation = sinf(dayPhase * 3.14159265f);
+    params->interiorSinElevation = 0.24f + 0.62f * elevation;
+    const float warm = 1.0f - sqrtf(elevation);
+    const float sun[3] = { 1.0f, 0.93f - 0.30f * warm, 0.80f - 0.46f * warm };
+    const float moon[3] = { 0.42f, 0.55f, 1.0f };
+    // Overcast and rain soften the light; the moon is a fraction of the sun.
+    const float rain = NewDawnClampF(play->envCtx.precipitation[PRECIP_RAIN_CUR] / 60.0f, 0.0f, 1.0f);
+    const float snow = NewDawnClampF(play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f, 0.0f, 1.0f);
+    const float weather = 1.0f - 0.8f * fmaxf(rain, snow);
+    for (int i = 0; i < 3; ++i) {
+        params->interiorColor[i] = sun[i] * day * weather + moon[i] * (1.0f - day) * 0.07f;
+    }
+    params->interiorStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Interior.Strength", 1.0f), 0.0f, 3.0f);
+    params->interiorMotes = CVarGetInteger("gNewDawn.Interior.Motes", 1) ? 1.0f : 0.0f;
+    params->interiorEnabled = params->interiorStrength > 0.0f;
+    if (!params->interiorEnabled) {
+        return;
+    }
+    for (const NewDawnWindow& w : sNewDawnWindows) {
+        if (w.scene != play->sceneId || params->interiorWindowCount >= NEWDAWN_INTERIOR_WINDOWS) {
+            continue;
+        }
+        float* o = params->interiorWindows[params->interiorWindowCount++];
+        o[0] = w.x, o[1] = w.y, o[2] = w.z;
+        o[3] = w.nx, o[4] = 0.0f, o[5] = w.nz;
+        o[6] = w.nz, o[7] = 0.0f, o[8] = -w.nx; // horizontal axis along the wall
+        o[9] = w.hw, o[10] = w.hh, o[11] = w.panesU, o[12] = w.panesV, o[13] = 2.0f;
+    }
+}
+
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
@@ -1102,6 +1198,7 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnFillFogParams(play, params);
     NewDawnFillWaterParams(play, params);
     NewDawnFillArtParams(play, params);
+    NewDawnFillInteriorParams(play, params);
     NewDawnAtmos_Fill(play, params);
     NewDawnFillLocalLightParams(play, params);
     NewDawnFillGrassParams(play, params);
@@ -1121,14 +1218,60 @@ extern "C" void NewDawnHDR_WeatherScope(PlayState* play, int begin) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-// World GI: marks the static room geometry (opaque list) so the renderer can copy it into its voxel grid. The marker
-// draws nothing and changes no state; with the feature off it is not emitted.
-extern "C" void NewDawnGI_RoomScope(PlayState* play, int begin) {
+// World GI: marks the static room geometry (opaque list) so the renderer can copy it into its voxel grid. The markers
+// draw nothing and change no state; with the feature off they are not emitted. At the end of the scope the opaque
+// entries the game culled this frame (Room_DrawCullable skips meshes wholly behind the camera or beyond zFar) are
+// handed over as a record-only display list, so the grid does not depend on where the camera has looked. The renderer
+// runs that list only on the frames it records geometry, never draws it and restores every piece of state after it.
+extern "C" void NewDawnGI_RoomScope(PlayState* play, Room* room, int begin) {
     if (!CVarGetInteger("gNewDawn.GI.World", 0) || !CVarGetInteger("gNewDawn.HDR.Enabled", 0)) return;
     static NewDawnPostFxParams sUnused; // the command only needs a non-null pointer
     OPEN_DISPS(play->state.gfxCtx);
-    gSPNewDawnPostFx(POLY_OPA_DISP++, begin ? NEWDAWN_POSTFX_STAGE_GI_ROOM_BEGIN : NEWDAWN_POSTFX_STAGE_GI_ROOM_END,
-                     &sUnused);
+    if (begin) {
+        gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_GI_ROOM_BEGIN, &sUnused);
+    } else {
+        if (room->roomShape->base.type == ROOM_SHAPE_TYPE_CULLABLE && play->roomCtx.unk78 >= 0) {
+            RoomShapeCullable* shape = &room->roomShape->cullable;
+            RoomShapeCullableEntry* entries = (RoomShapeCullableEntry*)Lib_SegmentedToVirtual(shape->entries);
+            const f32 invDiag = 1.0f / play->projectionMtxFDiagonal.z;
+            Gfx* list = (Gfx*)GRAPH_ALLOC(play->state.gfxCtx, (shape->numEntries + 6) * sizeof(Gfx));
+            Gfx* p = list;
+            // The 'normal' opaque room setup, as Room_DrawCullable emits it, then each culled entry's opaque list.
+            gSPSegment(p++, 0x03, room->segment);
+            if (play->roomCtx.unk74 != NULL) {
+                gSPSegment(p++, 0x06, play->roomCtx.unk74);
+            }
+            gSPDisplayList(p++, gSetupDLs[SETUPDL_25]);
+            gSPMatrix(p++, &gIdentityMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+            int count = 0;
+            for (int i = 0; i < shape->numEntries; i++) {
+                RoomShapeCullableEntry* entry = &entries[i];
+                if (entry->opa == NULL) {
+                    continue;
+                }
+                Vec3f pos = { (f32)entry->boundsSphereCenter.x, (f32)entry->boundsSphereCenter.y,
+                              (f32)entry->boundsSphereCenter.z };
+                Vec3f projected;
+                SkinMatrix_Vec3fMtxFMultXYZ(&play->viewProjectionMtxF, &pos, &projected);
+                projected.z *= invDiag;
+                const f32 radius = ABS_ALT(entry->boundsSphereRadius);
+                // The game's own test (Room_DrawCullable): drawn unless wholly behind the camera or wholly beyond zFar.
+                if (-radius < projected.z && projected.z - radius < play->lightCtx.zFar) {
+                    continue;
+                }
+                gSPDisplayList(p++, entry->opa);
+                count++;
+            }
+            gSPEndDisplayList(p++);
+            if (count > 0) {
+                Gfx* marker = POLY_OPA_DISP++;
+                gSPNewDawnPostFx(marker, NEWDAWN_POSTFX_STAGE_SHADOW_ONLY_BEGIN, list);
+                marker->words.w0 |= 1u << NEWDAWN_POSTFX_SHADOW_ONLY_GI_SHIFT;
+                gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_SHADOW_ONLY_END, &sUnused);
+            }
+        }
+        gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_GI_ROOM_END, &sUnused);
+    }
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
@@ -1396,7 +1539,17 @@ extern "C" void NewDawnHDR_Begin(PlayState* play) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+// Shadow coverage (gNewDawn.Shadows.Coverage). The game culls cullable room entries whose bounding sphere lies wholly
+// behind the camera plane or beyond zFar, so what they would shadow on screen loses its shadow (and gains it again when
+// the camera turns). This is the sun-shadow state of the current frame, kept for NewDawnShadows_RoomCulled.
+static struct {
+    bool active = false;
+    float sun[3] = {}; // unit vector towards the light
+    float range = 0.0f; // shadow reach (world units)
+} sNdCoverage;
+
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
+    sNdCoverage.active = false;
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
@@ -1404,18 +1557,95 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
         !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.GI.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.GI.World", 0)) {
+        !CVarGetInteger("gNewDawn.GI.World", 0) &&
+        !CVarGetInteger("gNewDawn.Interior.Windows", 0) && !CVarGetInteger("gNewDawn.Interior.Emissive", 0) &&
+        !CVarGetInteger("gNewDawn.Shadows.PointLights", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric &&
-        !params->vfxEnabled && !params->grassEnabled && !params->giWorld) {
+        !params->vfxEnabled && !params->grassEnabled && !params->interiorEnabled && !params->emissiveEnabled &&
+        !params->localShadows && !params->giWorld) {
         return;
     }
 
+    sNdCoverage.active = CVarGetInteger("gNewDawn.Shadows.Coverage", 0) != 0 && params->shadowEnabled;
+    std::copy(params->shadowSunDir, params->shadowSunDir + 3, sNdCoverage.sun);
+    sNdCoverage.range = fminf(params->shadowDistance, play->lightCtx.zFar);
+
     OPEN_DISPS(play->state.gfxCtx);
     gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_SHADOW_BEGIN, params);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+// Called right after a room is drawn. Hands the renderer the cullable entries the game just skipped, when they can still
+// shadow what is within the shadow range, as a display list that is only ever run in the renderer's shadow-only mode:
+// it records their triangles as casters and draws nothing (docs/CASCADED_SHADOWS.md). Reads the room data and the
+// camera the game itself used; nothing the game simulates or draws changes.
+extern "C" void NewDawnShadows_RoomCulled(PlayState* play, Room* room) {
+    if (!sNdCoverage.active || room->roomShape->base.type != ROOM_SHAPE_TYPE_CULLABLE || play->roomCtx.unk78 < 0) {
+        return;
+    }
+    RoomShapeCullable* shape = &room->roomShape->cullable;
+    RoomShapeCullableEntry* entries = (RoomShapeCullableEntry*)Lib_SegmentedToVirtual(shape->entries);
+    const f32 invDiag = 1.0f / play->projectionMtxFDiagonal.z;
+    const float* sun = sNdCoverage.sun;
+    const float range = sNdCoverage.range;
+    const float* eye = &play->view.eye.x;
+    RoomShapeCullableEntry* culled[255];
+    int count = 0;
+    for (int i = 0; i < shape->numEntries; i++) {
+        RoomShapeCullableEntry* entry = &entries[i];
+        if (entry->opa == NULL) {
+            continue;
+        }
+        Vec3f pos = { (f32)entry->boundsSphereCenter.x, (f32)entry->boundsSphereCenter.y,
+                      (f32)entry->boundsSphereCenter.z };
+        Vec3f projected;
+        SkinMatrix_Vec3fMtxFMultXYZ(&play->viewProjectionMtxF, &pos, &projected);
+        projected.z *= invDiag;
+        const f32 radius = ABS_ALT(entry->boundsSphereRadius);
+        // The game's own test (Room_DrawCullable): drawn unless wholly behind the camera or wholly beyond zFar.
+        if (-radius < projected.z && projected.z - radius < play->lightCtx.zFar) {
+            continue;
+        }
+        // Can it shadow anything within `range` of the camera? Either it is that close, or the ray it casts away from
+        // the light (a finite reach) passes through that ball. Independent of where the camera points, so the set only
+        // changes with the camera's position and never pops while it turns.
+        const float to[3] = { eye[0] - pos.x, eye[1] - pos.y, eye[2] - pos.z };
+        const float dist2 = to[0] * to[0] + to[1] * to[1] + to[2] * to[2];
+        const float reach = range + radius;
+        bool relevant = dist2 < reach * reach;
+        if (!relevant) {
+            const float t = -(to[0] * sun[0] + to[1] * sun[1] + to[2] * sun[2]); // along the shadow direction
+            relevant = t > 0.0f && t < 2.0f * range && dist2 - t * t < reach * reach;
+        }
+        if (relevant) {
+            culled[count++] = entry;
+        }
+    }
+    if (count == 0) {
+        return;
+    }
+    // The 'normal' opaque room setup, as Room_DrawCullable emits it, then each culled entry's opaque list.
+    Gfx* list = (Gfx*)GRAPH_ALLOC(play->state.gfxCtx, (count + 6) * sizeof(Gfx));
+    Gfx* p = list;
+    gSPSegment(p++, 0x03, room->segment);
+    if (play->roomCtx.unk74 != NULL) {
+        gSPSegment(p++, 0x06, play->roomCtx.unk74);
+    }
+    gSPDisplayList(p++, gSetupDLs[SETUPDL_25]);
+    gSPMatrix(p++, &gIdentityMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    for (int i = 0; i < count; i++) {
+        gSPDisplayList(p++, culled[i]->opa);
+    }
+    gSPEndDisplayList(p++);
+
+    static NewDawnPostFxParams sUnused; // the end marker only needs a non-null pointer
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_SHADOW_ONLY_BEGIN, list);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_SHADOW_ONLY_END, &sUnused);
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
@@ -1441,7 +1671,7 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
         params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && params->waterCaustics <= 0.0f &&
         !params->fogVolumetric &&
         !params->atmosBiome && !params->giEnabled && !params->localEnabled && !params->grassEnabled &&
-        !params->giWorld) {
+        !params->interiorEnabled && !params->emissiveEnabled && !params->giWorld) {
         return;
     }
 

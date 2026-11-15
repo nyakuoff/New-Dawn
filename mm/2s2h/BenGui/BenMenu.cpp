@@ -1205,6 +1205,29 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Lighting.LocalFlicker")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
 
+    path.group = "Interiors";
+    AddWidget(path, "Window Light", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Interior.Windows")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Rooms without windows gain a few, with soft daylight or moonlight shafts and pools of light on the floor, "
+            "shaped by the time of day and weather. Render-only; the walls and collision are unchanged. Requires the "
+            "Modern Lighting Pipeline."));
+    AddWidget(path, "Window Light Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Interior.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
+    AddWidget(path, "Dust in Light Beams", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Interior.Motes")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Drifting motes that only show where a window beam lights them. Needs Ambient Particles."));
+    AddWidget(path, "Emissive Surfaces", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Interior.Emissive")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Signs, lamps, lanterns, the clock face and lit windows glow in HDR (windows after dusk), with a matching "
+            "local light. Render-only. Requires the Modern Lighting Pipeline."));
+    AddWidget(path, "Emissive Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Interior.EmissiveStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
+
     path.group = "Materials & Textures";
     AddWidget(path, "Companion Materials", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Materials.Enabled")
@@ -1277,6 +1300,21 @@ void BenMenu::AddSettings() {
                      .Tooltip("Tree leaves, fences and other cut-out geometry cast shadows in their real shape, "
                               "instead of casting none.")
                      .DefaultValue(false));
+    AddWidget(path, "Shadow Coverage", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Shadows.Coverage")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(CheckboxOptions()
+                     .Tooltip("Terrain and buildings the game skips drawing (wholly behind the camera or beyond the "
+                              "draw distance) still cast sun shadows, so shadows no longer appear and vanish as the "
+                              "camera turns and long evening shadows are not cut off. Costs a little CPU time. Never "
+                              "changes what the game draws or simulates.")
+                     .DefaultValue(false));
+    AddWidget(path, "Point-Light Shadows: %d", WIDGET_CVAR_SLIDER_INT)
+        .CVar("gNewDawn.Shadows.PointLights")
+        .Options(IntSliderOptions().Min(0).Max(2).DefaultValue(0).Tooltip(
+            "Soft shadows from the nearest torches, lamps and candles (up to two): characters and props near a flame "
+            "shadow the walls and floor around them. Only ever darkens, never adds light. Needs Local Lights and the "
+            "Modern Lighting Pipeline."));
 
     path.group = "Atmosphere";
     AddWidget(path, "Volumetric Height Fog", WIDGET_CVAR_CHECKBOX)
