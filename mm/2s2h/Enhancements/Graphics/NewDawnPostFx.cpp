@@ -3,6 +3,7 @@
 
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <fast/newdawn_postfx.h>
+#include <fast/newdawn_wind.h>
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <string>
@@ -215,33 +216,135 @@ struct NewDawnWaterPalette {
     float scatter[3];
     float absorb[3];
 };
+// Retuned for #96: the deep body colour carries little chroma (water takes its colour from depth absorption and the sky it
+// reflects, not from a flat tint), so open water reads as a dark, desaturated blue-green and only shallows over a bright
+// bed turn teal.
 static const NewDawnWaterPalette sNewDawnWaterGeneric = { -1,
-                                                          { 0.020f, 0.100f, 0.140f },
-                                                          { 1 / 80.0f, 1 / 240.0f, 1 / 320.0f } };
+                                                          { 0.030f, 0.075f, 0.090f },
+                                                          { 1 / 120.0f, 1 / 260.0f, 1 / 330.0f } };
 static const NewDawnWaterPalette sNewDawnWaterPalettes[] = {
-    // Great Bay: clear tropical shallows into deep blue-teal.
-    { SCENE_30GYOSON, { 0.015f, 0.130f, 0.190f }, { 1 / 110.0f, 1 / 300.0f, 1 / 520.0f } },
+    // Great Bay and Zora Cape: clear shallows over pale sand turn turquoise (green transmits further than before), deep
+    // water goes to a dark grey-blue-green.
+    { SCENE_30GYOSON, { 0.030f, 0.078f, 0.094f }, { 1 / 170.0f, 1 / 270.0f, 1 / 340.0f } },
+    { SCENE_31MISAKI, { 0.030f, 0.078f, 0.094f }, { 1 / 170.0f, 1 / 270.0f, 1 / 340.0f } },
     // Termina Field, Clock Town, ranch: clear, slightly green.
-    { SCENE_00KEIKOKU, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
-    { SCENE_CLOCKTOWER, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
-    { SCENE_ICHIBA, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
-    { SCENE_BACKTOWN, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
-    { SCENE_TOWN, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
-    { SCENE_ALLEY, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
-    { SCENE_F01, { 0.040f, 0.150f, 0.100f }, { 1 / 130.0f, 1 / 380.0f, 1 / 260.0f } },
+    { SCENE_00KEIKOKU, { 0.045f, 0.095f, 0.075f }, { 1 / 120.0f, 1 / 320.0f, 1 / 230.0f } },
+    { SCENE_CLOCKTOWER, { 0.045f, 0.095f, 0.075f }, { 1 / 120.0f, 1 / 320.0f, 1 / 230.0f } },
+    { SCENE_ICHIBA, { 0.045f, 0.095f, 0.075f }, { 1 / 120.0f, 1 / 320.0f, 1 / 230.0f } },
+    { SCENE_BACKTOWN, { 0.045f, 0.095f, 0.075f }, { 1 / 120.0f, 1 / 320.0f, 1 / 230.0f } },
+    { SCENE_TOWN, { 0.045f, 0.095f, 0.075f }, { 1 / 120.0f, 1 / 320.0f, 1 / 230.0f } },
+    { SCENE_ALLEY, { 0.045f, 0.095f, 0.075f }, { 1 / 120.0f, 1 / 320.0f, 1 / 230.0f } },
+    { SCENE_F01, { 0.045f, 0.095f, 0.075f }, { 1 / 120.0f, 1 / 320.0f, 1 / 230.0f } },
     // Cleared swamp: tannin brown-green, clear near the surface.
-    { SCENE_20SICHITAI2, { 0.075f, 0.110f, 0.040f }, { 1 / 220.0f, 1 / 170.0f, 1 / 60.0f } },
+    { SCENE_20SICHITAI2, { 0.070f, 0.090f, 0.045f }, { 1 / 220.0f, 1 / 170.0f, 1 / 60.0f } },
     // Poisoned swamp (and the poison water in Woodfall Temple): sickly purple-magenta, nearly opaque.
-    { SCENE_20SICHITAI, { 0.130f, 0.030f, 0.160f }, { 1 / 130.0f, 1 / 70.0f, 1 / 110.0f } },
-    { SCENE_MITURIN, { 0.130f, 0.030f, 0.160f }, { 1 / 130.0f, 1 / 70.0f, 1 / 110.0f } },
+    { SCENE_20SICHITAI, { 0.095f, 0.045f, 0.110f }, { 1 / 130.0f, 1 / 70.0f, 1 / 110.0f } },
+    { SCENE_MITURIN, { 0.095f, 0.045f, 0.110f }, { 1 / 130.0f, 1 / 70.0f, 1 / 110.0f } },
     // Zora Hall: crystal blue.
-    { SCENE_33ZORACITY, { 0.035f, 0.160f, 0.210f }, { 1 / 160.0f, 1 / 380.0f, 1 / 500.0f } },
+    { SCENE_33ZORACITY, { 0.035f, 0.105f, 0.130f }, { 1 / 150.0f, 1 / 330.0f, 1 / 420.0f } },
     // Temples by theme: Great Bay green-teal, Snowhead icy blue, Stone Tower slate.
-    { SCENE_SEA, { 0.020f, 0.150f, 0.170f }, { 1 / 90.0f, 1 / 200.0f, 1 / 170.0f } },
-    { SCENE_HAKUGIN, { 0.040f, 0.220f, 0.360f }, { 1 / 90.0f, 1 / 300.0f, 1 / 600.0f } },
-    { SCENE_INISIE_N, { 0.030f, 0.130f, 0.170f }, { 1 / 90.0f, 1 / 210.0f, 1 / 260.0f } },
-    { SCENE_INISIE_R, { 0.030f, 0.130f, 0.170f }, { 1 / 90.0f, 1 / 210.0f, 1 / 260.0f } },
+    { SCENE_SEA, { 0.025f, 0.100f, 0.112f }, { 1 / 90.0f, 1 / 200.0f, 1 / 170.0f } },
+    { SCENE_HAKUGIN, { 0.050f, 0.135f, 0.200f }, { 1 / 90.0f, 1 / 300.0f, 1 / 500.0f } },
+    { SCENE_INISIE_N, { 0.035f, 0.090f, 0.105f }, { 1 / 90.0f, 1 / 210.0f, 1 / 260.0f } },
+    { SCENE_INISIE_R, { 0.035f, 0.090f, 0.105f }, { 1 / 90.0f, 1 / 210.0f, 1 / 260.0f } },
 };
+
+// Ocean scenes get the swell (amplitude factor); lakes, ponds, rivers and interiors stay calm.
+struct NewDawnOceanScene {
+    s16 sceneId;
+    float amplitude;
+};
+static const NewDawnOceanScene sNewDawnOceanScenes[] = {
+    { SCENE_30GYOSON, 1.0f }, // Great Bay Coast
+    { SCENE_31MISAKI, 0.9f }, // Zora Cape
+};
+
+static void NewDawnAddRipple(NewDawnPostFxParams* params, float x, float z, float radius, float strength) {
+    if (params->waterRippleCount >= NEWDAWN_MAX_WATER_RIPPLES) {
+        return;
+    }
+    float* out = params->waterRippleSrc[params->waterRippleCount++];
+    out[0] = x;
+    out[1] = z;
+    out[2] = radius;
+    out[3] = strength;
+}
+
+// Swell parameters (wind from the shared wind, #50) and the read-only ripple sources: Link, other actors in the water and
+// the game's own splash/ripple effects. Nothing here writes game state; the sources only feed the GPU height field.
+static void NewDawnFillWaveParams(PlayState* play, NewDawnPostFxParams* params, bool restyle) {
+    params->waterWaves = 0.0f;
+    params->waterRipples = 0.0f;
+    params->waterRippleCount = 0;
+    if (!restyle) {
+        return; // the displaced surface is re-lit by the restyle pass
+    }
+    const bool waves = CVarGetInteger("gNewDawn.Water.Waves", 0) != 0;
+    const bool ripples = CVarGetInteger("gNewDawn.Water.Ripples", 0) != 0;
+    if (!waves && !ripples) {
+        return;
+    }
+    if (waves) {
+        float ocean = 0.0f;
+        for (const auto& entry : sNewDawnOceanScenes) {
+            if (entry.sceneId == play->sceneId) {
+                ocean = entry.amplitude;
+            }
+        }
+        const Fast::NewDawnWindState wind = Fast::NewDawnWindAt(Fast::NewDawnWindSeconds());
+        const float gust = CVarGetInteger("gNewDawn.Atmos.Wind", 0) ? NewDawnClampF((wind.gust - 0.3f) / 1.3f, 0.0f, 1.0f) : 0.5f;
+        params->waterWaves = ocean * NewDawnClampF(CVarGetFloat("gNewDawn.Water.WaveStrength", 1.0f), 0.0f, 2.0f) *
+                             (0.8f + 0.4f * gust);
+        params->waterWaveDir[0] = wind.dirX;
+        params->waterWaveDir[1] = wind.dirZ;
+        params->waterWaveGust = gust;
+    }
+    if (!ripples) {
+        return;
+    }
+    Player* player = GET_PLAYER(play);
+    if (player == NULL) {
+        return;
+    }
+    params->waterRipples = NewDawnClampF(CVarGetFloat("gNewDawn.Water.RippleStrength", 1.0f), 0.0f, 2.0f);
+    params->waterRippleFocus[0] = player->actor.world.pos.x;
+    params->waterRippleFocus[1] = player->actor.world.pos.z;
+    // An alternating sign turns a held source into outgoing rings rather than a growing mound.
+    const float pulse = sinf((float)play->gameplayFrames * (1.0f / 20.0f) * 6.2831853f * 1.7f);
+    const Actor* link = &player->actor;
+    if (link->depthInWater > 0.0f) {
+        const float speed = NewDawnClampF(link->speed / 4.0f, 0.0f, 1.5f);
+        NewDawnAddRipple(params, link->world.pos.x, link->world.pos.z, 15.0f, (50.0f + 300.0f * speed) * pulse);
+    }
+    for (int cat : { ACTORCAT_NPC, ACTORCAT_ENEMY, ACTORCAT_BOSS, ACTORCAT_MISC, ACTORCAT_PROP }) {
+        for (Actor* actor = play->actorCtx.actorLists[cat].first; actor != NULL; actor = actor->next) {
+            if (actor == link || actor->depthInWater <= 0.0f || actor->speed < 0.8f) {
+                continue;
+            }
+            const float dx = actor->world.pos.x - link->world.pos.x, dz = actor->world.pos.z - link->world.pos.z;
+            if (dx * dx + dz * dz > 600.0f * 600.0f) {
+                continue;
+            }
+            NewDawnAddRipple(params, actor->world.pos.x, actor->world.pos.z, 14.0f,
+                             (40.0f + 140.0f * NewDawnClampF(actor->speed / 4.0f, 0.0f, 1.5f)) * pulse);
+        }
+    }
+    // The game's own splash (8 frames) and ripple effects: an impulse while they are young.
+    const EffectSs* table = EffectSs_GetTable();
+    if (table != NULL) {
+        for (int i = 0; i < 100; i++) {
+            const EffectSs* effect = &table[i];
+            if (effect->life <= 0) {
+                continue;
+            }
+            if (effect->type == EFFECT_SS_G_SPLASH && effect->life >= 5) {
+                NewDawnAddRipple(params, effect->pos.x, effect->pos.z, 20.0f, 420.0f);
+            } else if (effect->type == EFFECT_SS_G_RIPPLE && (effect->regs[11] + 20) - effect->life <= 2) {
+                NewDawnAddRipple(params, effect->pos.x, effect->pos.z, 12.0f, 150.0f);
+            }
+        }
+    }
+}
 
 static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params) {
     params->waterEnabled = 0;
@@ -466,6 +569,7 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     params->waterCameraEye[0] = play->view.eye.x;
     params->waterCameraEye[1] = play->view.eye.y;
     params->waterCameraEye[2] = play->view.eye.z;
+    NewDawnFillWaveParams(play, params, restyle);
 }
 
 static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
