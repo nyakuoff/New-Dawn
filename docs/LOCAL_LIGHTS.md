@@ -76,7 +76,7 @@ palette-quantized in transit): 17 distinct G levels in the doorway, against 86-9
 (165k unique colours). `showcase/fix-81/inn_banding_histogram.txt`.
 
 ## Limits
-- Screen-space: lights and contact shadows only see what is on screen; no cube shadow maps (stretch goal not done).
+- Screen-space: lights and contact shadows only see what is on screen. The one or two most important lights also get cube-map shadows (below), the rest keep the contact shadow only.
 - The actor mask relies on the character-lighting classifier (per-pixel lighting + Characters on); unlit or classifier-missed actors get only the luminance floor. Enemies were not present in the captured views, so the mask is verified on Link and NPCs only.
 - The darkening is a per-class constant, not an adaptive exposure; a few bright interiors may read dim.
 - Tatl and other white game lights light their surroundings too (they are point lights).
@@ -96,3 +96,48 @@ palette-quantized in transit): 17 distinct G levels in the doorway, against 86-9
   footprints, and a wider wrap (0.7 instead of 0.3), so a torch rolls over a body instead of snapping between triangles.
 - `gNewDawn.Lighting.LocalSmooth` (default 1) turns the filter, the soft normal and the calmer flicker off for A/B comparisons.
 - GPU, stage 16, South Clock Town torch: 0.275 -> 0.273 ms.
+
+## Point-light shadows (`gNewDawn.Shadows.PointLights`, roadmap item 4)
+`gNewDawn.Shadows.PointLights` (0-2, default 0; **2 in Ultra, 1 in High**), `.PointSize` (64-1024, default 256 per face),
+`.PointSoftness` (0-3, default 1, penumbra size), `.PointNear` (default 24, see below), `.PointDebug` (1: the first cube's visibility on its own,
+white lit / black shadowed / blue out of range; 2: its stored distance), `.PointDumpDir` (writes the six faces once as raw R32F).
+Menu: Advanced -> Lighting & Shadows -> Point-Light Shadows. Needs Local Lights and HDR. Render-only; it only ever removes light.
+
+- **Casters.** The sun-shadow caster recording (world-space opaque triangles, now also including the culled entries of
+  `docs/CASCADED_SHADOWS.md` when Coverage is on) is also enabled when `PointLights > 0`, so interiors without a sun get it too.
+- **Which lights.** `PrepareLocalLights` (the CPU half of the old `RunLocalLights`, no GL calls) builds the frame's light list; `RunPointShadows`
+  picks the best 1-2 by `range / distance to the player`, skipping fairies (white lights Tatl-style, `localBoost < 1`), dim lights, and lights farther
+  than range + 500 from the player. A light keeps its slot while it stays among the best (1.5x margin), so two similar torches never swap.
+- **Cube map.** Per slot a 256 R32F cube holds the distance from the light to the nearest caster (a fragment writes `length(world - light)`,
+  depth-tested, both faces, six faces of the GL cube convention). The cube range is the light's range rounded up to 32 plus 32 (max 800), so
+  the smoothed range does not re-render it every frame. The depth clamp the game keeps enabled is turned off for the pass so the near plane
+  clips: geometry closer than `PointNear` (24) units to the flame, the brazier rim or lamp shade it sits in, does not cast and so cannot close the
+  light in (without it a Great Bay Temple torch lit nothing: a lid 10-17 units above it blocked the whole cube).
+- **Only when needed.** The casters are culled to the light's sphere (64-triangle chunk boxes, computed once per frame, then per-triangle boxes) and
+  hashed with the light position and range; if nothing near the light changed since the last render the cube is reused (a still scene re-renders
+  nothing; a character moving in range re-renders it each frame).
+- **Lookup (local-light shader).** `pointShadowVis`: the receiver is offset along its depth normal, a 6-tap blocker search sets the penumbra from
+  the blocker distance (contact-hardening: sharp at the occluder, wider away from it, light radius 7 units x `PointSoftness`), then 12 rotated Vogel
+  taps filter it with a smooth step. The rotation comes from the per-pixel interleaved noise, so TAA integrates it. The factor multiplies the
+  light's contribution next to the existing screen-space contact shadow; the unlit scene is darkened by the same `keep` logic as before, so a
+  shadowed wall gets darker, never brighter (#81 moody interiors). Nothing is added to the world shaders.
+- **Samplers.** Two dedicated units (34, 35) hold `samplerCube`s with a complete one-texel dummy cube bound from program creation and restored
+  after the pass (the Mesa sampler-type rule).
+
+**Evidence** (RX 7800 XT, 1080p, Ultra + community mods, 0 GL errors; `~/dev/ghm-mods/showcase/shadow-coverage/point-shadows/`).
+- Light-only view (`gNewDawn.Lighting.LocalDebug=3`): South Clock Town at night, Link beside the torch casts a soft shadow across the floor away from it
+  (`sct_ld-off-left-on-right.png`, `crop1to1-sct-...`); Great Bay Temple braziers cast leg and base shadows on the walls and floor
+  (`gbt_ld-...`); the Stock Pot Inn wall candle shades the wall below it (`inn_lamp-...`, `crop1to1-inn-lamp-...`). The raw visibility
+  (`debug-visibility-*.png`) shows Link's and the braziers' shadows with a penumbra that widens with distance.
+- In the normal render the change is real but modest: these lights are small (range 90-325) and the interior grade keeps the unlit scene dark, so
+  the cube shadows read as deeper contact and cast shadows near a flame rather than a new look. Frame mean luminance moves by under 1.5 gray levels
+  (Inn lamp 24.5 -> 24.3, Woodfall 28.4 -> 27.4, Great Bay Temple 53.6 -> 54.8).
+- GPU: cube stage + local-light stage change, 300-frame averages. Stock Pot Inn lamp (1 light) 0.047 + 0.028 = **+0.075 ms**; Great Bay Temple
+  (2 torches) 0.075 + 0.175 = **+0.25 ms**; South Clock Town torch (2) 0.112 + 0.212 = **+0.32 ms**. Together with Coverage (<= 0.014 ms GPU)
+  the total stays under 0.35 ms on Ultra, inside the 1 ms budget. Render-thread CPU for the culling and cube submission 0.10-0.38 ms per frame.
+- Off identity: `PointLights=0` and `Coverage=0` leave the frozen Stock Pot Inn byte-identical to main (SHA-256 `09f407ea2cecf510`, see
+  `docs/CASCADED_SHADOWS.md`).
+
+**Limits.** Opaque casters only (cut-out foliage and alpha-blended geometry do not shadow a flame); at most two lights, none for fairies; a
+light attached to a fixture larger than `PointNear` units sees that fixture as a caster; very bright interiors show little change because the added
+light is a small share of the lit result.

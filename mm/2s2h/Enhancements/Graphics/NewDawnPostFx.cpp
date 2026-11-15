@@ -5,6 +5,7 @@
 #include <fast/newdawn_postfx.h>
 #include <fast/newdawn_wind.h>
 #include <spdlog/spdlog.h>
+#include <algorithm>
 #include <filesystem>
 #include <string>
 
@@ -912,6 +913,15 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
         return;
     }
     params->localEnabled = 1;
+    // Shadow-casting point lights: how many (0..2), and the player whose surroundings decide which ones.
+    params->localShadows = (int)NewDawnClampF((float)CVarGetInteger("gNewDawn.Shadows.PointLights", 0), 0.0f, 2.0f);
+    {
+        Player* player = GET_PLAYER(play);
+        const Vec3f focus = player != NULL ? player->actor.world.pos : play->view.eye;
+        params->localFocus[0] = focus.x;
+        params->localFocus[1] = focus.y;
+        params->localFocus[2] = focus.z;
+    }
     params->localStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalStrength", 1.0f), 0.0f, 3.0f);
     params->localFlicker = NewDawnClampF(CVarGetFloat("gNewDawn.Lighting.LocalFlicker", 1.0f), 0.0f, 1.0f);
     // Darkening of the unlit scene, from the game's own clock and light mode (read only). Outdoors (time-of-day
@@ -1338,25 +1348,110 @@ extern "C" void NewDawnHDR_Begin(PlayState* play) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+// Shadow coverage (gNewDawn.Shadows.Coverage). The game culls cullable room entries whose bounding sphere lies wholly
+// behind the camera plane or beyond zFar, so what they would shadow on screen loses its shadow (and gains it again when
+// the camera turns). This is the sun-shadow state of the current frame, kept for NewDawnShadows_RoomCulled.
+static struct {
+    bool active = false;
+    float sun[3] = {}; // unit vector towards the light
+    float range = 0.0f; // shadow reach (world units)
+} sNdCoverage;
+
 extern "C" void NewDawnShadows_Begin(PlayState* play) {
+    sNdCoverage.active = false;
     if (!CVarGetInteger("gNewDawn.Shadows.Enabled", 0) && !CVarGetInteger("gNewDawn.Water.Enabled", 0) &&
         !CVarGetInteger("gNewDawn.Water.Reflections", 0) && !CVarGetInteger("gNewDawn.Water.Foam", 0) &&
         !CVarGetInteger("gNewDawn.Water.Refraction", 0) && !CVarGetInteger("gNewDawn.Water.Restyle", 0) &&
         !CVarGetInteger("gNewDawn.Water.Caustics", 0) && !CVarGetInteger("gNewDawn.Water.Underwater", 0) &&
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
         !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.GI.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0)) {
+        !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0) &&
+        !CVarGetInteger("gNewDawn.Shadows.PointLights", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric &&
-        !params->vfxEnabled && !params->grassEnabled) {
+        !params->vfxEnabled && !params->grassEnabled && !params->localShadows) {
         return;
     }
 
+    sNdCoverage.active = CVarGetInteger("gNewDawn.Shadows.Coverage", 0) != 0 && params->shadowEnabled;
+    std::copy(params->shadowSunDir, params->shadowSunDir + 3, sNdCoverage.sun);
+    sNdCoverage.range = fminf(params->shadowDistance, play->lightCtx.zFar);
+
     OPEN_DISPS(play->state.gfxCtx);
     gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_SHADOW_BEGIN, params);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+// Called right after a room is drawn. Hands the renderer the cullable entries the game just skipped, when they can still
+// shadow what is within the shadow range, as a display list that is only ever run in the renderer's shadow-only mode:
+// it records their triangles as casters and draws nothing (docs/CASCADED_SHADOWS.md). Reads the room data and the
+// camera the game itself used; nothing the game simulates or draws changes.
+extern "C" void NewDawnShadows_RoomCulled(PlayState* play, Room* room) {
+    if (!sNdCoverage.active || room->roomShape->base.type != ROOM_SHAPE_TYPE_CULLABLE || play->roomCtx.unk78 < 0) {
+        return;
+    }
+    RoomShapeCullable* shape = &room->roomShape->cullable;
+    RoomShapeCullableEntry* entries = (RoomShapeCullableEntry*)Lib_SegmentedToVirtual(shape->entries);
+    const f32 invDiag = 1.0f / play->projectionMtxFDiagonal.z;
+    const float* sun = sNdCoverage.sun;
+    const float range = sNdCoverage.range;
+    const float* eye = &play->view.eye.x;
+    RoomShapeCullableEntry* culled[255];
+    int count = 0;
+    for (int i = 0; i < shape->numEntries; i++) {
+        RoomShapeCullableEntry* entry = &entries[i];
+        if (entry->opa == NULL) {
+            continue;
+        }
+        Vec3f pos = { (f32)entry->boundsSphereCenter.x, (f32)entry->boundsSphereCenter.y,
+                      (f32)entry->boundsSphereCenter.z };
+        Vec3f projected;
+        SkinMatrix_Vec3fMtxFMultXYZ(&play->viewProjectionMtxF, &pos, &projected);
+        projected.z *= invDiag;
+        const f32 radius = ABS_ALT(entry->boundsSphereRadius);
+        // The game's own test (Room_DrawCullable): drawn unless wholly behind the camera or wholly beyond zFar.
+        if (-radius < projected.z && projected.z - radius < play->lightCtx.zFar) {
+            continue;
+        }
+        // Can it shadow anything within `range` of the camera? Either it is that close, or the ray it casts away from
+        // the light (a finite reach) passes through that ball. Independent of where the camera points, so the set only
+        // changes with the camera's position and never pops while it turns.
+        const float to[3] = { eye[0] - pos.x, eye[1] - pos.y, eye[2] - pos.z };
+        const float dist2 = to[0] * to[0] + to[1] * to[1] + to[2] * to[2];
+        const float reach = range + radius;
+        bool relevant = dist2 < reach * reach;
+        if (!relevant) {
+            const float t = -(to[0] * sun[0] + to[1] * sun[1] + to[2] * sun[2]); // along the shadow direction
+            relevant = t > 0.0f && t < 2.0f * range && dist2 - t * t < reach * reach;
+        }
+        if (relevant) {
+            culled[count++] = entry;
+        }
+    }
+    if (count == 0) {
+        return;
+    }
+    // The 'normal' opaque room setup, as Room_DrawCullable emits it, then each culled entry's opaque list.
+    Gfx* list = (Gfx*)GRAPH_ALLOC(play->state.gfxCtx, (count + 6) * sizeof(Gfx));
+    Gfx* p = list;
+    gSPSegment(p++, 0x03, room->segment);
+    if (play->roomCtx.unk74 != NULL) {
+        gSPSegment(p++, 0x06, play->roomCtx.unk74);
+    }
+    gSPDisplayList(p++, gSetupDLs[SETUPDL_25]);
+    gSPMatrix(p++, &gIdentityMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    for (int i = 0; i < count; i++) {
+        gSPDisplayList(p++, culled[i]->opa);
+    }
+    gSPEndDisplayList(p++);
+
+    static NewDawnPostFxParams sUnused; // the end marker only needs a non-null pointer
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_SHADOW_ONLY_BEGIN, list);
+    gSPNewDawnPostFx(POLY_OPA_DISP++, NEWDAWN_POSTFX_STAGE_SHADOW_ONLY_END, &sUnused);
     CLOSE_DISPS(play->state.gfxCtx);
 }
 

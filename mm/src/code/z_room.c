@@ -661,6 +661,8 @@ void Room_Draw(PlayState* play, Room* room, u32 flags) {
         NewDawnHDR_WindScope(play, false, true);
         if (mm3d) {
             NewDawnMM3D_EndRoom(play, room, flags);
+        } else if (flags & ROOM_DRAW_OPA) {
+            NewDawnShadows_RoomCulled(play, room);
         }
     }
     return;
