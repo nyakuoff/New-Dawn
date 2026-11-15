@@ -102,7 +102,7 @@ Roughly in priority order; this will change as work lands.
 4. **Shadow coverage.** Shadows from geometry the game culls (rooms behind the camera, distant actors), and point-light shadows for the nearest flames.
 5. **Foliage and vegetation.** Denser trees and bushes, translucency (light through leaves), and grass interaction around Link.
 6. **Night sky** (done locally on `feature/night-sky`, `docs/NIGHT_SKY.md`). A real star field (13,964 catalogue stars), a Milky Way panorama and a Moon glow that follows the giant Moon's state, plus soft moonlight shadows.
-7. **Interior polish.** Light leaking through windows and doorways, dust in light beams, more emissive surfaces (signs, lamps, crystals).
+7. **Interior polish** (done locally on `feature/interior-polish`, [docs/INTERIOR_POLISH.md](docs/INTERIOR_POLISH.md)). Render-only windows with daylight and moonlight shafts and floor pools, dust in the beams, and emissive clock/sign surfaces. Still open: more rooms, glowing windows on Clock Town facades, lanterns and crystals.
 8. **Performance and options.** Quality tiers (low/medium/high/ultra), a performance overlay, and a pass to keep the full preset comfortably above 60 fps at 1080p on mid-range GPUs.
 9. **Other backends.** DirectX 11 and Metal ports of the OpenGL-only effects (Windows and macOS players currently need OpenGL).
 10. **HDR display output.** True HDR10/scRGB output for HDR monitors, off by default and opt-in by the player (the existing "HDR" is the internal lighting pipeline, which outputs normal SDR).

@@ -1031,6 +1031,92 @@ static void NewDawnFillGrassParams(PlayState* play, NewDawnPostFxParams* params)
     }
 }
 
+// Render-only windows: these interiors have no real windows, so the remaster adds a few (a visible pane with its frame,
+// and the light it lets in). Coordinates are world space, n is the horizontal inward normal, half extents in world
+// units, panes across and down. Placement was checked on screen against each room.
+struct NewDawnWindow {
+    s16 scene;
+    float x, y, z, nx, nz, hw, hh;
+    u8 panesU, panesV;
+};
+static const NewDawnWindow sNewDawnWindows[] = {
+    // Stock Pot Inn lobby (side walls x = 30 and 330)
+    { SCENE_YADOYA, 30.6f, 100, 175, 1, 0, 34, 30, 2, 2 },
+    { SCENE_YADOYA, 329.4f, 100, 205, -1, 0, 34, 30, 2, 2 },
+    // Mayor's Residence lobby (a hall 210 wide, walls x = +-105)
+    { SCENE_SONCHONOIE, 104.4f, 102, 190, -1, 0, 36, 30, 2, 2 },
+    { SCENE_SONCHONOIE, -104.4f, 102, 140, 1, 0, 26, 28, 2, 2 },
+    // Milk Bar (left wall x = -140)
+    { SCENE_MILK_BAR, -139.4f, 104, 70, 1, 0, 32, 28, 2, 2 },
+    { SCENE_MILK_BAR, -139.4f, 104, 235, 1, 0, 32, 28, 2, 2 },
+    // Swordsman's School: clerestory windows high on both long walls (x = +-195)
+    { SCENE_DOUJOU, -194.4f, 120, 60, 1, 0, 38, 24, 2, 2 },
+    { SCENE_DOUJOU, -194.4f, 120, 235, 1, 0, 38, 24, 2, 2 },
+    { SCENE_DOUJOU, 194.4f, 120, 60, -1, 0, 38, 24, 2, 2 },
+    { SCENE_DOUJOU, 194.4f, 120, 235, -1, 0, 38, 24, 2, 2 },
+    // Bomb Shop (left wall x = -15, back wall z = 390)
+    { SCENE_BOMYA, -14.4f, 100, 230, 1, 0, 32, 28, 2, 2 },
+    { SCENE_BOMYA, 190, 100, 389.4f, 0, -1, 40, 24, 2, 2 },
+    // Trading Post (walls x = +-210)
+    { SCENE_8ITEMSHOP, -209.4f, 125, 40, 1, 0, 40, 30, 2, 2 },
+    { SCENE_8ITEMSHOP, 209.4f, 125, 40, -1, 0, 40, 30, 2, 2 },
+    // Post Office (walls x = +-200)
+    { SCENE_POSTHOUSE, -199.4f, 125, 100, 1, 0, 36, 28, 2, 2 },
+    { SCENE_POSTHOUSE, 199.4f, 125, 100, -1, 0, 36, 28, 2, 2 },
+};
+
+// Interior polish (render only): the light that comes through windows and doorways, and the emissive surfaces.
+// Reads the game clock and weather; the openings themselves are recorded by the renderer from the draw stream.
+static void NewDawnFillInteriorParams(PlayState* play, NewDawnPostFxParams* params) {
+    if (!CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
+        return;
+    }
+    const float hour = gSaveContext.save.time * (24.0f / 65536.0f);
+    const auto smooth = [](float a, float b, float x) {
+        const float t = NewDawnClampF((x - a) / (b - a), 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
+    };
+    params->interiorDebug = CVarGetInteger("gNewDawn.Interior.Debug", 0);
+    params->emissiveEnabled = CVarGetInteger("gNewDawn.Interior.Emissive", 0);
+    params->emissiveStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Interior.EmissiveStrength", 1.0f), 0.0f, 3.0f);
+    params->emissiveNight = hour >= 12.0f ? smooth(17.5f, 19.5f, hour) : 1.0f - smooth(4.5f, 6.5f, hour);
+    if (!CVarGetInteger("gNewDawn.Interior.Windows", 0) || !NewDawnSceneIsIndoors(play)) {
+        return;
+    }
+    // Light enters at the sun's elevation (high at noon, low near dawn and dusk); the horizontal direction follows each
+    // opening's own normal, since interior scenes have no meaningful compass.
+    const float day = smooth(5.5f, 7.5f, hour) * (1.0f - smooth(16.5f, 18.5f, hour));
+    const float dayPhase = NewDawnClampF((hour - 6.0f) / 12.0f, 0.0f, 1.0f);
+    const float elevation = sinf(dayPhase * 3.14159265f);
+    params->interiorSinElevation = 0.24f + 0.62f * elevation;
+    const float warm = 1.0f - sqrtf(elevation);
+    const float sun[3] = { 1.0f, 0.93f - 0.30f * warm, 0.80f - 0.46f * warm };
+    const float moon[3] = { 0.42f, 0.55f, 1.0f };
+    // Overcast and rain soften the light; the moon is a fraction of the sun.
+    const float rain = NewDawnClampF(play->envCtx.precipitation[PRECIP_RAIN_CUR] / 60.0f, 0.0f, 1.0f);
+    const float snow = NewDawnClampF(play->envCtx.precipitation[PRECIP_SNOW_CUR] / 128.0f, 0.0f, 1.0f);
+    const float weather = 1.0f - 0.8f * fmaxf(rain, snow);
+    for (int i = 0; i < 3; ++i) {
+        params->interiorColor[i] = sun[i] * day * weather + moon[i] * (1.0f - day) * 0.07f;
+    }
+    params->interiorStrength = NewDawnClampF(CVarGetFloat("gNewDawn.Interior.Strength", 1.0f), 0.0f, 3.0f);
+    params->interiorMotes = CVarGetInteger("gNewDawn.Interior.Motes", 1) ? 1.0f : 0.0f;
+    params->interiorEnabled = params->interiorStrength > 0.0f;
+    if (!params->interiorEnabled) {
+        return;
+    }
+    for (const NewDawnWindow& w : sNewDawnWindows) {
+        if (w.scene != play->sceneId || params->interiorWindowCount >= NEWDAWN_INTERIOR_WINDOWS) {
+            continue;
+        }
+        float* o = params->interiorWindows[params->interiorWindowCount++];
+        o[0] = w.x, o[1] = w.y, o[2] = w.z;
+        o[3] = w.nx, o[4] = 0.0f, o[5] = w.nz;
+        o[6] = w.nz, o[7] = 0.0f, o[8] = -w.nx; // horizontal axis along the wall
+        o[9] = w.hw, o[10] = w.hh, o[11] = w.panesU, o[12] = w.panesV, o[13] = 2.0f;
+    }
+}
+
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
@@ -1056,6 +1142,7 @@ static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
     NewDawnFillFogParams(play, params);
     NewDawnFillWaterParams(play, params);
     NewDawnFillArtParams(play, params);
+    NewDawnFillInteriorParams(play, params);
     NewDawnAtmos_Fill(play, params);
     NewDawnFillLocalLightParams(play, params);
     NewDawnFillGrassParams(play, params);
@@ -1345,13 +1432,14 @@ extern "C" void NewDawnShadows_Begin(PlayState* play) {
         !CVarGetInteger("gNewDawn.Water.Caustics", 0) && !CVarGetInteger("gNewDawn.Water.Underwater", 0) &&
         !CVarGetInteger("gNewDawn.Atmos.Particles", 0) && !CVarGetInteger("gNewDawn.Atmos.Weather", 0) &&
         !CVarGetInteger("gNewDawn.Fog.Volumetric", 0) && !CVarGetInteger("gNewDawn.GI.Enabled", 0) &&
-        !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0)) {
+        !CVarGetInteger("gNewDawn.Vfx.Enabled", 0) && !CVarGetInteger("gNewDawn.Grass.Enabled", 0) &&
+        !CVarGetInteger("gNewDawn.Interior.Windows", 0) && !CVarGetInteger("gNewDawn.Interior.Emissive", 0)) {
         return;
     }
 
     auto* params = NewDawnPostFx_AllocParams(play);
     if (!params->shadowEnabled && !params->waterEnabled && !params->atmosBiome && !params->fogVolumetric &&
-        !params->vfxEnabled && !params->grassEnabled) {
+        !params->vfxEnabled && !params->grassEnabled && !params->interiorEnabled && !params->emissiveEnabled) {
         return;
     }
 
@@ -1381,7 +1469,8 @@ extern "C" void NewDawnPostFx_OpaqueEnd(PlayState* play) {
     if (!postFxAo && !params->shadowEnabled && !params->waterReflections && params->waterFoam <= 0.0f &&
         params->waterRefraction <= 0.0f && params->waterRestyle <= 0.0f && params->waterCaustics <= 0.0f &&
         !params->fogVolumetric &&
-        !params->atmosBiome && !params->giEnabled && !params->localEnabled && !params->grassEnabled) {
+        !params->atmosBiome && !params->giEnabled && !params->localEnabled && !params->grassEnabled &&
+        !params->interiorEnabled && !params->emissiveEnabled) {
         return;
     }
 

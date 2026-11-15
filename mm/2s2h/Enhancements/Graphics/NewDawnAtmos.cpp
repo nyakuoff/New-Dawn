@@ -49,7 +49,12 @@ void NewDawnAtmos_Fill(const PlayState* play, NewDawnPostFxParams* params) {
             params->atmosBiome = 4;
             break;
         default:
-            return;
+            // Interiors with window light: dust drifts in the beams (and near lamps).
+            if (!params->interiorEnabled || params->interiorMotes <= 0.0f) {
+                return;
+            }
+            params->atmosBiome = 4;
+            break;
     }
     params->atmosScene = play->sceneId;
     params->atmosParticles = (particles || underwater) && params->atmosBiome != 5;
