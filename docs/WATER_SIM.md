@@ -95,9 +95,7 @@ did not show their water; their numbers are the analytic ones).
   `shoreline-cliff-1to1-before-after.png`, `shoreline-sand-1to1-before-after.png`, `ocean-streaks-1to1-before-after.png`.
 
 ## Limits and deferred
-- **Rivers and waterfalls: deferred.** Flow-mapped river motion needs per-box flow direction (WaterBoxes carry none; it would be
-  a hand-authored table per scene), and waterfall foam/mist belongs to the effect layer. Nothing was done for Ikana, the Swamp or
-  the Mountain Village spring beyond the palette retune.
+- Rivers and waterfalls: see the section below (rivers done; no real waterfall located).
 - Swash is implemented but **not visually verified**: the Great Bay Coast / Zora Cape shores that were reachable are shelves and
   cliffs (the beach sand is far above the plane), so no ground fell inside the 14-unit window (debug view 5). Cliff bases and
   decks are excluded by the normal tests. Expect to tune it on the first real gently sloping beach.
@@ -114,3 +112,53 @@ did not show their water; their numbers are the analytic ones).
   smooth (the swell fades out); the displaced horizon is therefore subtle.
 - Zora Cape was captured from a camera placed past the cave mouth; the shore scene there was not reachable on foot in the fixtures.
 - Possible later optimisation: scissor the trace pass to the ripple window when waves are off (ripples-only cost at Zora Hall).
+
+## Rivers and waterfalls (`feature/rivers-waterfalls`)
+Controls (Advanced → Water; Rivers on in Ultra and High; Waterfalls OFF in every look until a real fall is verified): `gNewDawn.Water.Rivers` + `RiverStrength` (0-2), `gNewDawn.Water.Waterfalls` + `FallStrength`.
+Evidence: `~/dev/ghm-mods/showcase/rivers/`.
+
+**Flow direction comes from the game's own texture scroll.** The interpreter (`RecordFlowTriangle`) reads the per-(texture, tile)
+`uls/ult` offset the game advances every 20 Hz tick (`gDPSetTileSize`); a step that repeats twice in a row counts as a scroll
+(actor and atlas textures never repeat, so they are ignored). Each triangle's own UV gradient turns the texel velocity into a
+world velocity (`dP/du*su + dP/dv*sv`, mean of the two render tiles), so bends, speed and direction are the artists' own and no
+per-scene table is needed. River triangles are the ones lying in a WaterBox plane (±3 units, level); painted streams with no
+WaterBox need an entry in `newdawn_river_textures.inc`; waterfall faces are listed by texture in `newdawn_fall_textures.inc`
+(`gNewDawn.Water.FlowDebug=1` logs every scrolling texture and its extents (`FLOWBOX`), `=2` also paints recorded falls magenta and
+streams cyan; `gNewDawn.Water.FallTextures=<substr,...>` forces textures to be treated as falls). Ocean scenes (Coast, Zora Cape)
+never get river flow (their scrolling texture is not a current). Read only, nothing is written back.
+
+**Rivers.** The recorded river triangles are re-rasterised from the camera into an RG16F flow buffer (units 36, world xz velocity,
+B = covered) before the water surface pass. The surface pass advects a committed tileable noise
+(`mm/assets/newdawn/water/flow_noise_256.png`, made by `tools/newdawn/water-flow/gen_flow_noise.py`, CC0) with a two-phase flow map
+(2.6 s cycle), blurred along the flow with 5 taps so it stretches into streaks without rotating the sampling frame (a rotation
+about the world origin would jump at every triangle with a different direction). The result is added to the refraction slope and
+the facet lighting (visible sheen and bed distortion), and its ridged mask makes streak foam, strongest where the water is shallow
+(banks, rocks) and fast, on top of the existing depth-based contact foam. Colours stay the #98 palettes. Debug view `Water.Debug=6`
+shows the mask and flow direction. Verified on the **Ikana river** and the **Mountain Village spring pool**
+(`strip-*-off-over-on.png`: top row off, bottom on, 4 frames 0.6 s apart; `crop1to1-*`). The Southern Swamp (poisoned and cleared) has
+a scrolling water texture (flows (50,-25) and (12,-12) units/s) and is recorded, but my fixture positions only showed land, so it
+is **not shown on screen**.
+
+**Waterfalls (mechanism only).** The recorded fall faces get a second layer on top of the native texture (streaks of the same noise
+streamed down the face, sun glints, a back-lit translucency term, foam bands, hand depth-tested against the scene depth), and each
+fall gets a foot emitter (lowest vertex per 48-unit cell of a face taller than 36 units): 20 rising mist billboards, 8 ballistic
+spray droplets lit by forward scattering of the sun, 2 ragged foam discs, soft against the depth buffer, using the committed CC0
+Kenney `atmos/dust_64.png`. The overlay, the mist and spray were seen working (debug paint and puffs on stand-in geometry), but
+**no real waterfall has been located and verified**: the scrolling vertical textures found by scanning were the Astral
+Observatory's force-field barrier (Termina Field `02E058`, `037A98`, `0240D0`), ice or crystal pillars (`02C850`), sea-spray wedges
+(Zora Cape `015DF0`), and a sky effect (swamp `00F360`). Mountain Village spring `Z2_10YUKIYAMANOMURA2_room_00Tex_01C488` (a 900-unit
+tall face) was not seen. Only `gGreatBayTempleObjectWaterfallWaterTex` (the temple's water-wheel falls, a real fall by name) is
+listed and it has not been viewed. Termina Field, Ikana, Great Bay and Woodfall falls are therefore **not delivered**; the next step
+is to stand the camera at a known fall, add its texture to `newdawn_fall_textures.inc` and confirm with `FlowDebug=2`. The Romani
+Ranch and Milk Road streams, and the Woods of Mystery, had no scrolling river texture in the scan.
+
+**Cost.** Water stage, `PostFx.Debug.Stats=1` (RX 7800 XT, 1080p, shared GPU): Ikana 1.613 → 1.687 ms, spring pool 1.484 → 1.656 ms,
+swamp (land view) 0.555 → 0.581 ms. 0 GL errors in the Stats error check. **Off identity not demonstrated**: after merging main
+(torch light) the frozen Stock Pot Inn fixture differs by about 256,000 pixels between two identical runs, so on/off (no water in
+the Inn) cannot be told from noise. With the toggles off no flow triangles are recorded and no pass runs; the only unconditional
+change is one extra sampler lane pair (36, 37) and an uncalled branch in the surface shader.
+
+**Limits.** Streaks are stretched noise (lumpy rather than long strokes from above); no speed-up in narrow sections and no eddies
+behind rocks (the scroll gives one velocity per triangle); the glint/SSR pass still uses its own scrolling normal; painted streams
+without a WaterBox get an overlay only (no restyle). A scroll detected from a texture that two meshes scroll differently in the same
+tile slot would be wrong (not seen).
