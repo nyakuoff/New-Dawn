@@ -99,7 +99,7 @@ Roughly in priority order; this will change as work lands.
 1. **Temporal upscaling.** TAA is done (Phase 1, `docs/TAA.md`). Next: render the 3D world below native resolution and upsample with the same jittered history, for headroom for the heavier effects.
 2. **Character and actor materials.** Proper normal and specular detail for Link, NPCs and enemies (the 3DS Link mod plus generated maps), skin/cloth/metal response, and better hair.
 3. **Water simulation** (Phase 6 above): waves, interaction, rivers and waterfalls.
-4. **Shadow coverage.** Shadows from geometry the game culls (rooms behind the camera, distant actors), and point-light shadows for the nearest flames.
+4. **Shadow coverage** (done locally on `feature/shadow-coverage`, `docs/CASCADED_SHADOWS.md`, `docs/LOCAL_LIGHTS.md`). Sun shadows from the room entries the game culls, and soft cube-map shadows for the nearest one or two flames. Still open: culled or distant actors.
 5. **Foliage and vegetation.** Denser trees and bushes, translucency (light through leaves), and grass interaction around Link.
 6. **Night sky** (done locally on `feature/night-sky`, `docs/NIGHT_SKY.md`). A real star field (13,964 catalogue stars), a Milky Way panorama and a Moon glow that follows the giant Moon's state, plus soft moonlight shadows.
 7. **Interior polish.** Light leaking through windows and doorways, dust in light beams, more emissive surfaces (signs, lamps, crystals).

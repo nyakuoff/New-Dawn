@@ -1261,6 +1261,21 @@ void BenMenu::AddSettings() {
                      .Tooltip("Tree leaves, fences and other cut-out geometry cast shadows in their real shape, "
                               "instead of casting none.")
                      .DefaultValue(false));
+    AddWidget(path, "Shadow Coverage", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Shadows.Coverage")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_SHADOWS_OFF); })
+        .Options(CheckboxOptions()
+                     .Tooltip("Terrain and buildings the game skips drawing (wholly behind the camera or beyond the "
+                              "draw distance) still cast sun shadows, so shadows no longer appear and vanish as the "
+                              "camera turns and long evening shadows are not cut off. Costs a little CPU time. Never "
+                              "changes what the game draws or simulates.")
+                     .DefaultValue(false));
+    AddWidget(path, "Point-Light Shadows: %d", WIDGET_CVAR_SLIDER_INT)
+        .CVar("gNewDawn.Shadows.PointLights")
+        .Options(IntSliderOptions().Min(0).Max(2).DefaultValue(0).Tooltip(
+            "Soft shadows from the nearest torches, lamps and candles (up to two): characters and props near a flame "
+            "shadow the walls and floor around them. Only ever darkens, never adds light. Needs Local Lights and the "
+            "Modern Lighting Pipeline."));
 
     path.group = "Atmosphere";
     AddWidget(path, "Volumetric Height Fog", WIDGET_CVAR_CHECKBOX)

@@ -94,6 +94,8 @@ const Row kRows[] = {
     { "gNewDawn.Shadows.MapSize",                      I, { 4096,  2048,  2048,  1024,  4096 } },
     { "gNewDawn.Shadows.Cascades",                     I, { 4,     3,     2,     1,     1 } },
     { "gNewDawn.Shadows.Foliage",                      I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Shadows.Coverage",                     I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Shadows.PointLights",                  I, { 2,     1,     0,     0,     0 } },
     { "gNewDawn.Fog.Volumetric",                       I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.SunShafts.Enabled",                    I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.SunShafts.Mode",                       I, { 1,     1,     1,     1,     0 } },
