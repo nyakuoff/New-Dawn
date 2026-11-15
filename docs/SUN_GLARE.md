@@ -17,14 +17,13 @@ Source: [Lens-Flares and Particles, hackcraft.de](https://opengameart.org/conten
 The archive's `flare/LICENSE` says **CC0 – Public Domain Donation by hackcraft.de**; the OGA listing also
 advertises CC-BY 3.0. The local manifest preserves attribution and both notices. No art is committed.
 
-Installed pack: `~/dev/ghm-mods/assets/oga-lens-flares/`; provenance, file hashes and licence information:
+Committed pack (six sprites): `mm/assets/newdawn/oga-lens-flares/`; provenance, file hashes and licence information:
 `MANIFEST.md`. Runtime files under its `flare/`: `star.png` (soft bloom, despite its filename), `extend.png`
 (halo), `hexangle.png`, `iris.png`, `sun.png`, `ring.png`. Original downloads are retained unchanged.
 Kenney's CC0 particle pack was also downloaded/inspected, with its own manifest; it is not loaded.
 
 `gNewDawn.Assets.Path` is the directory **containing** `oga-lens-flares`, default `assets/newdawn` relative
-to the executable's working directory. This machine's `build/mm/assets/newdawn` links to
-`~/dev/ghm-mods/assets`. Alternatively set the cvar to `/home/loganp/dev/ghm-mods/assets` in the config.
+to the executable's working directory. The build copies `mm/assets/newdawn` there, so no setup is needed.
 For another installation, extract the linked archive into `<asset-root>/oga-lens-flares/` and preserve
 its LICENSE and attribution. Missing/invalid files log once per path and leave only the normal HDR sun/bloom.
 Changing the path reloads the pack. Six unchanged masks upload into a 256² texture array with mips;

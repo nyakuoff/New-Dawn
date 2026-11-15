@@ -25,7 +25,7 @@ save data or gameplay RNG are modified. Native render-side effects retain their 
 
 Assets: Kenney Particle Pack 1.1 `circle_05.png`, CC0, downsampled to 64px; cemkalyoncu's OpenGameArt Leaf Pack
 `eastern redbud.svg`, CC0, rasterized to 64px. Attribution/source manifests and the Kenney license are in
-`libultraship/assets/atmos/`; full local sources are in `~/dev/ghm-mods/assets/{kenney-particle-pack,oga-leaf-pack}/`.
+`mm/assets/newdawn/atmos/` (provenance in its MANIFEST.md).
 
 ## Evidence, 2026-11-13
 

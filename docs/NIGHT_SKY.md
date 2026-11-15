@@ -18,8 +18,8 @@ The menu has Night Sky, Star Brightness and Moonlight Shadows beside the other s
 `Sky.Moonlight=0` every code path is the previous one (the native sprite stars are drawn, no new pass runs, the new
 shader uniforms are 0 so the sky and shadow shaders add exactly 0 and multiply by exactly 1).
 
-## Assets (local, never committed)
-`<gNewDawn.Assets.Path>/nightsky/` = `~/dev/ghm-mods/assets/nightsky/` (the build symlinks asset packs), with its own
+## Assets (committed, CC BY-SA)
+`<gNewDawn.Assets.Path>/nightsky/` = `mm/assets/newdawn/nightsky/` (the build copies it next to the executable; `milkyway_eq.jpg` is a 3.3 MB cube-root-encoded 4096x2048 JPEG with a `.txt` sidecar, was a 50 MB half-float file), with its own
 `MANIFEST.md` and `LICENSE-HYG.txt`. `tools/newdawn/nightsky/prep_nightsky.py` bakes it from public data:
 
 | File | Source | Licence |

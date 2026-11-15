@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bake the New Dawn night-sky asset pack (stars.bin + milkyway_eq.f16) from public data.
+"""Bake the New Dawn night-sky asset pack (stars.bin + milkyway_eq.jpg/.txt) from public data.
 
 Inputs (downloaded by the developer, never committed):
   --hyg   hygdata_v41.csv                      HYG star database v4.1 (CC BY-SA 4.0, astronexus/HYG-Database)
@@ -9,8 +9,10 @@ Inputs (downloaded by the developer, never committed):
 Outputs in --out:
   stars.bin       'NDST' u32 count, then count x 7 f32: x y z (J2000 equatorial unit vector), V magnitude, r g b
                   (linear, luminance 1, tempered B-V colour)
-  milkyway_eq.f16 'NDMW' u32 width u32 height f32 scale, then width*height*3 IEEE half (RGB, linear, value*scale = radiance
-                  relative to a unit with Vega-peak 1); equirectangular in RA (u, 0..24h increasing right) / Dec (v, +90 at top).
+  milkyway_eq.jpg 8-bit RGB JPEG (q95, 4:4:4), equirectangular in RA (u, 0..24h increasing right) / Dec (v, +90 at top).
+                  Pixel = 255 * (linear / scale) ** (1/3); the renderer undoes the cube and multiplies by scale, so
+                  linear * scale = radiance relative to a unit with Vega-peak 1. (The raw half-float form was 50 MB.)
+  milkyway_eq.txt "gamma=3 scale=<float>" sidecar for the JPEG.
 """
 import argparse, struct, csv, math
 import numpy as np
@@ -102,9 +104,11 @@ def milkyway(gal, out, W, H, spike):
     res = (tap(u0, v0) * (1 - fu) * (1 - fv) + tap(u0 + 1, v0) * fu * (1 - fv) +
            tap(u0, v0 + 1) * (1 - fu) * fv + tap(u0 + 1, v0 + 1) * fu * fv)
     scale = float(res.max())
-    with open(out, 'wb') as f:
-        f.write(b'NDMW' + struct.pack('<IIf', W, H, scale))
-        f.write((res / scale).astype('<f2').tobytes())
+    from PIL import Image
+    enc = np.clip((res / scale) ** (1 / 3.0) * 255 + 0.5, 0, 255).astype(np.uint8)
+    Image.fromarray(enc).save(out + '.jpg', quality=95, subsampling=0)
+    with open(out + '.txt', 'w') as f:
+        f.write('gamma=3 scale=%.9g\n' % scale)
     print('milkyway', W, H, 'scale', scale, 'mean', res.mean(), 'p99', np.percentile(res, 99))
     return res
 
@@ -117,7 +121,7 @@ if __name__ == '__main__':
     ap.add_argument('--preview')
     a = ap.parse_args()
     stars(a.hyg, a.out + '/stars.bin', a.maxmag)
-    res = milkyway(a.gal, a.out + '/milkyway_eq.f16', a.width, a.width // 2, a.spike)
+    res = milkyway(a.gal, a.out + '/milkyway_eq', a.width, a.width // 2, a.spike)
     if a.preview:
         from PIL import Image
         img = np.clip(res / np.percentile(res, 99.5), 0, 1) ** (1 / 2.2)

@@ -186,17 +186,18 @@ set(ALL_FILES
 # Target
 ################################################################################
 add_executable(${PROJECT_NAME} ${ALL_FILES})
-# Small CC0 particle sprites; runtime path cvars may override these defaults.
-set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_DEPENDS
-    "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos/dust_64.png"
-    "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos/leaf_64.png"
-    "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos/splash_64.png")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets/newdawn/atmos")
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/libultraship/assets/atmos"
-    DESTINATION assets/newdawn COMPONENT 2s2h)
+# Runtime art (committed, redistributable; see docs/licenses/THIRD_PARTY_ASSETS.md) is copied next to the executable
+# and installed with it. The renderer loads it from <gNewDawn.Assets.Path> (default assets/newdawn).
+file(GLOB_RECURSE NEW_DAWN_ASSET_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/mm/assets/newdawn/*")
+add_custom_target(NewDawnAssets ALL
+    COMMAND ${CMAKE_COMMAND}
+        "-DSRC=${CMAKE_SOURCE_DIR}/mm/assets/newdawn"
+        "-DDEST=$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets/newdawn"
+        -P "${CMAKE_SOURCE_DIR}/CMake/SyncNewDawnAssets.cmake"
+    DEPENDS ${NEW_DAWN_ASSET_FILES}
+    COMMENT "Copying New Dawn runtime assets")
+add_dependencies(${PROJECT_NAME} NewDawnAssets)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/newdawn" DESTINATION assets COMPONENT 2s2h)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 use_props(${PROJECT_NAME} "${CMAKE_CONFIGURATION_TYPES}" "${DEFAULT_CXX_PROPS}")
