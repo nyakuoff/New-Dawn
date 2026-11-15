@@ -1189,6 +1189,29 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Lighting.LocalFlicker")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
 
+    path.group = "Interiors";
+    AddWidget(path, "Window Light", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Interior.Windows")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Rooms without windows gain a few, with soft daylight or moonlight shafts and pools of light on the floor, "
+            "shaped by the time of day and weather. Render-only; the walls and collision are unchanged. Requires the "
+            "Modern Lighting Pipeline."));
+    AddWidget(path, "Window Light Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Interior.Strength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
+    AddWidget(path, "Dust in Light Beams", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Interior.Motes")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Drifting motes that only show where a window beam lights them. Needs Ambient Particles."));
+    AddWidget(path, "Emissive Surfaces", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Interior.Emissive")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Signs, lamps, lanterns, the clock face and lit windows glow in HDR (windows after dusk), with a matching "
+            "local light. Render-only. Requires the Modern Lighting Pipeline."));
+    AddWidget(path, "Emissive Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Interior.EmissiveStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
+
     path.group = "Materials & Textures";
     AddWidget(path, "Companion Materials", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Materials.Enabled")
