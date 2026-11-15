@@ -5,10 +5,13 @@
 #include <fast/newdawn_postfx.h>
 #include <fast/newdawn_wind.h>
 #include <spdlog/spdlog.h>
+#include <filesystem>
+#include <string>
 
 extern "C" {
 #include "global.h"
 #include "overlays/actors/ovl_En_Arrow/z_en_arrow.h"
+#include "overlays/actors/ovl_En_Fall/z_en_fall.h"
 s32 Environment_IsSceneUpsideDown(PlayState* play);
 }
 
@@ -43,6 +46,49 @@ static bool NewDawnSunDirection(PlayState* play, float out[3]) {
     return true;
 }
 
+// The visible giant Moon (En_Fall): read-only. Its scale grows with the day and on the final day it descends, so using
+// the actor's own position follows the game's Moon state exactly. Returns the unit direction from the eye, and the
+// angular radius of its disc in radians. Scenes without a Moon actor return false.
+static bool NewDawnFindMoon(PlayState* play, float dir[3], float* angularRadius) {
+    bool found = false;
+    float best = 0.0f;
+    for (Actor* actor = play->actorCtx.actorLists[ACTORCAT_ITEMACTION].first; actor; actor = actor->next) {
+        if (actor->id != ACTOR_EN_FALL) {
+            continue;
+        }
+        switch (EN_FALL_TYPE(actor)) {
+            case EN_FALL_TYPE_TERMINA_FIELD_MOON:
+            case EN_FALL_TYPE_TITLE_SCREEN_MOON:
+            case EN_FALL_TYPE_CRASHING_MOON:
+            case EN_FALL_TYPE_LODMOON_NO_LERP:
+            case EN_FALL_TYPE_LODMOON:
+            case EN_FALL_TYPE_STOPPED_MOON_CLOSED_MOUTH:
+            case EN_FALL_TYPE_CLOCK_TOWER_MOON:
+            case EN_FALL_TYPE_STOPPED_MOON_OPEN_MOUTH:
+            case EN_FALL_TYPE_LODMOON_INVERTED_STONE_TOWER:
+                break;
+            default:
+                continue;
+        }
+        const float dx = actor->world.pos.x - play->view.eye.x, dy = actor->world.pos.y - play->view.eye.y,
+                    dz = actor->world.pos.z - play->view.eye.z;
+        const float dist = sqrtf(dx * dx + dy * dy + dz * dz);
+        if (dist < 1.0f || actor->scale.x <= 0.0f) {
+            continue;
+        }
+        const float radius = atanf(2200.0f * actor->scale.x / dist);
+        if (!found || radius > best) {
+            best = radius;
+            dir[0] = dx / dist;
+            dir[1] = dy / dist;
+            dir[2] = dz / dist;
+            found = true;
+        }
+    }
+    *angularRadius = best;
+    return found;
+}
+
 static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params) {
     params->shadowEnabled = 0;
     params->shadowStrength = 0.0f;
@@ -60,15 +106,44 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
         return;
     }
 
-    // Fade out at night and close to the horizon; the moon is a later pass.
+    // Fade out at night and close to the horizon; the Moon takes over below (gNewDawn.Sky.Moonlight).
     float horizonFade = NewDawnClampF((dir.y - 0.03f) / 0.25f, 0.0f, 1.0f);
     float luminance = (sun->color[0] + sun->color[1] + sun->color[2]) / (3.0f * 255.0f);
     float colorFade = NewDawnClampF(luminance * 3.0f, 0.0f, 1.0f);
     float fade = horizonFade * colorFade;
+    // Moonlight: when the sun is down the visible Moon becomes the shadow light. Cool, soft shadows and a faint cool
+    // lift on the lit side ground silhouettes without washing out the dark night. Time-lit outdoor scenes only; fades
+    // in as the sun sinks and with the Moon's elevation.
+    bool moonLit = false;
+    float moonFade = 0.0f;
+    if (fade <= 0.001f && CVarGetInteger("gNewDawn.Sky.Moonlight", 0) && CVarGetInteger("gNewDawn.HDR.Enabled", 0)) {
+        const float dark = NewDawnClampF((-dir.y - 0.03f) / 0.27f, 0.0f, 1.0f);
+        moonFade = dark * dark * (3.0f - 2.0f * dark) * NewDawnClampF((-dir.y - 0.05f) / 0.25f, 0.0f, 1.0f);
+        // Aim at the visible Moon when the scene has one, otherwise opposite the sun (the game's own moon light).
+        float moonDir[3] = { -dir.x, -dir.y, -dir.z }, moonRadius;
+        NewDawnFindMoon(play, moonDir, &moonRadius);
+        moonFade *= NewDawnClampF((moonDir[1] - 0.05f) / 0.25f, 0.0f, 1.0f);
+        // Shadows from a Moon straight overhead would hide under their casters: lean the light to at most about 53
+        // degrees, keeping its azimuth (a stylised, longer, more readable shadow). The visible Moon is not moved.
+        if (moonDir[1] > 0.80f) {
+            const float h = sqrtf(moonDir[0] * moonDir[0] + moonDir[2] * moonDir[2]);
+            const float k = h > 1.0e-4f ? 0.60f / h : 0.0f;
+            moonDir[0] = h > 1.0e-4f ? moonDir[0] * k : 0.60f;
+            moonDir[2] = moonDir[2] * k;
+            moonDir[1] = 0.80f;
+        }
+        if (moonFade > 0.001f) {
+            moonLit = true;
+            dir.x = moonDir[0];
+            dir.y = moonDir[1];
+            dir.z = moonDir[2];
+            fade = moonFade * 0.8f;
+        }
+    }
     float strength = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Strength", 1.0f), 0.0f, 1.0f) * fade;
     // Sun shafts ride on the shadow map and the same fades.
     float shaftStrength = 0.0f;
-    if (CVarGetInteger("gNewDawn.SunShafts.Enabled", 0)) {
+    if (!moonLit && CVarGetInteger("gNewDawn.SunShafts.Enabled", 0)) {
         shaftStrength = NewDawnClampF(CVarGetFloat("gNewDawn.SunShafts.Strength", 0.4f), 0.0f, 1.0f) * fade;
     }
     if (strength <= 0.001f && shaftStrength <= 0.001f) {
@@ -108,6 +183,12 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
     params->shadowDirColor[0] = sun->color[0] / 255.0f;
     params->shadowDirColor[1] = sun->color[1] / 255.0f;
     params->shadowDirColor[2] = sun->color[2] / 255.0f;
+    if (moonLit) {
+        params->shadowIsMoon = 1;
+        params->shadowDirColor[0] = 0.30f;
+        params->shadowDirColor[1] = 0.40f;
+        params->shadowDirColor[2] = 0.68f;
+    }
     params->shadowFocus[0] = focus.x;
     params->shadowFocus[1] = focus.y;
     params->shadowFocus[2] = focus.z;
@@ -1055,7 +1136,30 @@ extern "C" void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin) {
 
 static void NewDawnSky_Emit(PlayState* play, bool fillPass);
 
+// True for the frame in which the physical sky pass (with the real star field) was emitted: the native sprite stars
+// are then skipped. Reset by every NewDawnSky_Draw and consumed once by Environment_DrawSkyboxStars.
+static bool sNightSkyReplacesStars = false;
+
+static bool NewDawnNightSkyAssetsPresent() {
+    static std::string checkedRoot;
+    static bool present = false;
+    const std::string root = CVarGetString("gNewDawn.Assets.Path", "assets/newdawn");
+    if (root != checkedRoot) {
+        checkedRoot = root;
+        present = std::filesystem::exists(std::filesystem::path(root) / "nightsky" / "stars.bin") &&
+                  std::filesystem::exists(std::filesystem::path(root) / "nightsky" / "milkyway_eq.f16");
+    }
+    return present;
+}
+
+extern "C" int NewDawnNightSky_ReplacesStars(void) {
+    const bool replaced = sNightSkyReplacesStars;
+    sNightSkyReplacesStars = false;
+    return replaced;
+}
+
 extern "C" void NewDawnSky_Draw(PlayState* play) {
+    sNightSkyReplacesStars = false;
     NewDawnSky_Emit(play, false);
 }
 
@@ -1172,6 +1276,33 @@ static void NewDawnSky_Emit(PlayState* play, bool fillPass) {
     params->skyOvercast = winter ? 1.0f : 0.0f;
     params->skyVariant = variant;
     params->skyMood = finalDay ? NewDawnFinalDayMood() : 0.0f;
+    // Night sky inputs (read-only). Stars/Milky Way: full in normal skies; dimmed under the final-day storm, absent in
+    // cursed Ikana, the poisoned swamp and the winter overcast deck, as their art direction requires. The Moon glow
+    // grows through the final day as the Moon falls, and is subdued by the storm.
+    {
+        const float hours = gSaveContext.save.time * (24.0f / 65536.0f);
+        params->skyClock = gSaveContext.save.time / 65536.0f;
+        params->skyStarVis = (winter || cursed || swamp) ? 0.0f : finalDay ? 0.2f * (1.0f - params->skyMood) : 1.0f;
+        float moon = 1.0f;
+        if (finalDay) {
+            const float progress = hours >= 6.0f ? (hours - 6.0f) / 24.0f : (hours + 18.0f) / 24.0f;
+            moon = (0.6f + 1.6f * progress) * (1.0f - 0.4f * params->skyMood);
+        }
+        params->skyMoonGlow = (winter || cursed || swamp) ? 0.0f : moon;
+        float moonDir[3], moonRadius = 0.0f;
+        if (NewDawnFindMoon(play, moonDir, &moonRadius)) {
+            for (int i = 0; i < 3; ++i)
+                params->skyMoonDir[i] = moonDir[i];
+            params->skyMoonRadius = moonRadius;
+            if (CVarGetInteger("gNewDawn.PostFx.Debug.Stats", 0) && play->gameplayFrames % 120 == 0)
+                SPDLOG_INFO("NewDawnMoon: dir {:.3f} {:.3f} {:.3f} radius {:.4f} rad", moonDir[0], moonDir[1], moonDir[2], moonRadius);
+        } else {
+            params->skyMoonGlow = 0.0f;
+        }
+        if (!fillPass && !winter && !cursed && !swamp && CVarGetInteger("gNewDawn.Sky.Night", 0)) {
+            sNightSkyReplacesStars = NewDawnNightSkyAssetsPresent();
+        }
+    }
     // Representative render-only ground albedo, used for the lower-hemisphere sky bounce.
     const bool grass = play->sceneId == SCENE_00KEIKOKU || play->sceneId == SCENE_F01 ||
                        play->sceneId == SCENE_20SICHITAI2 || play->sceneId == SCENE_22DEKUCITY;

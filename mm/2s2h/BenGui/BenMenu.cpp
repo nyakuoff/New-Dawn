@@ -937,6 +937,21 @@ void BenMenu::AddSettings() {
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Remastered skies for the final day (stormy red apocalypse), cursed Ikana and the poisoned swamp, and "
             "the physical sky during cutscenes and conversations. Requires Physical Sky and the Modern Lighting Pipeline."));
+    AddWidget(path, "Night Sky: Stars and Milky Way", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Sky.Night")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "A real star field (about 14,000 catalogue stars with correct brightness and colour, twinkling near the "
+            "horizon) and a Milky Way panorama that turn with the clock, dim behind clouds and storms, and a cool glow "
+            "around the Moon. Requires Physical Sky, the Modern Lighting Pipeline and the nightsky asset pack under "
+            "gNewDawn.Assets.Path."));
+    AddWidget(path, "Star Brightness: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Sky.StarBrightness")
+        .Options(FloatSliderOptions().Min(0.0f).Max(4.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Moonlight Shadows", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Sky.Moonlight")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Soft, cool shadows from the Moon at night: silhouettes read without brightening the dark nights. "
+            "Requires Shadows and the Modern Lighting Pipeline."));
     AddWidget(path, "Volumetric Clouds (Physical Sky)", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Sky.Clouds")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
