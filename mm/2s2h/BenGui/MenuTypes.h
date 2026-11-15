@@ -298,7 +298,6 @@ struct MenuPage {
     std::string label;
     const char* icon;
     std::vector<MenuTab> tabs;
-    bool devOnly = false;
     bool dividerBefore = false;
 };
 
