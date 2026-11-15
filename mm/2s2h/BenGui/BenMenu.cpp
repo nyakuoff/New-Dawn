@@ -562,6 +562,24 @@ static void RenderAboutPage() {
     EndSectionCard();
     ImGui::Dummy(ImVec2(0, 4.0f * u));
 
+    BeginSectionCard("about_art");
+    SectionHeader("Bundled art and data");
+    ImGui::TextWrapped("Effects, sky and ground art that ship with New Dawn. Full list with licences: "
+                       "docs/licenses/THIRD_PARTY_ASSETS.md.");
+    ImGui::TextWrapped("Stars: HYG Database by David Nash (astronexus.com), compiled from the Hipparcos, Yale Bright "
+                       "Star and Gliese catalogues, CC BY-SA 4.0. Changes: filtered to magnitude 6.9 and converted "
+                       "to a binary list.");
+    ImGui::TextWrapped("Milky Way: NASA/Goddard Space Flight Center Scientific Visualization Studio, Deep Star Maps "
+                       "2020 (SVS 4851). Gaia DR2: ESA/Gaia/DPAC, CC BY-SA 3.0 IGO. Changes: bright stars removed, "
+                       "resampled to an equatorial map, re-encoded as JPEG.");
+    ImGui::TextWrapped("Lens flares: \"Lens-Flares and Particles\" by hackcraft.de (hc) on OpenGameArt, CC-BY 3.0 / "
+                       "CC0, used unchanged.");
+    ImGui::TextWrapped("Particle sprites: Particle Pack by Kenney (kenney.nl), CC0. Leaf: \"Leaf Pack\" by "
+                       "cemkalyoncu on OpenGameArt, CC0. Water caustics, grass tufts and the torch-fire flipbook "
+                       "were made for New Dawn with scripts in this repository, CC0.");
+    EndSectionCard();
+    ImGui::Dummy(ImVec2(0, 4.0f * u));
+
     BeginSectionCard("about_thanks");
     SectionHeader("Thank you");
     ImGui::TextWrapped("Special thanks to the 2 Ship 2 Harkinian contributors, playtesters, artists and everyone in the "

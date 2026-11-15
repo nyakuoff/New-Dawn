@@ -34,7 +34,7 @@ Render-only OpenGL feature, HDR required. `gNewDawn.Vfx.Enabled` defaults to **0
 Art: smoke/spark/star/halo sprites from the Kenney Particle Pack (CC0, https://kenney.nl/assets/particle-pack), unmodified, and
 `fire_flipbook_8x8.png`, an authored asset (Blender Mantaflow sim rendered to a sprite sheet; scripts in
 `tools/newdawn/vfx-flipbook/`). Files live in `<gNewDawn.Assets.Path>/vfx/`, default `assets/newdawn/vfx` beside the game
-(no cvar needed; captures resolve it through the binary's symlinked `assets/`). Provenance: `~/dev/ghm-mods/assets/vfx/MANIFEST.md`.
+(no cvar needed; captures resolve it through the binary's symlinked `assets/`). Provenance: `mm/assets/newdawn/vfx/MANIFEST.md`.
 OpenGameArt blocked automated downloads, so no third-party flipbook was used. Missing files disable the feature and leave the
 native effects. Art is not committed (only the authoring scripts are).
 

@@ -8,3 +8,6 @@
 # Unignore our custom assets and header file
 !custom/**/*
 !2s2h_assets.h
+
+# New Dawn runtime art is committed (see docs/licenses/THIRD_PARTY_ASSETS.md)
+!newdawn/**/*
