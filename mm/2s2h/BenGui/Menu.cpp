@@ -157,11 +157,7 @@ uint32_t Menu::DrawSearchResults(std::string& menuSearchText) {
     auto accent = static_cast<UIWidgets::Colors>(CVarGetInteger("gSettings.Menu.Theme", defaultThemeIndex));
     const std::string needle = NormalizeSearch(menuSearchText);
     uint32_t searchCount = 0;
-    const bool developer = NewDawn::IsDeveloperMode();
     for (auto& page : menuPages) {
-        if (page.devOnly && !developer) {
-            continue;
-        }
         for (auto& tab : page.tabs) {
             auto entryIt = menuEntries.find(tab.entry);
             if (entryIt == menuEntries.end() || !entryIt->second.sidebars.contains(tab.sidebar)) {
@@ -653,15 +649,13 @@ void Menu::DrawElement() {
         return;
     }
     auto accent = static_cast<UIWidgets::Colors>(CVarGetInteger("gSettings.Menu.Theme", defaultThemeIndex));
-    const bool developer = NewDawn::IsDeveloperMode();
 
-    // Resolve the active page (hidden developer pages fall back to the first one).
+    // Resolve the active page (an unknown id falls back to the first page).
     static std::string activePage = CVarGetString("gSettings.Menu.ActivePage", menuPages.front().id.c_str());
     static std::unordered_map<std::string, int> activeTab;
-    auto pageVisible = [&](const MenuPage& p) { return !p.devOnly || developer; };
     int pageIndex = -1;
     for (size_t i = 0; i < menuPages.size(); i++) {
-        if (menuPages[i].id == activePage && pageVisible(menuPages[i])) {
+        if (menuPages[i].id == activePage) {
             pageIndex = static_cast<int>(i);
         }
     }
@@ -750,8 +744,8 @@ void Menu::DrawElement() {
     const float footerH = (compact ? 100.0f : 112.0f) * u;
     int visiblePages = 0, dividers = 0;
     for (const MenuPage& p : menuPages) {
-        visiblePages += pageVisible(p) ? 1 : 0;
-        dividers += (pageVisible(p) && p.dividerBefore) ? 1 : 0;
+        visiblePages++;
+        dividers += p.dividerBefore ? 1 : 0;
     }
     // Shrink the rows on short windows so every page stays visible without scrolling the rail.
     const float pagesHeight = ImGui::GetContentRegionAvail().y - footerH - dividers * 26.0f * u;
@@ -761,9 +755,6 @@ void Menu::DrawElement() {
                       ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground);
     for (size_t i = 0; i < menuPages.size(); i++) {
         const MenuPage& page = menuPages[i];
-        if (!pageVisible(page)) {
-            continue;
-        }
         if (page.dividerBefore) {
             ImGui::Dummy(ImVec2(0, 6.0f * u));
             ImVec2 p = ImGui::GetCursorScreenPos();

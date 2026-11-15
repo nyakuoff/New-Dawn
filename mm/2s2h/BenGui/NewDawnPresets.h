@@ -21,7 +21,6 @@ int DetectTier();
 // config from plain 2Ship is left alone and the player is asked once whether to apply it.
 void InitFirstRun(bool configExisted);
 
-bool IsDeveloperMode();
 
 } // namespace NewDawn
 
