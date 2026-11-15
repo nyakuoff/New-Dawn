@@ -10,6 +10,7 @@
 #include "2s2h/Enhancements/ModMenu/ModMenu.h"
 #include "CosmeticEditor.h"
 #include "Notification.h"
+#include "PerfOverlay.h"
 #include "NewDawnTheme.h"
 #include "2s2h/Rando/CheckTracker/CheckTracker.h"
 
@@ -61,6 +62,7 @@ std::shared_ptr<AudioEditor> mAudioEditorWindow;
 std::shared_ptr<ModMenuWindow> mModMenuWindow;
 std::shared_ptr<BenMenu> mBenMenu;
 std::shared_ptr<Notification::Window> mNotificationWindow;
+std::shared_ptr<PerfOverlay> mPerfOverlay;
 std::shared_ptr<Rando::CheckTracker::CheckTrackerWindow> mRandoCheckTrackerWindow;
 std::shared_ptr<Rando::CheckTracker::SettingsWindow> mRandoCheckTrackerSettingsWindow;
 std::shared_ptr<ItemTrackerWindow> mItemTrackerWindow;
@@ -168,6 +170,10 @@ void SetupGuiElements() {
     gui->AddGuiWindow(mNotificationWindow);
     mNotificationWindow->Show();
 
+    mPerfOverlay = std::make_shared<PerfOverlay>("gWindows.PerfOverlay", "Performance Overlay");
+    gui->AddGuiWindow(mPerfOverlay);
+    mPerfOverlay->Show();
+
     mRandoCheckTrackerWindow = std::make_shared<Rando::CheckTracker::CheckTrackerWindow>(
         "gWindows.CheckTracker", "Check Tracker", ImVec2(375, 460));
     gui->AddGuiWindow(mRandoCheckTrackerWindow);
@@ -197,6 +203,7 @@ void Destroy() {
     mCollisionViewerWindow = nullptr;
     mEventLogWindow = nullptr;
     mNotificationWindow = nullptr;
+    mPerfOverlay = nullptr;
     mRandoCheckTrackerWindow = nullptr;
     mRandoCheckTrackerSettingsWindow = nullptr;
 

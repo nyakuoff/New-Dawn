@@ -114,7 +114,6 @@ const Row kRows[] = {
 // clang-format on
 
 constexpr const char* kSetupVersionCvar = "gNewDawn.Setup.Version";
-constexpr const char* kDeveloperModeCvar = "gSettings.Menu.DeveloperMode";
 constexpr const char* kLookCvar = "gNewDawn.Setup.Look";
 
 } // namespace
@@ -176,10 +175,6 @@ int DetectTier() {
         }
     }
     return -1;
-}
-
-bool IsDeveloperMode() {
-    return CVarGetInteger(kDeveloperModeCvar, 0) != 0;
 }
 
 void InitFirstRun(bool configExisted) {

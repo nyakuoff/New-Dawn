@@ -88,3 +88,8 @@ assets).
 * A page is added in `BenMenu::AddPages()`. Tabs render one sidebar; `plain` sidebars skip the section cards.
 * The menu opens at launch with `gWindows.Menu=1`; `gSettings.Menu.ActivePage` (page id) and
   `gSettings.Menu.Tab.<page id>` (tab index) choose the page, which is how the screenshots are captured.
+
+## Dev Tools and performance overlay
+
+* Dev Tools is a normal rail page (after About); the old Developer-mode gate is gone.
+* F3 toggles the performance overlay (`gNewDawn.Perf.Overlay`, `.Corner` 0-3, `.Detailed`). The overlay cvar also enables the GPU timer queries in libultraship (`fast/newdawn_perf.h`); off = no queries. Per-stage values are smoothed and keep their last value if a stage stops running. VRAM needs GL_NVX_gpu_memory_info (or shows free-only with GL_ATI_meminfo); RAM/CPU readouts are Linux only.

@@ -592,15 +592,6 @@ static void RenderAboutPage() {
     EndSectionCard();
     ImGui::Dummy(ImVec2(0, 4.0f * u));
 
-    BeginSectionCard("about_dev");
-    SectionHeader("Advanced");
-    UIWidgets::CheckboxOptions devOptions = {};
-    devOptions.color = UIWidgets::Colors::NewDawn;
-    devOptions.tooltip = "Shows the Developer page: stats, console, collision and actor viewers, the save editor and "
-                         "other tools. Not needed to play.";
-    UIWidgets::CVarCheckbox("Developer mode", "gSettings.Menu.DeveloperMode", devOptions);
-    EndSectionCard();
-    ImGui::Dummy(ImVec2(0, 4.0f * u));
     ImGui::PushStyleColor(ImGuiCol_Text, TextDim);
     ImGui::TextWrapped("The Legend of Zelda: Majora's Mask is (c) Nintendo. New Dawn is not affiliated with or endorsed "
                        "by Nintendo and includes no game assets: you need your own copy of the game. The code is "
@@ -1408,6 +1399,7 @@ void BenMenu::AddSettings() {
             });
         })
         .Options(ButtonOptions().Tooltip("Displays a test notification."));
+    AddPerfOverlayWidgets(path);
     path.column = SECTION_COLUMN_2;
     AddWidget(path, "In-Game Timer", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Display", WIDGET_CVAR_COMBOBOX)
@@ -2860,10 +2852,39 @@ void BenMenu::AddEnhancements() {
         .WindowName("Audio Editor");
 }
 
+static const std::vector<const char*> perfOverlayCorner = { "Top Left", "Top Right", "Bottom Left", "Bottom Right" };
+static const std::vector<const char*> perfOverlayMode = { "Compact", "Detailed" };
+
+// Performance overlay toggles (Interface > Overlays and Dev Tools > General); the overlay itself is PerfOverlay.cpp.
+void BenMenu::AddPerfOverlayWidgets(WidgetPath& path) {
+    AddWidget(path, "Performance Overlay", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Show Performance Overlay (F3)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Perf.Overlay")
+        .Options(CheckboxOptions().Tooltip(
+            "A small translucent overlay with FPS, frame time, CPU and GPU cost and more. Press F3 to toggle it any "
+            "time, with the menu closed too. It never takes input. When off it costs nothing."));
+    AddWidget(path, "Detail", WIDGET_CVAR_COMBOBOX)
+        .CVar("gNewDawn.Perf.Detailed")
+        .Options(ComboboxOptions()
+                     .Tooltip("Compact: FPS, 1% low, frame time graph, CPU/GPU and the active look.\n"
+                              "Detailed: adds GPU cost per New Dawn stage, resolution and MSAA, RAM, VRAM, CPU "
+                              "usage, logic vs render FPS, scene and time of day.")
+                     .ComboVec(&perfOverlayMode)
+                     .DefaultIndex(0));
+    AddWidget(path, "Corner", WIDGET_CVAR_COMBOBOX)
+        .CVar("gNewDawn.Perf.Corner")
+        .Options(ComboboxOptions()
+                     .Tooltip("Which corner of the screen the performance overlay sits in.")
+                     .ComboVec(&perfOverlayCorner)
+                     .DefaultIndex(1));
+}
+
 void BenMenu::AddDevTools() {
     AddMenuEntry("Dev Tools", "gSettings.Menu.DevToolsSidebarSection");
     AddSidebarEntry("Dev Tools", "General", 3);
     WidgetPath path = { "Dev Tools", "General", SECTION_COLUMN_1 };
+    AddPerfOverlayWidgets(path);
+    AddWidget(path, "Debug", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Debug Mode", WIDGET_CVAR_CHECKBOX)
         .CVar("gDeveloperTools.DebugEnabled")
         .Options(CheckboxOptions().Tooltip("Enables Debug Mode, allowing the following:\n\n"
@@ -3253,15 +3274,15 @@ void BenMenu::AddPages() {
               { { "Menu", "Settings", "General" },
                 { "HUD", "Enhancements", "HUD Editor" },
                 { "Cosmetics", "Enhancements", "Cosmetic Editor" },
-                { "Notifications and Timer", "Settings", "Overlay" },
+                { "Overlays", "Settings", "Overlay" },
                 { "Input Viewer", "Settings", "Input Viewer" },
                 { "Time Splits", "Enhancements", "Time Splits" },
                 { "Config Presets", "Settings", "Presets" } } });
     AddPage({ "accessibility", "Accessibility", ICON_FA_UNIVERSAL_ACCESS,
               { { "Accessibility", "Settings", "Accessibility" } } });
-    AddPage({ "randomizer", "Randomizer", ICON_FA_RANDOM, sidebarTabs("Rando"), false, true });
+    AddPage({ "randomizer", "Randomizer", ICON_FA_RANDOM, sidebarTabs("Rando"), true });
     AddPage({ "about", "About", ICON_FA_INFO_CIRCLE, { { "About New Dawn", "Settings", "About" } } });
-    AddPage({ "developer", "Developer", ICON_FA_WRENCH, sidebarTabs("Dev Tools"), true, true });
+    AddPage({ "developer", "Dev Tools", ICON_FA_WRENCH, sidebarTabs("Dev Tools"), true });
 }
 
 void BenMenu::UpdateElement() {
