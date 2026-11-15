@@ -95,7 +95,7 @@ did not show their water; their numbers are the analytic ones).
   `shoreline-cliff-1to1-before-after.png`, `shoreline-sand-1to1-before-after.png`, `ocean-streaks-1to1-before-after.png`.
 
 ## Limits and deferred
-- Rivers and waterfalls: see the section below (rivers done; no real waterfall located).
+- Rivers and waterfalls: see the section below (rivers done; one real fall confirmed and enabled).
 - Swash is implemented but **not visually verified**: the Great Bay Coast / Zora Cape shores that were reachable are shelves and
   cliffs (the beach sand is far above the plane), so no ground fell inside the 14-unit window (debug view 5). Cliff bases and
   decks are excluded by the normal tests. Expect to tune it on the first real gently sloping beach.
@@ -114,7 +114,7 @@ did not show their water; their numbers are the analytic ones).
 - Possible later optimisation: scissor the trace pass to the ripple window when waves are off (ripples-only cost at Zora Hall).
 
 ## Rivers and waterfalls (`feature/rivers-waterfalls`)
-Controls (Advanced → Water; Rivers on in Ultra and High; Waterfalls OFF in every look until a real fall is verified): `gNewDawn.Water.Rivers` + `RiverStrength` (0-2), `gNewDawn.Water.Waterfalls` + `FallStrength`.
+Controls (Advanced → Water; Rivers and Waterfalls on in Ultra and High): `gNewDawn.Water.Rivers` + `RiverStrength` (0-2), `gNewDawn.Water.Waterfalls` + `FallStrength`.
 Evidence: `~/dev/ghm-mods/showcase/rivers/`.
 
 **Flow direction comes from the game's own texture scroll.** The interpreter (`RecordFlowTriangle`) reads the per-(texture, tile)
@@ -139,18 +139,26 @@ shows the mask and flow direction. Verified on the **Ikana river** and the **Mou
 a scrolling water texture (flows (50,-25) and (12,-12) units/s) and is recorded, but my fixture positions only showed land, so it
 is **not shown on screen**.
 
-**Waterfalls (mechanism only).** The recorded fall faces get a second layer on top of the native texture (streaks of the same noise
-streamed down the face, sun glints, a back-lit translucency term, foam bands, hand depth-tested against the scene depth), and each
-fall gets a foot emitter (lowest vertex per 48-unit cell of a face taller than 36 units): 20 rising mist billboards, 8 ballistic
-spray droplets lit by forward scattering of the sun, 2 ragged foam discs, soft against the depth buffer, using the committed CC0
-Kenney `atmos/dust_64.png`. The overlay, the mist and spray were seen working (debug paint and puffs on stand-in geometry), but
-**no real waterfall has been located and verified**: the scrolling vertical textures found by scanning were the Astral
-Observatory's force-field barrier (Termina Field `02E058`, `037A98`, `0240D0`), ice or crystal pillars (`02C850`), sea-spray wedges
-(Zora Cape `015DF0`), and a sky effect (swamp `00F360`). Mountain Village spring `Z2_10YUKIYAMANOMURA2_room_00Tex_01C488` (a 900-unit
-tall face) was not seen. Only `gGreatBayTempleObjectWaterfallWaterTex` (the temple's water-wheel falls, a real fall by name) is
-listed and it has not been viewed. Termina Field, Ikana, Great Bay and Woodfall falls are therefore **not delivered**; the next step
-is to stand the camera at a known fall, add its texture to `newdawn_fall_textures.inc` and confirm with `FlowDebug=2`. The Romani
-Ranch and Milk Road streams, and the Woods of Mystery, had no scrolling river texture in the scan.
+**Waterfalls.** The recorded fall faces get a second layer on top of the native texture (streaks of the same noise streamed down the
+face, sun glints, a back-lit translucency term, foam bands, hand depth-tested against the scene depth), and each fall gets a foot emitter
+(lowest vertex per 48-unit cell of a face taller than 36 units): mist billboards, ballistic spray droplets and ragged foam discs
+(committed CC0 Kenney `atmos/dust_64.png`). Follow-up `fix/shore-foam-waterfalls`: the overlay is now cooler and higher contrast
+(blue channels between bright HDR streaks, alpha floor 0.38) because the native fall texture is pale and the first version was invisible
+against it. Evidence: `~/dev/ghm-mods/showcase/water4/waterfall-mv-*`.
+- **Confirmed and listed:** Mountain Village (spring), `Z2_10YUKIYAMANOMURA2_room_00Tex_01C488` (32x128 white vertical streaks, face
+  x -1575..-1139, y -7..893, z 247..579). Decoded from `mm.o2r` it is a classic waterfall texture; with the overlay on the beige native
+  face turns into streaked blue-white water (`waterfall-mv-strip-off-over-on.png`, top off, bottom on, 4 frames 0.6 s apart). Water stage
+  0.72 ms on vs 0.73 off (the fall pass is below noise). 0 GL errors.
+- **Rejected after viewing:** Zora Hall `Z2_33ZORACITYTex_005470` is the same texture but on the hall's wall ripple surfaces, and the overlay
+  flooded them solid blue (it is not a fall); Termina Field `01D650` (light-beam gradient), `0240D0`/`02E058`/`037A98` (Observatory),
+  `02C850`; Mountain Village `0121C8` (red particles) and `01D488` (smoke); Zora Cape `015DF0` (spray), swamp `00F360` (fog).
+- **Great Bay Temple** `gGreatBayTempleObjectWaterfallWaterTex` was removed from the list: the wheel falls were not in view from the
+  fixture and have not been seen, so they are not claimed. Scrolling-texture scans (FlowDebug=1) of Woodfall, Deku Palace, Snowhead, Goron
+  area, Stone Tower, Ikana (canyon, graveyard), Milk Road, Romani Ranch, Termina Field, Great Bay and Zora Cape found **no other scrolling
+  fall texture**: those falls (if any) are not driven by a texture scroll the interpreter can see, so they are not delivered.
+- **Not seen:** the foot mist, spray and foam of the Mountain Village fall. The foot is behind the snow ledge from every camera tried (four
+  views); the emitters exist but were not verified on this fall.
+- Known artefact: a faint horizontal seam where the overlay meets the face's top segment (the face is two recorded pieces).
 
 **Cost.** Water stage, `PostFx.Debug.Stats=1` (RX 7800 XT, 1080p, shared GPU): Ikana 1.613 → 1.687 ms, spring pool 1.484 → 1.656 ms,
 swamp (land view) 0.555 → 0.581 ms. 0 GL errors in the Stats error check. **Off identity not demonstrated**: after merging main
