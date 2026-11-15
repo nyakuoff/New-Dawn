@@ -22,7 +22,7 @@ add settings keep working; a *page* is a list of *tabs*, each tab showing one si
 | Interface | Menu look, HUD editor, cosmetics, notifications and timer, input viewer, time splits, config presets |
 | Accessibility | menu text size, screen flash / quake / distortion options, bow reticle, shooting gallery markers |
 | Randomizer | the 2Ship randomizer settings |
-| About | credits, version, **Developer mode** switch |
+| About | credits (including the required attribution for the bundled sky, flare and particle art), version, **Developer mode** switch |
 | Developer *(hidden)* | stats, console, collision/actor/event/DL/message viewers, save editor, hook and gfx debuggers, warp point. Shown only when **About > Developer mode** is on |
 
 Nothing was deleted: the one-time "Search In Sidebar" / "Search autofocus" options were dropped because the new menu
