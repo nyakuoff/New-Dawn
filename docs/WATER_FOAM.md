@@ -50,24 +50,26 @@ Hardware: RX 7800 XT, Mesa radeonsi, OpenGL 4.6; 1920×1080, MSAA 4, full preset
 - No gameplay, collision, physics, animation, schedules, timing, saves or original assets are changed. Visual checks do not constitute a full gameplay regression run.
 
 ## Shoreline foam rework (`fix/shore-foam-waterfalls`)
-Problem: the depth-based contact foam read as a wide band of flat grey-white blotches with dark specks (noise gated by a 7-unit band,
-capped at 65 % alpha, tinted by a grey sky colour). Evidence: `~/dev/ghm-mods/showcase/water4/shore-*` (left before, right after, 1:1 crops).
-- **Line:** a thin, bright foam line right on the waterline (width = 1 unit, or 1.4 pixel footprints so it never aliases), distance to the
-  waterline still from thickness / its screen gradient. Bank pixels up to 1.4 units above the plane get the same foam (a meniscus; they used
-  to leave dark specks in the line, from depth quantisation). The waterline surges in and out slowly (staggered along the shore).
-- **Lace:** broken lacy foam from the committed texture `water/foam_lace_512.png` (unit 39, CC0, made by
-  `tools/newdawn/water-flow/gen_foam.py`): R lace filaments, G clumps, B bubbles, A density, sampled with `textureGrad` at 40 units per
-  tile, two layers half a cycle apart drifting with the river flow (or a slow wind drift). The lace thins out over 7-15 units
-  (squared falloff, threshold rising with distance) and is alpha-faded by footprint.
-- **Colour:** HDR white (foam tint x1.2, sunlit above 1); the low-alpha fringe picks up the water's own scatter colour as a cheap
-  subsurface tint, the core stays white. Alpha now reaches 0.95 (was 0.65).
-- Ocean swash and the river-streak and wave-crest foam are unchanged.
-- Views: Ikana river (two angles), Termina pond, Mountain Village spring pool, Great Bay Coast. **Not shown:** Zora Cape (the fixtures
-  put the camera in a cave with no water), the cleared Southern Swamp (shore too far for a 1:1 crop) and the Laundry Pool (camera inside
-  the wall after three attempts); these use the same pass and were not verified individually.
-- GPU, water stage, `PostFx.Debug.Stats=1`: Ikana 1.628 -> 1.672 ms, Termina pond 0.712 -> 0.723 ms (foam off -> on). 0 GL errors.
-- Off identity: frozen Stock Pot Inn with the extended AGENT-RULES cvar list and `Water.Foam/Rivers/Waterfalls=0`: this build x2 is
-  byte-identical (`e8aaf9fe...`), the older reference build (rivers, pre #108/#109) x2 `705ef49b...`. They differ only on Link's body and a
-  halo around him (the merged smooth-characters work); the rest of the frame is identical. A fresh build of current main was not made.
-- Limits: the lace is thin at distance (mip-averaged), gently sloping beaches were not found on foot in the fixtures so the fringe is
-  seen mostly on banks; the pond rim is a sharp depth edge, so it gets the line and almost no lace.
+Problem: the depth-based contact foam read as a wide band of flat grey-white blotches with dark specks. First rework (a thin crisp line)
+read as a solid, constant, pure-white painted stripe with no visible lace; this second pass fixes that.
+Evidence: `~/dev/ghm-mods/showcase/water4/shore-*-day.png` and `-night.png` (left before, right after, 1:1 crops).
+- **Distance to the bank:** a tall wall bank has no depth ramp (the old thickness gradient gave ~0 across the whole wall), so lace
+  could never spread. `shoreDist` probes the opaque depth in 8 directions at 3, 8 and 16 world units and takes the nearest surface at
+  or above the plane (horizontal distance only); `edge = min(thickness estimate, shoreDist * 0.9)`. Water stage +0.18 ms at Ikana
+  (24 depth fetches per water pixel within 3 px of footprint); gentle slopes and the ocean swash are unchanged (swash scenes skip it).
+- **Line:** thin (0.8 unit or 1.2 pixel footprints, times 0.45-1.55 from the shore noise), broken by a two-scale noise
+  (`shoreBreak`) and by the lace texture's R channel so it has gaps, soft on the water side (power 1.5 falloff).
+- **Lace:** `water/foam_lace_512.png` (unit 39, CC0, `tools/newdawn/water-flow/gen_foam.py`) at 90 units per tile, two layers half a cycle
+  apart drifting with the river flow (or a slow wind drift); a net that is dense near the line and thins out over 10-18 units (threshold
+  0.9 -> 0.35 by distance).
+- **Brightness:** modulated by the texture (`peak`): most foam sits at 0.4-0.7 of the scene foam light, only dense peaks reach 1.25
+  (HDR). The colour is the scene's own sun/sky/fog light, so shade and night are dim and blue (night captures at 23:00). The low-alpha
+  fringe takes the water's scatter colour. The bank meniscus (pixels up to 1.4 units above the plane) is broken the same way and dimmer.
+- Views, day and night: Ikana river (two angles), Termina pond, Mountain Village spring pool, Great Bay Coast. **Not shown:** Zora Cape
+  (cave view without water), the cleared swamp, the Laundry Pool (camera in the wall).
+- GPU, water stage, `PostFx.Debug.Stats=1`, Ikana: foam off 1.342 ms, on 1.523 ms. 0 GL errors.
+- Off identity: frozen Stock Pot Inn, extended AGENT-RULES cvar list, `Water.Foam/Rivers/Waterfalls=0`: this build x2 byte-identical
+  (`e8aaf9fe...`), the same hash as before this pass. The older reference build (pre #108/#109) differs only on Link's body (merged
+  smooth-characters work); a fresh build of current main was not made.
+- Limits: at grazing angles the lace fringe covers only a few pixels; the Termina pond rim is a sharp depth edge with almost no lace; the
+  Mountain Village bank shows lace flecks rather than a full net.
