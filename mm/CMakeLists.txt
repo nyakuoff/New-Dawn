@@ -670,6 +670,10 @@ else()
     target_link_libraries(${PROJECT_NAME} PRIVATE "${ADDITIONAL_LIBRARY_DEPENDENCIES}")
 endif()
 
+# New Dawn runtime material maps deflate the archives they generate (mm/2s2h/NewDawn/RuntimeMaterials.cpp).
+find_package(ZLIB REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
+
 if(CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch")
 
 nx_generate_nacp(2s2h.nacp

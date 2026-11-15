@@ -27,6 +27,8 @@ The renderer applies the grade after tonemapping/sRGB and before display dither 
 
 ## Offline recolour
 
+> The game now applies this recolour itself at first launch and caches the result (`docs/RUNTIME_MATERIALS.md`, ND-009); players need no Python. The commands below build the Python reference archive that `tools/newdawn/compare_maps.py` checks the in-game port against.
+
 `tools/newdawn/recolor.py` reads a **local** MM Reloaded archive and applies only the 41 explicit environment texture entries in `recolor.json`. The list was selected by inspecting source sheets and in-game views: paired poisoned/cleared swamp ground and bamboo, Woodfall bark/masonry, Ikana cliff and grass, Graveyard moss/rock, Great Bay metal, Stone Tower sandstone and two Clock Town brick variants plus Inn planks. Some resources are duplicate scene/state variants of the same visible material.
 
 Recipes support YIQ chroma hue rotation (degrees), luminance-based saturation, per-channel gain, offset and gamma. They operate on colour only: same dimensions, alpha bytes and UV mapping; HD flags and pixel/byte scales remain intact. There is no resampling. The curated list omits actors, HUD, water, signs and puzzle colour markings.
@@ -53,7 +55,7 @@ python3 tools/newdawn/materials.py --self-check
 python3 tools/newdawn/materials.py \
   --pack /home/loganp/dev/ghm-mods/sets/full/0-MM_Reloaded_4K.o2r \
   --overlay-pack /home/loganp/dev/ghm-mods/sets/full/zy-newdawn-recolor.o2r \
-  --classification tools/newdawn/material-classification.json \
+  --classification mm/assets/custom/newdawn_materials/material-classification.json \
   --out /home/loganp/dev/ghm-mods/materials/full --jobs 4
 ```
 
