@@ -2,7 +2,7 @@
 
 Visual only. The game's WaterBox height stays the authority for swimming, buoyancy and collision: the renderer reads the
 planes, the player position, other actors and the game's own splash effects, and never writes anything back.
-Base: main `fc8459f1a`, libultraship `82d59e05`. OpenGL only, needs HDR and **Water Restyle** (the displaced surface is re-lit by
+Base: main `fc8459f1a`, libultraship `82d59e05`; merged with main `de79c10e2` and new-dawn `322f6903` (perf overlay). OpenGL only, needs HDR and **Water Restyle** (the displaced surface is re-lit by
 the restyle pass). Evidence: `~/dev/ghm-mods/showcase/water-sim/`.
 
 ## Controls (Advanced → Water; Ultra and High looks have them on)
@@ -23,22 +23,28 @@ Passes, all inside the water stage (`WATER_XLU`, one GPU timer), in order:
 1. **Ripple step** (`kWaterRippleShader`): a 256² RGBA16F height/velocity/foam field, 4 units per texel (1024² units) that follows
    the player in whole texels (no swimming), semi-implicit wave equation (c = 110 u/s, damping 0.9/s, absorbing border) stepped at
    a fixed 1/60 s (max 4 steps/frame) from the interpolated `waterTime`; it restarts on a scene change or a clock gap.
-   Sources are rate-based (strength × dt) so the several rendered frames of one game tick do not multiply them: Link in the
+   Wake foam (B channel) is raised where the surface is agitated hard (ring crests) plus a narrow line under a moving source, and
+   fades in about a second, so a swimmer leaves a thin broken trail. Sources are rate-based (strength × dt) so the several rendered frames of one game tick do not multiply them: Link in the
    water (speed-scaled, alternating sign so a held source emits rings), swimming/wading actors within 600 units, and the
    game's own `EFFECT_SS_G_SPLASH` / young `EFFECT_SS_G_RIPPLE` entries (read-only table scan). Up to 16 sources.
 2. **Depth map** (1/8 res R16F): blurred water depth under each pixel (plane minus opaque bed; land counts as 0).
 3. **Wave trace** (full res RGBA16F, texture lane 31): per water pixel a 14-step + 4-step regula-falsi march between plane ±
-   amplitude bound of `h = Σ A_i f_i (exp(1.4 (sin θ_i − 1)) − mean)` — three sharpened-sine (trochoid-like) swells of 470/270/160
-   units, deep-water dispersion (c ∝ √λ), directions = the shared wind (`newdawn_wind.h`, fixed 2:1 direction; gust scales
-   amplitude 0.8–1.2 and whitecaps), fanned by 0 / +24° / −34°, with a slow noise phase warp and a swell-group envelope. This is a
+   amplitude bound of `h = Σ A_i f_i env_i (exp(1.4 (sin θ_i − 1)) − mean)`: six sharpened-sine (trochoid-like) swell trains of
+   470/270/160/105/68/44 units, deep-water dispersion (c ∝ √λ), directions = the shared wind (`newdawn_wind.h`, fixed 2:1
+   direction; gust scales amplitude 0.8–1.2 and whitecaps) rotated by 0 / +32° / −49° / +66° / −80° / +16°, a slow noise phase
+   warp, and a **per-train envelope** (product of two long sines, 0.2–1.6) so trains come and go and crests break into irregular
+   patches. The march uses the three long trains (they carry the displacement); the three fine ones only shape the normal. This is a
    Gerstner-style height field, not true Gerstner: the horizontal displacement is dropped because a ray march needs h(x, z).
    Output: surface height above the plane, slope, and 1 + foam (A = 0 means "no wave", the pass falls back to the flat plane).
-   Amplitude (13 units at strength 1) is tapered by the depth map (`smoothstep(10, 70)`), by camera height (calm when the camera is
-   within a few amplitudes of the surface) and per wavelength by pixel footprint, so waves vanish over shallows, beaches, piers
-   and rocks and cannot alias at distance. The ripple field adds up to ±4 units (tapered to 0 on the beach) and its slope.
+   Each train fades out when a pixel covers more than ~3–30% of its wavelength **along the view direction** (footprint /
+   sin(elevation)), so distant water converges to a smooth, glossy surface with no banding and nothing aliases.
+   Amplitude (13 units at strength 1) is also tapered by the depth map (`smoothstep(10, 70)`) and by camera height (calm when
+   the camera is within a few amplitudes of the surface), so waves vanish over shallows, beaches, piers and rocks. The ripple
+   field adds up to ±4 units (tapered to 0 on the beach) and its slope.
 4. **Surface pass** (existing, modified): uses the displaced hit for thickness, path length, refraction and foam; facet lighting
-   from the swell normal, a turquoise glow through thin crests, whitecaps (patchy, noise-gated, from the crest height and wind) and
-   the wake foam. **Swash**: ground within 14 units above a plane is wetted and carries a lacy front that climbs and drains
+   from the swell normal, a turquoise glow through thin crests, whitecaps (patchy, noise-gated, from the crest height and wind,
+   faded with the stretched footprint) and the wake foam. Foam is only opaque where two fine noises agree (max 0.65), so it reads
+   as thin, broken streaks and lace, never as a sheet. **Swash**: ground within 14 units above a plane is wetted and carries a lacy front that climbs and drains
    (distance to the waterline = height over local slope from the world normal; skipped for walls and perfectly level decks).
 5. **Glint/SSR pass** (existing, modified): hit point, glint normal, reflection normal and SSR origin come from the displaced surface.
 
@@ -51,7 +57,11 @@ Diagnosis (Coast, waves off, one suspect disabled at a time, see `ocean-streaks-
 the horizontal lines were the **native animated water texture's high-pass detail** kept by Restyle (it stretches into streaks at
 grazing angles) and the procedural slope octaves whose footprint fade ignored the grazing stretch (they collapsed into
 streaks / a diamond lattice). The vertical smear in the SSR gather and the glints were not the cause (disabling them leaves the
-lines). Fix: the native detail is faded by view elevation (`smoothstep(0.15, 0.5, V.y)`), every slope octave fades by the
+lines). Second round (after review: stripes were still visible in the 1:1 view): the remaining bands were the long swell trains seen at
+a grazing angle (three trains with similar directions made parallel crest lines) and whitecaps aligned to those crests. Fix: six
+trains with wide, uneven directions and independent patchy envelopes; trains fade by the grazing-stretched footprint; whitecaps
+are gated into patches and fade with distance. See `ocean-streaks-1to1-before-after.png` and `ocean-full-width-after.png`.
+First round fix: the native detail is faded by view elevation (`smoothstep(0.15, 0.5, V.y)`), every slope octave fades by the
 stretched footprint `footprint / sin(elevation)`, the six facet waves get a second phase warp, and the swell supplies the
 large-scale normals instead.
 
@@ -71,14 +81,17 @@ did not show their water; their numbers are the analytic ones).
   plus Fog.Volumetric/SunShafts/Sky.Physical/Sky.Flare/Lighting.Local 0): main ×2 and this build with Waves=0, Ripples=0 ×2 all
   byte-identical (SHA-256 `705ef49b…`). With only the shorter cvar set, main vs main already differs by ~240 px.
 - GL: 0 errors in every capture (`PostFx.Debug.Stats=1` error check, Mesa debug context); GLSL compiles on radeonsi.
-- GPU water stage (`PostFx.Debug.Stats=1`, steady state; the GPU was shared with other agents, so ±0.1 ms):
-  Coast, low camera over the sea (most ocean on screen) off 0.55–0.63 ms, waves 0.99–1.11, ripples 0.81–0.90, both 0.98–1.10;
-  Coast from the beach off 0.28–0.30, waves 0.62–0.67, both 0.53–0.58 (single run, noisy); Zora Hall off 0.40–0.42, waves 0.40
-  (no ocean), ripples/both 0.77–0.92. So about +0.4 ms for waves and about +0.4 ms for ripples (they share the trace pass; both
-  together cost about the same as either), roughly 2.5% of a 60 fps frame. Both are on in Ultra and High.
+- GPU water stage (`PostFx.Debug.Stats=1`, steady state, merged build; the GPU was shared with other agents, so ±0.1 ms):
+  Coast, low camera over the sea (most ocean on screen): off 0.63–0.72 ms, waves 1.10–1.24, ripples 0.91–1.01, both 1.10–1.22.
+  Zora Hall: off 0.45, waves 0.45 (no ocean), ripples/both 0.91–0.93. So about +0.5 ms for waves and +0.45 ms for ripples (they
+  share the trace pass; both together cost about the same as either), roughly 3% of a 60 fps frame. Both are on in Ultra and High.
+- Smoke test after merging main/new-dawn: 0 GL errors (Stats error check, Mesa debug context) at the Coast pier view;
+  Link wading and Zora Link (form poked in a private fixture, `--form 2`) wading/swimming into the sea show thin ring ripples and
+  no foam sheet (`burst-swimming-before-after.png`, `burst-zora-swimming-before-after.png`, `wake-strip-before-after.png`). Zora Link
+  fast-swimming with the swim button was not driven (the fixture only holds the stick); the source strength follows actor speed.
 - Images: before = origin/main build, after = this build, same preset, mods, fixtures: `burst-beach-before-after.png`,
   `burst-pier-before-after.png` (a low camera at pier height over open sea, placed by a fixture poke; no walkable pier geometry
-  was located), `burst-zora-cape-before-after.png`, `burst-swimming-before-after.png`, `wake-strip-before-after.png`,
+  was located), `burst-zora-cape-before-after.png`, `burst-swimming-before-after.png`, `burst-zora-swimming-before-after.png`, `wake-strip-before-after.png`,
   `shoreline-cliff-1to1-before-after.png`, `shoreline-sand-1to1-before-after.png`, `ocean-streaks-1to1-before-after.png`.
 
 ## Limits and deferred
@@ -97,6 +110,7 @@ did not show their water; their numbers are the analytic ones).
   against the plane height. The camera inside the swell (low swimming camera) fades the swell out instead of cutting.
 - Ripples: window is 1024² units around the player (actors outside it have no wake); the Link source follows the 20 Hz game
   position, not an interpolated one; waves are tied to game time, so a paused game freezes them.
-- Whitecaps are in-shader noise, no foam texture asset was added.
+- Whitecaps and wake foam are in-shader noise, no foam texture asset was added. Far water beyond ~1500 units is intentionally
+  smooth (the swell fades out); the displaced horizon is therefore subtle.
 - Zora Cape was captured from a camera placed past the cave mouth; the shore scene there was not reachable on foot in the fixtures.
 - Possible later optimisation: scissor the trace pass to the ripple window when waves are off (ripples-only cost at Zora Hall).
