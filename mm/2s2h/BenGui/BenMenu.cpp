@@ -1225,6 +1225,19 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Lighting.CharactersStrength")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
+    AddWidget(path, "Smooth Characters", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Characters.Smooth")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Rounds off the low-poly models of Link, NPCs and enemies: their triangles are drawn as curved surfaces, "
+            "so heads, hats, arms and legs lose their corners and light flows across them. Hard edges the artists "
+            "made (blades, shield rims, hat brims) stay sharp. Animations, hitboxes and collision are untouched. "
+            "Needs per-pixel lighting and OpenGL 4."));
+    AddWidget(path, "Smooth Characters Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Characters.SmoothStrength")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.5f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How far the curved surfaces bulge between the model's own points. 1.00 is the natural curve."));
 
     AddWidget(path, "Local Lights", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Lighting.Local")
