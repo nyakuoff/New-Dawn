@@ -3,6 +3,8 @@
 > **Live handoff document.** Keep this brief and update after meaningful milestones. Record facts, not aspirations. Only one integration owner should edit this file at a time.
 
 ## Current milestone
+**Asset packaging** (`feature/package-assets`, local, built and captured): every runtime asset pack is committed under `mm/assets/newdawn/` (8.2 MB) with MANIFEST/LICENSE, copied by `CMake/SyncNewDawnAssets.cmake` and installed; credits in `docs/licenses/THIRD_PARTY_ASSETS.md`, README and the About page. Next: update `~/dev/ghm-mods/scratch/update-play-build.sh` (drop the asset symlink loop), merge libultraship then the superproject.
+
 **New Dawn menu and UI** (`feature/new-dawn-menu`, local, built and captured; the user's manual pass is next; see `docs/MENU.md`). Earlier: **Remaster roadmap, item 3: physical sky and volumetric clouds** (`feature/physical-sky`, in progress). In parallel: MM3D polish and the opt-in MM3D collision trial (`feature/mm3d-polish`).
 
 ## Implemented (branch exceptions noted below)

@@ -37,7 +37,7 @@ planes, the camera and the sun are read, nothing is written. Base: main `5b986ce
 `caustics_8x4.png` is self-rendered (no third-party art, CC0): `tools/newdawn/caustics/gen_caustics.py` (numpy + Pillow,
 seed 7) refracts a parallel ray bundle through a periodic 22-wave animated height field and splats the photon density with
 wrap-around; seamless in space and time. 2048×1024 grey, 32 frames of 256², value = density / 4. It lives in
-`~/dev/ghm-mods/assets/caustics/` (MANIFEST.md) and is loaded from `<gNewDawn.Assets.Path>/caustics/` onto texture unit 28
+`mm/assets/newdawn/caustics/` (MANIFEST.md) and is loaded from `<gNewDawn.Assets.Path>/caustics/` onto texture unit 28
 (2D array, dummy bound from program creation). A missing file logs a warning and skips both passes.
 
 ## Validation (Linux, Mesa radeonsi, RX 7800 XT, 1920×1080, MSAA 4, preset + full mods, `MESA_DEBUG=context`)

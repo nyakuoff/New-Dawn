@@ -24,7 +24,7 @@ stream, the player's position and the sun; there is no collision, hitbox, RNG or
    the last 20 % of `Distance` shrinks the tufts to nothing, so nothing pops while walking.
 3. **Tuft geometry and art.** Two crossed quads (24 vertices, two height segments for bending) per tuft, textured from a
    self-rendered 2×2 atlas of side-view tufts (`tools/newdawn/grass-tufts/render_tufts.py`; asset pack
-   `~/dev/ghm-mods/assets/grass/`, loaded from `<gNewDawn.Assets.Path>/grass/tuft_atlas.png`; the feature stays off and
+   `mm/assets/newdawn/grass/`, loaded from `<gNewDawn.Assets.Path>/grass/tuft_atlas.png`; the feature stays off and
    logs a warning if the file is missing). Alpha-to-coverage with a sharpened ramp at MSAA > 1, a 0.45 cut-out otherwise.
    Sharpness (#83, "our grass looks blurry"): the atlas is now 2048² (`render_tufts.py OUT 7 1024`, any square size from 256 to
    4096 loads), sampled with 16x anisotropic filtering (the tufts are seen at grazing angles; it was 1x) and a LOD bias of

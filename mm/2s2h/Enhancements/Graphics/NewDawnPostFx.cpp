@@ -1043,7 +1043,7 @@ static bool NewDawnNightSkyAssetsPresent() {
     if (root != checkedRoot) {
         checkedRoot = root;
         present = std::filesystem::exists(std::filesystem::path(root) / "nightsky" / "stars.bin") &&
-                  std::filesystem::exists(std::filesystem::path(root) / "nightsky" / "milkyway_eq.f16");
+                  std::filesystem::exists(std::filesystem::path(root) / "nightsky" / "milkyway_eq.jpg");
     }
     return present;
 }
