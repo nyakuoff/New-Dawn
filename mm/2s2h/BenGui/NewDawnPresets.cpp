@@ -27,7 +27,7 @@ const Row kRows[] = {
     //                                                   Ultra  High   Med    Low    Original
     // Resolution, anti-aliasing and frame pacing.
     { "gSettings.InternalResolution",                  F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
-    { "gSettings.MSAAValue",                           I, { 4,     4,     2,     1,     1 } },
+    { "gSettings.MSAAValue",                           I, { 4,     2,     2,     1,     1 } },
     { "gNewDawn.TAA.Enabled",                          I, { 1,     1,     0,     0,     0 } },
     { "gMatchRefreshRate",                             I, { 1,     1,     1,     1,     0 } },
     // Textures. Asset mods (gEnhancements.Mods.AlternateAssets) are the player's own choice and never part of a look.
@@ -97,7 +97,7 @@ const Row kRows[] = {
     { "gNewDawn.Interior.Emissive",                    I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Materials.Enabled",                    I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Materials.Strength",                   F, { 1.5f,  1.5f,  1.5f,  1.5f,  1.0f } },
-    { "gNewDawn.Materials.Parallax",                   I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Materials.Parallax",                   I, { 1,     0,     0,     0,     0 } },
     // Shadows, fog, shafts, GI.
     { "gNewDawn.Shadows.Enabled",                      I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Shadows.Strength",                     F, { 0.85f, 0.85f, 0.85f, 0.85f, 1.0f } },

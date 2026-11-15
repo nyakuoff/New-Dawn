@@ -168,6 +168,19 @@ void PerfOverlay::Draw() {
         sFrameHead = (sFrameHead + 1) % kHistory;
         sFrameCount = std::min(sFrameCount + 1, kHistory);
         sCpuMsAccum += (threadCpu - sLastThreadCpu) * 1000.0;
+        // With gNewDawn.PostFx.Debug.Stats: mean wall and render-thread CPU time per drawn frame, every 300 frames.
+        static double wallSum = 0, cpuSum = 0;
+        static int n300 = 0;
+        wallSum += (now - sLastFrameT) * 1000.0;
+        cpuSum += (threadCpu - sLastThreadCpu) * 1000.0;
+        if (++n300 == 300) {
+            if (CVarGetInteger("gNewDawn.PostFx.Debug.Stats", 0)) {
+                SPDLOG_INFO("NewDawnPerf: frame {:.3f} ms wall ({:.1f} fps), {:.3f} ms render-thread CPU over 300 frames",
+                            wallSum / 300.0, 300000.0 / wallSum, cpuSum / 300.0);
+            }
+            wallSum = cpuSum = 0;
+            n300 = 0;
+        }
     }
     sLastFrameT = now;
     sLastThreadCpu = threadCpu;
