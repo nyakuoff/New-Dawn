@@ -72,3 +72,10 @@ Record only decisions that materially constrain future work. Avoid logs, specula
 - **Defaults:** The compiled cvar defaults are unchanged, so "Original look" is exactly the pre-existing N64 path and existing configs behave as before. A missing or setting-less config (`CVars` empty) is a fresh install: the Ultra look is written once and `gNewDawn.Setup.Version=1` records it. A config that already has settings gets a one-time popup (Apply / Keep) instead of a silent change. Asset mods (`gEnhancements.Mods.AlternateAssets`) are never part of a look.
 - **Naming:** `gNewDawn.HDR.Enabled` is the linear lighting pipeline with SDR output, not HDR monitor output, so players see "Modern Lighting Pipeline". Real HDR output would be a separate, default-off setting.
 - **Rollback:** Setting `gNewDawn.Setup.Version` to 0 and removing the other `gNewDawn.*` keys reruns first-run setup; any look can be switched from Graphics > Quality at any time.
+
+### ND-008 — Every New Dawn asset ships with the game; game-derived data is generated on the player's machine
+- **Date:** 2026-11-15
+- **Status:** Accepted
+- **Decision:** New Dawn must be packageable for players. Every asset it uses (effect textures, flares, grass, caustics, star data, sky panoramas, fonts, UI art) is redistributable (CC0, CC-BY or CC-BY-SA with attribution, public domain, or made by a script in `tools/newdawn/`) and committed with its licence and credits. If an asset can't be redistributed, it isn't used.
+- **Game-derived data:** anything generated from the game's own data (the material maps and the texture recolour, both built from the game's textures) is never committed or shipped. It is generated on the player's machine from their own dump, like 2Ship's asset extraction.
+- **Exception:** optional community HD mods (texture packs, 3DS models) stay separate downloads that the player installs themselves.
