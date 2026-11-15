@@ -12,6 +12,7 @@
 #include "Notification.h"
 #include "NewDawnPresets.h"
 #include "NewDawnTheme.h"
+#include "2s2h/NewDawn/RuntimeMaterials.h"
 #include "2s2h/Enhancements/Trackers/DisplayOverlay.h"
 #include <variant>
 #include <ship/utils/StringHelper.h>
@@ -492,6 +493,28 @@ static void RenderShadowQuality() {
             CVarSetInteger("gNewDawn.Shadows.Cascades", cascades[level]);
         }
         CVarSave();
+    }
+}
+
+static void RenderRuntimeMaterials() {
+    const auto progress = NewDawnMaterials::GetProgress();
+    ImGui::TextWrapped("%s", NewDawnMaterials::StatusText().c_str());
+    if (progress.state == NewDawnMaterials::State::Running && progress.total) {
+        ImGui::ProgressBar((float)progress.done / (float)progress.total, ImVec2(-1.0f, 0.0f));
+    }
+    UIWidgets::ButtonOptions options = {};
+    options.color = UIWidgets::Colors::NewDawn;
+    options.tooltip = "Rebuilds the normal, roughness and relief maps and the texture recolour from your HD texture "
+                      "packs, in the background. Restart the game afterwards. They are generated on this computer and "
+                      "never shipped. Needed after changing HD texture mods.";
+    if (progress.state == NewDawnMaterials::State::Running) {
+        ImGui::BeginDisabled();
+    }
+    if (UIWidgets::Button("Regenerate Material Maps", options)) {
+        NewDawnMaterials::Regenerate();
+    }
+    if (progress.state == NewDawnMaterials::State::Running) {
+        ImGui::EndDisabled();
     }
 }
 
@@ -1171,7 +1194,8 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Materials.Enabled")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Light supported HD world surfaces using companion normal and roughness maps. "
-            "Requires a locally generated material archive and per-pixel lighting. OpenGL only."));
+            "Needs per-pixel lighting and an HD texture pack. The maps are built from your HD textures on first launch "
+            "(see Regenerate Material Maps). OpenGL only."));
     AddWidget(path, "Material Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Materials.Strength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
@@ -1186,6 +1210,9 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Materials.ParallaxScale")
         .Options(FloatSliderOptions().Min(0.0f).Max(0.2f).Step(0.0025f).Format("%.3f").DefaultValue(0.07f).Tooltip(
             "Relief depth as a fraction of the texture's world size."));
+    AddWidget(path, "Regenerate Material Maps", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        RenderRuntimeMaterials();
+    });
 
     path.group = "Lighting & Shadows";
     AddWidget(path, "Real-time Shadows", WIDGET_CVAR_CHECKBOX)

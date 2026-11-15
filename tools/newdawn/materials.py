@@ -26,6 +26,9 @@ except ImportError:
     np = None
 
 VERSION = "1.6.0"
+# Recipes and classification are shipped data: they live next to the other custom assets and are packed into
+# 2ship.o2r for the in-game generator (mm/2s2h/NewDawn/RuntimeMaterials.cpp).
+DATA = Path(__file__).resolve().parents[2] / "mm/assets/custom/newdawn_materials"
 TEXTURE_TYPE = 0x4F544558
 EXPANDED_TYPES = {1, 2, 5, 6, 7, 8, 9}
 # "relief" (0..1) is the parallax depth range stored in the roughness map's G channel (0.5 = flat).
@@ -629,7 +632,7 @@ def main():
     parser.add_argument("--pack", type=Path, help="local ZIP-backed texture pack .o2r")
     parser.add_argument("--overlay-pack", type=Path, action="append", default=[],
                         help="albedo override archive; repeat in load order (last wins), e.g. recolour output")
-    parser.add_argument("--manifest", type=Path, default=Path(__file__).with_name("materials.json"))
+    parser.add_argument("--manifest", type=Path, default=DATA / "materials.json")
     parser.add_argument("--out", type=Path, help="private output directory outside the repository (required)")
     parser.add_argument("--resolution", type=int, choices=(1, 2), default=2, help="axis divisor; default half axes")
     parser.add_argument("--classify", type=Path, help="write reviewable scene classification JSON and exit")

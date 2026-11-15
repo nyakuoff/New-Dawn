@@ -80,7 +80,14 @@ Record only decisions that materially constrain future work. Avoid logs, specula
 - **Game-derived data:** anything generated from the game's own data (the material maps and the texture recolour, both built from the game's textures) is never committed or shipped. It is generated on the player's machine from their own dump, like 2Ship's asset extraction.
 - **Exception:** optional community HD mods (texture packs, 3DS models) stay separate downloads that the player installs themselves.
 
-### ND-009 — Temporal anti-aliasing jitters the projection in the interpreter and resolves before bloom
+### ND-009 — Material maps and recolour are generated in-game, cached, and mounted above every mod
+- **Date:** 2026-11-15
+- **Status:** Accepted
+- **Decision:** The normal/roughness/relief maps and the albedo recolour are built by a C++ port of `materials.py` and `recolor.py` (`mm/2s2h/NewDawn/RuntimeMaterials.cpp`) from the HD textures the player has loaded, on first launch (all cores, a few seconds, themed progress popup) and cached under `<app dir>/cache/newdawn-materials/live` with a signature (recipe version, recipe data, loaded archives' name/size/mtime). They are mounted explicitly after all mods, are not mods (not in `mods/`, `EnabledMods` or the Mod Menu) and do not depend on `gEnhancements.Mods.AlternateAssets`, which stays the player's choice for community packs. Recipes and classification are our own data under `mm/assets/custom/newdawn_materials/`, packed into `2ship.o2r`.
+- **Why:** ND-008 forbids shipping them and players have no Python. The port reproduces the Python archives byte-for-byte (4,417 of 4,418 map entries; 42 of 42 recolours), so the look is unchanged.
+- **Consequences:** The generator needs an HD pack with `alt/scenes/` textures; with none it does nothing. The Settings button regenerates in the background and applies on the next launch because the archive manager cannot be mutated while workers read it. The Python tools stay as the reference implementation (`tools/newdawn/compare_maps.py` checks the port). See `docs/RUNTIME_MATERIALS.md`.
+
+### ND-010 — Temporal anti-aliasing jitters the projection in the interpreter and resolves before bloom
 - **Date:** 2026-11-15
 - **Status:** Accepted
 - **Decision:** While the HDR world is open (`WORLD_BEGIN` to `SCENE_END`) the interpreter shifts every perspective projection the game loads by a 16-sample Halton sub-pixel offset (`P_matrix` itself, so all New Dawn passes that unproject from it stay consistent with the depth buffer). Orthographic loads and everything after `SCENE_END` (HUD, 2D, text, pause) are never shifted. The renderer reprojects last frame's resolved image with the un-jittered current and previous view-projections and the depth buffer (no per-object motion vectors), clips it to the 3×3 neighbourhood in tone-compressed YCoCg, rejects it by depth range, trusts it less on actors (the local-lights stencil mask), and resolves in scene-referred light before bloom and the display transform. A small contrast-adaptive sharpen that fades out in the darks follows; history is stored unsharpened.
