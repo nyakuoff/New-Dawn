@@ -141,3 +141,42 @@ Menu: Advanced -> Lighting & Shadows -> Point-Light Shadows. Needs Local Lights 
 **Limits.** Opaque casters only (cut-out foliage and alpha-blended geometry do not shadow a flame); at most two lights, none for fairies; a
 light attached to a fixture larger than `PointNear` units sees that fixture as a caster; very bright interiors show little change because the added
 light is a small share of the lit result.
+
+## Flame lights and flame glow (`gNewDawn.Lighting.FlameLight`, torch-light)
+Default 0, **1 in Ultra, High, Medium and Low** (needs Local Lights; the glow part needs VFX). `.FlameStrength` (0-4, 1), `.FlameRange` (0.25-3, 1),
+`.FlameAlbedo` (0-0.6, 0.32), `gNewDawn.Vfx.GlowRadius` (0.1-2, 0.5). Menu: Advanced -> Lighting & Shadows -> Flame Light Pools / Strength.
+Playtest finding from the point-shadow captures: torches and braziers barely lit their surroundings and each sat in a big flat yellow disc.
+
+- **The disc.** It was the VFX glow class (`Lights_DrawGlow`, `gameplay_keep_Tex_08FBE0`, prim alpha 50) drawing the nearly flat `circle_05` sprite at
+  twice the native footprint. With FlameLight on, `gfx_opengl_vfx.cpp` mode 2 draws an analytic profile instead: a Gaussian core plus a
+  `1/(1+26 r^2)` halo windowed to zero at the quad edge (no edge), on a quad 0.5x the native disc radius. Warm lights get the flame ramp (white-yellow
+  core, orange halo); other colours (Tatl, fairies) keep their hue and are dimmer. The game's glow alpha (about 50/255, flickering) scales it, and HDR bloom
+  adds the rest. Off = the old disc (the same binary is the before/after).
+- **World position of flames (fix).** A VFX sprite's world position is the mean of its vertices' `view_pos`, which was only stored for lit,
+  shadow-recorded, wind, grass or interior draws; the flame sprites are unlit XLU draws, so every flame's recorded position was stale. They are
+  now stored for `mVfx` draws too (`interpreter.cpp`, one condition). Flame positions are exact (Great Bay Temple braziers at (+-105,-257,2895), within 3 units of their
+  game lights).
+- **Which lights are flame lights.** `PrepareLocalLights` knows last frame's VFX flames (position, world half-height from the sprite's NDC height). A
+  game light within 90 units of a flame, or the light tied to a flame the game gives none, is a flame light (fairies, boost < 1, never are). A flame light
+  gets: range = `clamp(10 x flame half-height, 130, 300)` x FlameRange (the flame's own size, not the game's large 250-radius light: a brazier about 210, a candle 130);
+  its colour 80% pulled toward a fire colour (1, 0.52, 0.20) at the same luminance; gain 8 x FlameStrength (other lights unchanged).
+- **Shader (`kLocalLightShader`).** Fire lights use a smaller softening core (0.13R instead of 0.2R) and a steeper window `(1-x^2)^1.5` squared, so the pool
+  is strong near the fire and gone well before its range. Their contribution is accumulated separately and lights surfaces with at least
+  `FlameAlbedo` (the pass reads the already dark authored colour as the albedo, which swallowed fire light on dark walls); beyond the pool the unlit scene keeps
+  the #81 darkening and floor. The old early-out `lit < 0.002` left a visible ring at high intensity, so fire lights subtract the threshold instead (continuous).
+  The #82 low-pass and designed flicker are unchanged, and the point shadows now have real light to remove: Link's shadow from a torch falls across the floor.
+- **GI.** The flame light feeds the world GI's local-light injection (`mWgi.lightRgb`), so the stronger flames bounce more; checked with Ultra's GI on (Great
+  Bay Temple mean luminance 53.8 -> 44.6 with GI on, 52.7 -> 42.7 with it off: the bounce adds about 1 level).
+
+**Evidence** (`~/dev/ghm-mods/showcase/torch-light/`, numbers in `data/README.txt`; RX 7800 XT 1080p Ultra, 0 GL errors, frozen game).
+- Great Bay Temple braziers, South Clock Town torch (with Link's shadow), Stock Pot Inn wall candle, Woodfall Temple torch room: splits, 1:1 crops and
+  light-only views. The discs are gone; each fire has a bright small core, a warm pool on the stairs, floor, wall and Link, and the dark is kept between fires
+  (Great Bay Temple frame mean luminance 53.8 -> 44.6).
+- GPU (300-frame stage averages, flame light off -> on): Great Bay Temple local lights 0.720 -> 0.409 ms and VFX 0.057 -> 0.024 ms; South Clock Town 0.601 -> 0.503
+  and 0.034 -> 0.016; Stock Pot Inn 0.240 -> 0.228 and 0.012 -> 0.011 (the old wide pools and large glow quads cost more).
+- Off identity: frozen Stock Pot Inn (deterministic-off list + the new interior/GI effects off) is SHA-256 `0288942a2b5eaf21` for main `f4e5d2929` and for this
+  branch with FlameLight=0 (two runs) or on without Local Lights. In flame scenes the off path differs from main only by the run-to-run noise.
+
+**Limits.** The Stock Pot Inn fireplace has neither a VFX flame nor a game light (its fire is painted on the room mesh), so it is unchanged; the Inn wall candles
+are covered. Woodfall Temple's torches are high on the walls behind trunks: their pool shows on the upper walls (`woodfall-temple-torch-room`), the flames are not
+in frame from a ground-level camera. Fires drawn through other textures keep the native look. Light-only views still include the VFX sprites drawn afterwards.
