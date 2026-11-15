@@ -15,6 +15,9 @@ void NewDawnHDR_Begin(PlayState* play);
 void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int begin);
 void NewDawnHDR_WeatherScope(PlayState* play, int begin);
 void NewDawnHDR_WindScope(PlayState* play, int begin, int room);
+// World GI: brackets a room's draw so the renderer can record its static opaque geometry (render-side only); the end
+// also hands over the entries the game culled this frame as a record-only list.
+void NewDawnGI_RoomScope(PlayState* play, Room* room, int begin);
 void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin);
 void NewDawnSky_Draw(PlayState* play);
 void NewDawnSky_DrawOvercast(PlayState* play);
