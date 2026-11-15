@@ -3473,6 +3473,11 @@ void Environment_DrawSkyboxStars(PlayState* play) {
     Gfx* nextOpa;
     Gfx* opa;
 
+    // New Dawn: the real star field of the physical sky replaces the native sprite stars (render-only).
+    if (NewDawnNightSky_ReplacesStars()) {
+        sSkyboxStarsDList = NULL;
+    }
+
     if (sSkyboxStarsDList != NULL) {
         OPEN_DISPS(play->state.gfxCtx);
 

@@ -65,6 +65,8 @@ const Row kRows[] = {
     { "gNewDawn.Sky.Ambient",                          I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Sky.Reflections",                      I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Sky.Special",                          I, { 1,     1,     1,     1,     0 } },
+    { "gNewDawn.Sky.Night",                            I, { 1,     1,     1,     1,     0 } },
+    { "gNewDawn.Sky.Moonlight",                        I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Sky.Clouds",                           I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.Sky.Coverage",                         F, { 0.55f, 0.55f, 0.55f, 0.55f, 0.55f } },
     { "gNewDawn.Sky.CloudStrength",                    F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
@@ -113,7 +115,6 @@ const Row kRows[] = {
 // clang-format on
 
 constexpr const char* kSetupVersionCvar = "gNewDawn.Setup.Version";
-constexpr const char* kDeveloperModeCvar = "gSettings.Menu.DeveloperMode";
 constexpr const char* kLookCvar = "gNewDawn.Setup.Look";
 
 } // namespace
@@ -175,10 +176,6 @@ int DetectTier() {
         }
     }
     return -1;
-}
-
-bool IsDeveloperMode() {
-    return CVarGetInteger(kDeveloperModeCvar, 0) != 0;
 }
 
 void InitFirstRun(bool configExisted) {

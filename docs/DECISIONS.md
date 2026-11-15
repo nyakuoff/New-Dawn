@@ -73,7 +73,14 @@ Record only decisions that materially constrain future work. Avoid logs, specula
 - **Naming:** `gNewDawn.HDR.Enabled` is the linear lighting pipeline with SDR output, not HDR monitor output, so players see "Modern Lighting Pipeline". Real HDR output would be a separate, default-off setting.
 - **Rollback:** Setting `gNewDawn.Setup.Version` to 0 and removing the other `gNewDawn.*` keys reruns first-run setup; any look can be switched from Graphics > Quality at any time.
 
-### ND-008 — Temporal anti-aliasing jitters the projection in the interpreter and resolves before bloom
+### ND-008 — Every New Dawn asset ships with the game; game-derived data is generated on the player's machine
+- **Date:** 2026-11-15
+- **Status:** Accepted
+- **Decision:** New Dawn must be packageable for players. Every asset it uses (effect textures, flares, grass, caustics, star data, sky panoramas, fonts, UI art) is redistributable (CC0, CC-BY or CC-BY-SA with attribution, public domain, or made by a script in `tools/newdawn/`) and committed with its licence and credits. If an asset can't be redistributed, it isn't used.
+- **Game-derived data:** anything generated from the game's own data (the material maps and the texture recolour, both built from the game's textures) is never committed or shipped. It is generated on the player's machine from their own dump, like 2Ship's asset extraction.
+- **Exception:** optional community HD mods (texture packs, 3DS models) stay separate downloads that the player installs themselves.
+
+### ND-009 — Temporal anti-aliasing jitters the projection in the interpreter and resolves before bloom
 - **Date:** 2026-11-15
 - **Status:** Accepted
 - **Decision:** While the HDR world is open (`WORLD_BEGIN` to `SCENE_END`) the interpreter shifts every perspective projection the game loads by a 16-sample Halton sub-pixel offset (`P_matrix` itself, so all New Dawn passes that unproject from it stay consistent with the depth buffer). Orthographic loads and everything after `SCENE_END` (HUD, 2D, text, pause) are never shifted. The renderer reprojects last frame's resolved image with the un-jittered current and previous view-projections and the depth buffer (no per-object motion vectors), clips it to the 3×3 neighbourhood in tone-compressed YCoCg, rejects it by depth range, trusts it less on actors (the local-lights stencil mask), and resolves in scene-referred light before bloom and the display transform. A small contrast-adaptive sharpen that fades out in the darks follows; history is stored unsharpened.

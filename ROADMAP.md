@@ -101,7 +101,7 @@ Roughly in priority order; this will change as work lands.
 3. **Water simulation** (Phase 6 above): waves, interaction, rivers and waterfalls.
 4. **Shadow coverage.** Shadows from geometry the game culls (rooms behind the camera, distant actors), and point-light shadows for the nearest flames.
 5. **Foliage and vegetation.** Denser trees and bushes, translucency (light through leaves), and grass interaction around Link.
-6. **Night sky.** A real star field, Milky Way and moonlight that respects the giant Moon's phase.
+6. **Night sky** (done locally on `feature/night-sky`, `docs/NIGHT_SKY.md`). A real star field (13,964 catalogue stars), a Milky Way panorama and a Moon glow that follows the giant Moon's state, plus soft moonlight shadows.
 7. **Interior polish.** Light leaking through windows and doorways, dust in light beams, more emissive surfaces (signs, lamps, crystals).
 8. **Performance and options.** Quality tiers (low/medium/high/ultra), a performance overlay, and a pass to keep the full preset comfortably above 60 fps at 1080p on mid-range GPUs.
 9. **Other backends.** DirectX 11 and Metal ports of the OpenGL-only effects (Windows and macOS players currently need OpenGL).
