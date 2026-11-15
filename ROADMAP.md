@@ -18,6 +18,7 @@ Status: ✅ done (in the New Dawn preset unless noted) · 🚧 in progress · �
 | 4× MSAA with alpha-to-coverage for cut-out foliage | #25 |
 | New Dawn preset and "Original look" restore | #17 |
 | Capture and comparison tooling (`tools/newdawn/capture.py`) | #8, #40 |
+| Temporal anti-aliasing: sub-pixel jitter, reprojected history, actor-aware clip, darks-safe sharpen ([docs/TAA.md](docs/TAA.md)) | `feature/taa` (local) |
 
 ## Phase 2: HDR and colour ✅
 | Feature | PRs |
@@ -95,7 +96,7 @@ The first full manual playtest led to fixes for washed-out darks and the opening
 ## Planned 📋
 Roughly in priority order; this will change as work lands.
 
-1. **Temporal anti-aliasing / upscaling.** A TAA or temporal upsampler to remove shimmer on fine detail (grass, POM edges, foliage) and give headroom for the heavier effects.
+1. **Temporal upscaling.** TAA is done (Phase 1, `docs/TAA.md`). Next: render the 3D world below native resolution and upsample with the same jittered history, for headroom for the heavier effects.
 2. **Character and actor materials.** Proper normal and specular detail for Link, NPCs and enemies (the 3DS Link mod plus generated maps), skin/cloth/metal response, and better hair.
 3. **Water simulation** (Phase 6 above): waves, interaction, rivers and waterfalls.
 4. **Shadow coverage.** Shadows from geometry the game culls (rooms behind the camera, distant actors), and point-light shadows for the nearest flames.

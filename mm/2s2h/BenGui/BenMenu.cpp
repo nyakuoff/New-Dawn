@@ -905,6 +905,17 @@ void BenMenu::AddSettings() {
         })
         .Options(FloatSliderOptions().Min(5.0f).Max(150.0f).Step(1.0f).Format("%.0f").DefaultValue(40.0f).Tooltip(
             "How far occlusion reaches, in world units. Link is roughly 60 units tall."));
+    AddWidget(path, "Temporal Anti-Aliasing (TAA)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.TAA.Enabled")
+        .Options(CheckboxOptions()
+                     .Tooltip("Removes shimmer and crawl on fine detail (grass, foliage, fences, brick edges, "
+                              "specular glints) by blending sub-pixel-shifted frames. Works with or without MSAA, "
+                              "needs the Modern Lighting Pipeline, and never touches the HUD. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "TAA Sharpening: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.TAA.Sharpen")
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.7f).Tooltip(
+            "Restores the fine detail that temporal smoothing takes away. Dark areas are left alone."));
     AddWidget(path, "Display Dither", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.PostFx.Dither.Enabled")
         .Options(CheckboxOptions().Tooltip("Reduce banding in the final display image.").DefaultValue(true));

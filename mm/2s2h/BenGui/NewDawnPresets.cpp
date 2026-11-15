@@ -28,6 +28,7 @@ const Row kRows[] = {
     // Resolution, anti-aliasing and frame pacing.
     { "gSettings.InternalResolution",                  F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
     { "gSettings.MSAAValue",                           I, { 4,     4,     2,     1,     1 } },
+    { "gNewDawn.TAA.Enabled",                          I, { 1,     1,     0,     0,     0 } },
     { "gMatchRefreshRate",                             I, { 1,     1,     1,     1,     0 } },
     // Textures. Asset mods (gEnhancements.Mods.AlternateAssets) are the player's own choice and never part of a look.
     { "gNewDawn.Textures.AsyncAltLoad",                I, { 1,     1,     1,     1,     1 } },

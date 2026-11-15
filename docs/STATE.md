@@ -3,6 +3,7 @@
 > **Live handoff document.** Keep this brief and update after meaningful milestones. Record facts, not aspirations. Only one integration owner should edit this file at a time.
 
 ## Current milestone
+**Roadmap item 1: temporal anti-aliasing** (`feature/taa`, local, built, measured and captured; see `docs/TAA.md`; upscaling on top of it is not started). Previous:
 **New Dawn menu and UI** (`feature/new-dawn-menu`, local, built and captured; the user's manual pass is next; see `docs/MENU.md`). Earlier: **Remaster roadmap, item 3: physical sky and volumetric clouds** (`feature/physical-sky`, in progress). In parallel: MM3D polish and the opt-in MM3D collision trial (`feature/mm3d-polish`).
 
 ## Implemented (branch exceptions noted below)
@@ -31,6 +32,7 @@
 | Local lights and night contrast | `gNewDawn.Lighting.Local/LocalStrength/LocalContrast/LocalFlicker` | `docs/LOCAL_LIGHTS.md`. Screen-space HDR pass at opaque-end: game point lights + VFX flames, inverse-square, flicker, contact shadow; darkens unlit night/interior. 0.13-0.29 ms; off byte-identical to main (frozen Inn). In the preset. Local branch `feature/local-lights`, not pushed. |
 | 3D grass (render-only tufts) | `gNewDawn.Grass.Enabled/Density/Distance/Height` | `docs/GRASS.md`. Grass-classified ground triangles are recorded, scattered in a world-stable hash grid, drawn as swaying alpha-tested tuft cards that take the ground's finished colour; 0.4–0.8 ms GPU in meadows; off is a no-op. In the preset. Local branch `feature/render-grass`. |
 | New Dawn menu and looks | `mm/2s2h/BenGui/` (`NewDawnTheme`, `NewDawnPresets`, `Menu`, `BenMenu`), `gNewDawn.Setup.Version/Look` | `docs/MENU.md`. Pages and tabs over the existing widget registry; Ultra/High/Medium/Low/Original look from one table (`kRows`); Ultra applied on a fresh install, a one-time Apply/Keep popup for existing configs; asset mods are not part of a look. Local branch `feature/new-dawn-menu`, not pushed. Replaces the #17 preset buttons. |
+| Temporal anti-aliasing | `gNewDawn.TAA.Enabled/Sharpen/Feedback` | `docs/TAA.md`. Sub-pixel Halton jitter of the 3D world's perspective projection (HUD never jittered), depth-reprojected history (no motion vectors), neighbourhood variance clip, depth-range test, actor mask from the local-lights stencil, resolve before bloom, light darks-safe CAS sharpen. Shimmer on grass/brick/foliage -30..-79% (slow pan metric), +0.32-0.45 ms GPU (TAA + MSAA 4 +0.0-0.5 ms vs MSAA 4 alone; TAA with MSAA off about equal to MSAA 4 alone); off byte-identical to main (frozen Inn); 0 GL errors. In Ultra and High. Local branch `feature/taa`, not pushed. |
 | Capture tool, branding, docs | `tools/newdawn/`, `docs/images` | #8, #9, #11 |
 
 Mods are installed locally and never committed: MM Reloaded 4K is loaded first, then 3DS Link and Equipment, then HD Moon. They are in `build-cmake/mm/mods`, and the capture sets are in `~/dev/ghm-mods/sets/{textures,full}`.
