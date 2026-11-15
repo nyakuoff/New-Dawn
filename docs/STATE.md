@@ -3,6 +3,7 @@
 > **Live handoff document.** Keep this brief and update after meaningful milestones. Record facts, not aspirations. Only one integration owner should edit this file at a time.
 
 ## Current milestone
+**VFX gaps #74** (`feature/vfx-gaps`, local, built, captured; see `docs/VFX.md`): sparkles, frost, bubble pop and mask flash upgraded; lightning, hookshot, magic meter and in-flight bubble kept native (reasons in the doc). Previous:
 **Rivers and waterfalls** (`feature/rivers-waterfalls`, local, built; see `docs/WATER_SIM.md`): flow from the native texture scroll, flow-mapped river streaks and foam verified on the Ikana river and the Mountain Village spring pool; the waterfall overlay, mist and spray are built but no real waterfall texture was located, so falls are not delivered. Previous:
 **Torch light: flame glow and light pools** (`feature/torch-light`, local, built, captured; see `docs/LOCAL_LIGHTS.md`). Previous:
 **Roadmap item 7: interior polish** (`feature/interior-polish`, local, built and captured; see `docs/INTERIOR_POLISH.md`). Windows added to 7 interiors (the rooms have none), shafts, pools, beam dust, emissive emblem/signs; windows off by default pending maintainer art direction; not pushed. Previous:
