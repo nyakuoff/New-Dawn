@@ -1317,6 +1317,29 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Water.UnderwaterStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
             "How strong the underwater look is."));
+    AddWidget(path, "Ocean Waves", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Waves")
+        .Options(CheckboxOptions()
+                     .Tooltip("Rolling swell on the open sea (Great Bay Coast, Zora Cape): the water surface really rises "
+                              "and falls with the wind, with crest foam and a wash that climbs the beach. The waves die "
+                              "away over shallows, piers and beaches. Swimming and collision still use the original water "
+                              "height. Needs Water Restyle and the Modern Lighting Pipeline. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Wave Height: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.WaveStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How tall the ocean waves are."));
+    AddWidget(path, "Water Ripples", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Ripples")
+        .Options(CheckboxOptions()
+                     .Tooltip("Link, swimming creatures and splashes disturb the water: simulated ripples and a foamy "
+                              "wake that bend the reflections. Works in every water. Needs Water Restyle and the Modern "
+                              "Lighting Pipeline. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Ripple Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.RippleStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How strong the ripples and wakes are."));
 
     path.group = "";
     // Quality tab, second half: the few lighting and world settings most worth changing.
