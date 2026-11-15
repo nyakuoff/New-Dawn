@@ -27,6 +27,10 @@ void NewDawnShadows_Begin(PlayState* play);
 // Call right after a room has been drawn: records the cullable entries the game culled as shadow casters (render only).
 void NewDawnShadows_RoomCulled(PlayState* play, Room* room);
 
+// Mask-transformation screen fill (R_PLAY_FILL_SCREEN): when the renderer will draw it as an HDR radial flash it returns 1
+// and the caller skips the native flat fill. The alpha timeline is the game's own; nothing is written back.
+int NewDawnVfx_MaskFlash(PlayState* play, u8 r, u8 g, u8 b, u8 a);
+
 // Room geometry is drawn, actors are not yet: the grass takes its ground colour here. Call right before Actor_DrawAll.
 void NewDawnPostFx_GroundEnd(PlayState* play);
 

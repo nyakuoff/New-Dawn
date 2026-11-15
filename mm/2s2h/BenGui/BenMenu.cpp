@@ -1055,6 +1055,22 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Ember Density: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Vfx.Embers")
         .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(1.0f));
+    AddWidget(path, "Sparkle Glints (Fairies, Rupees)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Vfx.Sparkles")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Fairy sparkles and rupee/item glints keep their crisp native stars and gain an HDR core with bloom, a subtle chromatic shimmer and a soft trailing fade. Render-only. Requires HD Fire, Embers and Glows."));
+    AddWidget(path, "Frost Sparkles", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Vfx.Frost")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Ice shards and frozen enemies glint with crystalline HDR sparkles. Render-only. Requires HD Fire, Embers and Glows."));
+    AddWidget(path, "Bubble Pop Burst", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Vfx.BubblePop")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "A popped Deku bubble throws iridescent droplets and a shimmering ring. Render-only. Requires HD Fire, Embers and Glows."));
+    AddWidget(path, "Mask Transformation Flash", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Vfx.MaskFlash")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "The transformation flash is an HDR radial burst instead of a flat screen fill. The cutscene's timing is unchanged. Render-only. Requires HD Fire, Embers and Glows."));
     AddWidget(path, "3D Grass", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Grass.Enabled")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
