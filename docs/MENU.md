@@ -57,6 +57,7 @@ tiers; the full table is `kRows` in `NewDawnPresets.cpp` (`tools/newdawn/capture
 | `gNewDawn.SunShafts.Enabled` | 1 | 1 | 1 | 0 | 0 |
 | `gNewDawn.Atmos.Particles` | 1 | 1 | 1 | 0 | 0 |
 | `gNewDawn.Lighting.Characters` | 1 | 1 | 1 | 0 | 0 |
+| `gNewDawn.Characters.Smooth` | 1 | 1 | 0 | 0 | 0 |
 | `gNewDawn.Lighting.PointLightQuality` | 0.5 | 0.5 | 0.5 | 0.25 | 0 |
 
 Every tier except Original look keeps the modern lighting pipeline (`gNewDawn.HDR.Enabled`: linear lighting mapped to normal SDR output, no HDR monitor needed; the menu never calls it "HDR"), the physical sky, per-pixel lighting, local lights, materials, the colour
