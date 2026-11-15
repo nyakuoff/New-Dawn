@@ -111,3 +111,15 @@ Record only decisions that materially constrain future work. Avoid logs, specula
 - **Alternatives considered:** CPU subdivision in the interpreter (multiplies the single-threaded vertex cost); Phong tessellation (no per-edge control, so hard edges cannot be kept); plain PN triangles from each triangle's own normals (cracks wherever twins differ, measured); analysing per actor draw or per display list (parts that appear later, shared display lists and instanced draws ended up with different neighbours, found by the crack check); subdivision surfaces (move the model's points, need clean closed meshes).
 - **Tradeoffs / rollback:** OpenGL 4.0 only. Shadow maps keep the original triangles. Flat-shaded limbs (split normals) are treated as hard edges and stay faceted. A new triangle command is drawn flat for two frames. `gNewDawn.Characters.Smooth=0` restores the previous frame byte for byte.
 - **Validation:** `docs/SMOOTH_CHARACTERS.md` (same-pose off/on crops, animation burst, silhouette overlap, crack check, GPU and CPU cost, off identity, 0 GL errors).
+
+### ND-013 — Direction for modern models and textures: stylised current-gen, local-only, MM3D optional
+- **Date:** 2026-11-15
+- **Status:** Accepted (maintainer decision on the research in `docs/research/MODELS_TEXTURES_*.md`)
+- **Visual target:** *stylised current-gen*: one coherent, clean material language across the whole game, in the spirit of modern stylised remakes. Recognisable, not photoreal.
+- **IP posture: local-only.** New Dawn ships code, its own generic content (CC0, CC-BY or CC-BY-SA, or made by our scripts) and recipes. Nothing that depicts Nintendo's characters or places is shipped. Anything Nintendo-shaped (upscaled originals, converted 3DS models, derived maps) is generated on the player's machine from their own dumps. This extends ND-008.
+- **MM3D dump: optional.** Players who supply their own *Majora's Mask 3D* dump may get models converted from it at first run. Players without one keep the N64 models with render-time smoothing (ND-012).
+- **Consequences:**
+  - The community texture pack stays an optional extra. New Dawn's material system must work without it (local restore of all world and character textures plus object-path material maps; research plan A).
+  - Our own generic stylised material library (plan C) is allowed because it depicts no Nintendo designs.
+  - Commissioned character art (plan D) is out.
+- **Next:** spikes before committing to a pipeline: texture screen coverage plus local restore with detail injection, and an MM3D conversion of the Clock Town guard and Anju bound to the N64 limbs. A skinning prototype follows if the MM3D spike needs smooth weights.
