@@ -64,6 +64,8 @@ const Row kRows[] = {
     { "gNewDawn.Sky.Ambient",                          I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Sky.Reflections",                      I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Sky.Special",                          I, { 1,     1,     1,     1,     0 } },
+    { "gNewDawn.Sky.Night",                            I, { 1,     1,     1,     1,     0 } },
+    { "gNewDawn.Sky.Moonlight",                        I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Sky.Clouds",                           I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.Sky.Coverage",                         F, { 0.55f, 0.55f, 0.55f, 0.55f, 0.55f } },
     { "gNewDawn.Sky.CloudStrength",                    F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },

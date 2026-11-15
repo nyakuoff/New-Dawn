@@ -18,6 +18,7 @@ void NewDawnHDR_WindScope(PlayState* play, int begin, int room);
 void NewDawnHDR_Sky(GraphicsContext* gfxCtx, int begin);
 void NewDawnSky_Draw(PlayState* play);
 void NewDawnSky_DrawOvercast(PlayState* play);
+int NewDawnNightSky_ReplacesStars(void);
 
 void NewDawnShadows_Begin(PlayState* play);
 
