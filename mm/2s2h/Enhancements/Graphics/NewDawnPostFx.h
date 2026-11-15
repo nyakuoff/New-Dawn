@@ -21,6 +21,8 @@ void NewDawnSky_DrawOvercast(PlayState* play);
 int NewDawnNightSky_ReplacesStars(void);
 
 void NewDawnShadows_Begin(PlayState* play);
+// Call right after a room has been drawn: records the cullable entries the game culled as shadow casters (render only).
+void NewDawnShadows_RoomCulled(PlayState* play, Room* room);
 
 // Room geometry is drawn, actors are not yet: the grass takes its ground colour here. Call right before Actor_DrawAll.
 void NewDawnPostFx_GroundEnd(PlayState* play);
