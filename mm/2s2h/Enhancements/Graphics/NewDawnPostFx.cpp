@@ -571,6 +571,14 @@ static void NewDawnFillWaterParams(PlayState* play, NewDawnPostFxParams* params)
     params->waterCameraEye[1] = play->view.eye.y;
     params->waterCameraEye[2] = play->view.eye.z;
     NewDawnFillWaveParams(play, params, restyle);
+    // Rivers and waterfalls: strengths only; the flow itself is read from the native texture scroll by the renderer.
+    params->waterRivers = CVarGetInteger("gNewDawn.Water.Rivers", 0) ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.RiverStrength", 1.0f), 0.0f, 2.0f) : 0.0f;
+    for (const auto& entry : sNewDawnOceanScenes) {
+        if (entry.sceneId == play->sceneId) {
+            params->waterRivers = 0.0f; // the sea's scrolling texture is not a current
+        }
+    }
+    params->waterFalls = CVarGetInteger("gNewDawn.Water.Waterfalls", 0) ? NewDawnClampF(CVarGetFloat("gNewDawn.Water.FallStrength", 1.0f), 0.0f, 2.0f) : 0.0f;
 }
 
 static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
