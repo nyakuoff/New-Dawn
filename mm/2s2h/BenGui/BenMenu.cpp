@@ -1478,6 +1478,27 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Water.RippleStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
             "How strong the ripples and wakes are."));
+    AddWidget(path, "Flowing Rivers", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Rivers")
+        .Options(CheckboxOptions()
+                     .Tooltip("Rivers, streams and channels visibly flow: streaky flow-mapped ripples and foam that follow "
+                              "the direction the game's own water texture scrolls, with foam along banks and rocks. The "
+                              "water's height and currents are unchanged. Needs the Modern Lighting Pipeline. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "River Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.RiverStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How strong the river streaks and foam are."));
+    AddWidget(path, "Lively Waterfalls", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Water.Waterfalls")
+        .Options(CheckboxOptions()
+                     .Tooltip("Waterfalls get flowing streaks, sun glints and foam, with mist, spray that catches the "
+                              "sunlight and foam where they land. Needs the Modern Lighting Pipeline. OpenGL only.")
+                     .DefaultValue(false));
+    AddWidget(path, "Waterfall Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Water.FallStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f).Tooltip(
+            "How strong the waterfall streaks, mist and spray are."));
 
     path.group = "";
     // Quality tab, second half: the few lighting and world settings most worth changing.

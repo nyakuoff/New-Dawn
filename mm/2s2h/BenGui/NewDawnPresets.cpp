@@ -128,6 +128,10 @@ const Row kRows[] = {
     { "gNewDawn.Water.WaveStrength",                   F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
     { "gNewDawn.Water.Ripples",                        I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Water.RippleStrength",                 F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
+    { "gNewDawn.Water.Rivers",                         I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Water.RiverStrength",                  F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
+    { "gNewDawn.Water.Waterfalls",                     I, { 0,     0,     0,     0,     0 } },
+    { "gNewDawn.Water.FallStrength",                   F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
 };
 // clang-format on
 
