@@ -1215,6 +1215,15 @@ void BenMenu::AddSettings() {
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Torches, lamps, candles and HD flames cast warm, flickering light on nearby walls, floors and "
             "characters, with contact shadows. Render-only. Requires the Modern Lighting Pipeline."));
+    AddWidget(path, "Flame Light Pools", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Lighting.FlameLight")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Torches, braziers, candles and fires light a wide, warm pool on the walls, floor and characters around "
+            "them, brighter than other lights, and the flame's glow is a small bright core with a soft halo instead "
+            "of a flat disc. Needs Local Lights. Render-only."));
+    AddWidget(path, "Flame Light Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Lighting.FlameStrength")
+        .Options(FloatSliderOptions().Min(0.0f).Max(4.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
     AddWidget(path, "Local Light Strength: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gNewDawn.Lighting.LocalStrength")
         .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
