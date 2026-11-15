@@ -12,6 +12,7 @@ None of it comes from the game. Total size: about 8.2 MB.
 | `vfx/fire_flipbook_8x8.png` | torch fire | made for New Dawn: `tools/newdawn/vfx-flipbook/` (Blender Mantaflow bake + numpy) | CC0 1.0 | n/a |
 | `caustics/caustics_8x4.png` | water caustics | made for New Dawn: `tools/newdawn/caustics/gen_caustics.py` | CC0 1.0 | n/a |
 | `water/flow_noise_256.png` | river flow streaks, waterfall streams | made for New Dawn: `tools/newdawn/water-flow/gen_flow_noise.py` | CC0 1.0 | n/a |
+| `water/foam_lace_512.png` | shoreline and river foam (lace, clumps, bubbles) | made for New Dawn: `tools/newdawn/water-flow/gen_foam.py` | CC0 1.0 | n/a |
 | `grass/tuft_atlas.png` | grass tufts | made for New Dawn: `tools/newdawn/grass-tufts/render_tufts.py` | CC0 1.0 | n/a |
 | `grass/flower_atlas.png` | daisies, buttercups, violet wildflowers, clover patch | made for New Dawn: `tools/newdawn/grass-tufts/render_tufts.py OUT 7 1024 flower_atlas.png` | CC0 1.0 | n/a |
 | `oga-lens-flares/flare/{star,extend,hexangle,iris,sun,ring}.png` | sun lens flare | hackcraft.de ("hc"), "Lens-Flares and Particles", https://opengameart.org/content/lens-flares-and-particles | CC-BY 3.0 or CC0 (page); archive says CC0. **Credited as CC-BY 3.0** | none (byte-identical) |
