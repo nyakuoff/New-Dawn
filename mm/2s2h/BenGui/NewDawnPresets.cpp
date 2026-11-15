@@ -83,7 +83,7 @@ const Row kRows[] = {
     { "gNewDawn.Lighting.PointLightQuality",           F, { 0.5f,  0.5f,  0.5f,  0.25f, 0.0f } },
     { "gNewDawn.Lighting.Characters",                  I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.Lighting.Local",                       I, { 1,     1,     1,     1,     0 } },
-    { "gNewDawn.Interior.Windows",                     I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Interior.Windows",                     I, { 0,     0,     0,     0,     0 } },
     { "gNewDawn.Interior.Emissive",                    I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Materials.Enabled",                    I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Materials.Strength",                   F, { 1.5f,  1.5f,  1.5f,  1.5f,  1.0f } },

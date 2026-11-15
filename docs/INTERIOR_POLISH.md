@@ -1,10 +1,10 @@
 # Interior polish (roadmap item 7)
 
-Render-only, HDR only. Branch `feature/interior-polish` (local, not pushed). In Ultra and High; off in Medium, Low and Original look.
+Render-only, HDR only. Branch `feature/interior-polish` (local, not pushed). The emissive glow is on in Ultra and High; the **added windows (and so their shafts, pools and beam dust) are off in every look** until the maintainer decides on them: turn on Advanced > Interiors > Window Light.
 
 | Cvar | Default | What |
 | --- | --- | --- |
-| `gNewDawn.Interior.Windows` | 0 (preset 1) | Windows, light shafts, pools of light, dust in the beams |
+| `gNewDawn.Interior.Windows` | 0 (all looks) | Windows, light shafts, pools of light, dust in the beams |
 | `gNewDawn.Interior.Strength` | 1 (0-3) | Light multiplier |
 | `gNewDawn.Interior.Motes` | 1 | Dust in the beams (needs `Atmos.Particles`) |
 | `gNewDawn.Interior.Pools` / `.Shafts` / `.Panes` | 1 | Developer toggles for the three parts of the window pass |
@@ -44,8 +44,10 @@ exists in the scenes above; the path is wired and goes through the same pass.
   (furniture and Link shade it) and a facing term light it; the colour lifts the painted albedo the way the local lights do, so darks stay
   dark. *Shaft*: the view ray is intersected analytically with each beam prism (slab test in window/beam coordinates), 6 jittered
   samples, Henyey-Greenstein forward scattering (stronger when looking toward the window), clamped at the first surface.
-  *Pane*: a depth-tested quad with frame and mullions, sky-lit by the same light (night is nearly black blue).
-- **Dust**: the existing ambient-particle pass (CC0 Kenney `circle_05` sprite, no new asset). In interiors with windows it draws 2048
+  *Pane*: a depth-tested quad with a warm wood frame and mullions; the glass is frosted (low-frequency noise), shows a horizon-to-zenith
+  gradient and darkens toward the frame, lit by the same light (night is nearly black blue). It does not sample the sky cube: interiors
+  have no sky-ambient/reflection cube (the physical-sky marker never fires there), so the gradient is procedural.
+- **Dust** (only exists where a window beam does, so it follows the Window Light toggle): the existing ambient-particle pass (CC0 Kenney `circle_05` sprite, no new asset). In interiors with windows it draws 2048
   instead of 1024 motes; every second one spawns inside a beam prism, drifts slowly and is lit only while inside it (membership matches
   the pass). Others keep the old near-lamp behaviour.
 - **Emissive** (`RunEmissive`, stage 23): draws of classified textures write stencil 4 (night glass) or 8 (lamps, signs) at the opaque
