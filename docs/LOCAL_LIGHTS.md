@@ -144,7 +144,7 @@ light is a small share of the lit result.
 
 ## Flame lights and flame glow (`gNewDawn.Lighting.FlameLight`, torch-light)
 Default 0, **1 in Ultra, High, Medium and Low** (needs Local Lights; the glow part needs VFX). `.FlameStrength` (0-4, 1), `.FlameRange` (0.25-3, 1),
-`.FlameAlbedo` (0-0.6, 0.32), `gNewDawn.Vfx.GlowRadius` (0.1-2, 0.5). Menu: Advanced -> Lighting & Shadows -> Flame Light Pools / Strength.
+`.FlameAlbedo` (0-1, 0.5: how much a fire lifts dark surfaces; 0 none), `gNewDawn.Vfx.GlowRadius` (0.1-2, 0.5). Menu: Advanced -> Lighting & Shadows -> Flame Light Pools / Strength.
 Playtest finding from the point-shadow captures: torches and braziers barely lit their surroundings and each sat in a big flat yellow disc.
 
 - **The disc.** It was the VFX glow class (`Lights_DrawGlow`, `gameplay_keep_Tex_08FBE0`, prim alpha 50) drawing the nearly flat `circle_05` sprite at
@@ -158,25 +158,31 @@ Playtest finding from the point-shadow captures: torches and braziers barely lit
   game lights).
 - **Which lights are flame lights.** `PrepareLocalLights` knows last frame's VFX flames (position, world half-height from the sprite's NDC height). A
   game light within 90 units of a flame, or the light tied to a flame the game gives none, is a flame light (fairies, boost < 1, never are). A flame light
-  gets: range = `clamp(10 x flame half-height, 130, 300)` x FlameRange (the flame's own size, not the game's large 250-radius light: a brazier about 210, a candle 130);
-  its colour 80% pulled toward a fire colour (1, 0.52, 0.20) at the same luminance; gain 8 x FlameStrength (other lights unchanged).
+  gets: range = `clamp(9 x flame half-height, 130, 260)` x FlameRange (the flame's own size, not the game's large 250-radius light: a brazier about 190, a candle 130);
+  its colour 80% pulled toward a fire colour (1, 0.52, 0.20) at the same luminance; gain 7.5 x FlameStrength (other lights unchanged).
 - **Shader (`kLocalLightShader`).** Fire lights use a smaller softening core (0.13R instead of 0.2R) and a steeper window `(1-x^2)^1.5` squared, so the pool
-  is strong near the fire and gone well before its range. Their contribution is accumulated separately and lights surfaces with at least
-  `FlameAlbedo` (the pass reads the already dark authored colour as the albedo, which swallowed fire light on dark walls); beyond the pool the unlit scene keeps
+  is strong near the fire and gone well before its range. Their contribution is accumulated separately and multiplies a **texture-preserving lifted albedo**:
+  `max(albedo, albedo^e * s)` with `e = 1 - 0.4 A`, `s = 1 + 0.3 A` (A = FlameAlbedo): a gentle gamma lift of the pass's own albedo estimate (the already
+  dark authored colour, square-rooted), so brick, tile seams and rivets keep their relative contrast inside the pool and dark texels still catch light. (The first
+  version substituted a constant minimum albedo, which turned the pool into a flat beige wash with the tile detail gone; fixed.) Beyond the pool the unlit scene keeps
   the #81 darkening and floor. The old early-out `lit < 0.002` left a visible ring at high intensity, so fire lights subtract the threshold instead (continuous).
-  The #82 low-pass and designed flicker are unchanged, and the point shadows now have real light to remove: Link's shadow from a torch falls across the floor.
+  Pools from several fires add (one shared per-channel cap), so there is no seam where they meet.
+- **Point shadows between pools.** The dark wedge behind Link in the Great Bay Temple view was his two crisp point shadows (one per brazier) crossing where neither
+  pool reached. The penumbra light radius is now 11 units x `Shadows.PointSoftness` (was 7), so the shadow edges are soft, and the smaller pools leave a plain falloff there.
+  The #82 low-pass and designed flicker are unchanged.
 - **GI.** The flame light feeds the world GI's local-light injection (`mWgi.lightRgb`), so the stronger flames bounce more; checked with Ultra's GI on (Great
-  Bay Temple mean luminance 53.8 -> 44.6 with GI on, 52.7 -> 42.7 with it off: the bounce adds about 1 level).
+  Bay Temple mean luminance 53.2 -> 38.6 with GI on, 54.0 -> 36.3 with it off: the bounce adds about 2 levels).
 
 **Evidence** (`~/dev/ghm-mods/showcase/torch-light/`, numbers in `data/README.txt`; RX 7800 XT 1080p Ultra, 0 GL errors, frozen game).
 - Great Bay Temple braziers, South Clock Town torch (with Link's shadow), Stock Pot Inn wall candle, Woodfall Temple torch room: splits, 1:1 crops and
-  light-only views. The discs are gone; each fire has a bright small core, a warm pool on the stairs, floor, wall and Link, and the dark is kept between fires
-  (Great Bay Temple frame mean luminance 53.8 -> 44.6).
-- GPU (300-frame stage averages, flame light off -> on): Great Bay Temple local lights 0.720 -> 0.409 ms and VFX 0.057 -> 0.024 ms; South Clock Town 0.601 -> 0.503
-  and 0.034 -> 0.016; Stock Pot Inn 0.240 -> 0.228 and 0.012 -> 0.011 (the old wide pools and large glow quads cost more).
-- Off identity: frozen Stock Pot Inn (deterministic-off list + the new interior/GI effects off) is SHA-256 `0288942a2b5eaf21` for main `f4e5d2929` and for this
-  branch with FlameLight=0 (two runs) or on without Local Lights. In flame scenes the off path differs from main only by the run-to-run noise.
+  light-only views. The discs are gone; each fire has a bright small core and a warm pool on the stair edges and bases, floor, wall and Link, with the dark kept between fires; the 1:1
+  crops show the stair panel seams and rivets, the South Clock Town brick relief and the Woodfall wall carving inside the pools.
+- GPU (300-frame stage averages, flame light off -> on): Great Bay Temple local lights 0.732 -> 0.381 ms and VFX 0.063 -> 0.023 ms; South Clock Town 0.609 -> 0.477
+  and 0.034 -> 0.017; Stock Pot Inn 0.247 -> 0.138 and 0.012 -> 0.009 (the old wide pools and large glow quads cost more).
+- Off identity: frozen Stock Pot Inn (deterministic-off list + the new interior/GI effects off). The PNG hash depends on which frame the run lands on; main `f4e5d2929` (five
+  runs) gave `4fec0682...`, `7e42837d...` (x2), `25e67982...`, `09f407ea...`; this branch with FlameLight=0 (five runs) gave `09f407ea...` (x3), `7e42837d...`, `5f274da7...`:
+  the same frames give the same hash on both sides. In flame scenes the off path differs from main only by the run-to-run noise.
 
 **Limits.** The Stock Pot Inn fireplace has neither a VFX flame nor a game light (its fire is painted on the room mesh), so it is unchanged; the Inn wall candles
-are covered. Woodfall Temple's torches are high on the walls behind trunks: their pool shows on the upper walls (`woodfall-temple-torch-room`), the flames are not
-in frame from a ground-level camera. Fires drawn through other textures keep the native look. Light-only views still include the VFX sprites drawn afterwards.
+are covered. Woodfall Temple's torches are high on the walls behind trunks: their pool shows on the carved upper wall, the flames are not in frame from a ground-level
+camera. Fires drawn through other textures keep the native look. Light-only views still include the VFX sprites drawn afterwards.
