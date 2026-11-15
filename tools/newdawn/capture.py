@@ -10,7 +10,7 @@ directory holding hard links to the binary and archives plus a generated config 
   capture.py --bin-dir build-cmake/mm --out /tmp/after
   capture.py --compare /tmp/before /tmp/after /tmp/side-by-side
 """
-import argparse, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, time
+import argparse, hashlib, json, os, re, shutil, signal, struct, subprocess, sys, tempfile, time
 from pathlib import Path
 
 # Capture points. entrance = (scene index << 9) | (spawn << 4) | variant, i.e. the ENTRANCE() macro in
@@ -63,7 +63,7 @@ DEFAULT_ATTRACT = "20,48,76"
 DEFAULT_CVARS = {"gEnhancements.Cutscenes.SkipEntranceCutscenes": 1, "gEnhancements.Cutscenes.SkipStoryCutscenes": 1,
                  # the generated config counts as an existing install: don't show the first-run notice over captures
                  "gNewDawn.Setup.Version": 1}
-RUN_FILES_SKIP = {"2ship2harkinian.json", "imgui.ini", "logs", "mods", "captures", "Save", "gamecontrollerdb.txt"}
+RUN_FILES_SKIP = {"cache", "2ship2harkinian.json", "imgui.ini", "logs", "mods", "captures", "Save", "gamecontrollerdb.txt"}
 
 
 # ---------------------------------------------------------------- process handling
@@ -141,6 +141,15 @@ def make_run_dir(bin_dir, parent, width, height, cvars, warp, mods=None):
                 enabled.append(f.stem)
         enabled.sort()
         cvars = {**cvars, "gSettings.EnabledMods": "|".join(enabled)}
+        stale = [n for n in enabled if "newdawn-recolor" in n or "newdawn-materials" in n]
+        if stale:
+            print(f"note: {stale} in --mods are redundant: the game generates identical archives itself and mounts "
+                  "them above these (a hand-built recolour archive is ignored as a source).", file=sys.stderr)
+    # The game builds its material maps on first launch into <app dir>/cache/newdawn-materials (about a minute).
+    # Keep that cache between runs (per mod set; the game re-checks its signature itself) so only the first run pays.
+    shared = parent / (".materials-cache-" + hashlib.sha1("|".join(enabled).encode()).hexdigest()[:10])
+    shared.mkdir(exist_ok=True)
+    (run / "cache").symlink_to(shared)
     cfg = {"ConfigVersion": 2, "CVars": {}, "Window": {
         "AudioBackend": "sdl", "Backend": {"Id": 2, "Name": "OpenGL"}, "Fullscreen": {"Enabled": False},
         "Width": width, "Height": height, "PositionX": 0, "PositionY": 0}}

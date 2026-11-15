@@ -14,7 +14,7 @@ import zipfile
 
 import numpy as np
 
-from materials import TEXTURE_TYPE, Texture, albedo_rgba, decode_texture, encode_texture
+from materials import DATA, TEXTURE_TYPE, Texture, albedo_rgba, decode_texture, encode_texture
 
 VERSION = "1.0.0"
 DEFAULTS = {"hue": 0.0, "saturation": 1.0, "gamma": 1.0,
@@ -253,7 +253,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pack", type=Path, help="local ZIP-backed 4K .o2r")
     parser.add_argument("--base", type=Path, help="local mm.o2r, fallback for resources absent from the pack")
-    parser.add_argument("--manifest", type=Path, default=Path(__file__).with_suffix(".json"))
+    parser.add_argument("--manifest", type=Path, default=DATA / "recolor.json")
     parser.add_argument("--out", type=Path, default=Path.home()/"dev/ghm-mods/sets/full/zy-newdawn-recolor.o2r")
     parser.add_argument("--preview", type=Path, help="private before/after texture previews (requires Pillow)")
     parser.add_argument("--self-check", action="store_true")

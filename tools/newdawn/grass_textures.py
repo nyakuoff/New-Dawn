@@ -7,7 +7,7 @@ foliage/ivy, not ground), by resource basename (tiny detail tiles are skipped). 
 import json, pathlib, re
 
 root = pathlib.Path(__file__).resolve().parents[2]
-data = json.load(open(root / "tools/newdawn/material-classification.json"))
+data = json.load(open(root / "mm/assets/custom/newdawn_materials/material-classification.json"))
 
 # Interior scenes: their green rugs, upholstery, planters and moss are not lawns. Every scene the game marks
 # RESTRICTIONS_INDOORS, plus enclosed scenes with their own restriction sets.

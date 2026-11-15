@@ -56,9 +56,9 @@ material-class recipes. Generate coverage for the whole local pack with:
 
 ```sh
 python3 tools/newdawn/materials.py --pack /path/to/MM_Reloaded_v11.0.3_4K.o2r \
-    --classify tools/newdawn/material-classification.json --jobs 4
+    --classify mm/assets/custom/newdawn_materials/material-classification.json --jobs 4
 python3 tools/newdawn/materials.py --pack /path/to/MM_Reloaded_v11.0.3_4K.o2r \
-    --classification tools/newdawn/material-classification.json \
+    --classification mm/assets/custom/newdawn_materials/material-classification.json \
     --out /home/loganp/dev/ghm-mods/materials/full --jobs 8
 ```
 
@@ -143,31 +143,28 @@ quality claim follows from generation alone. The generator changes no gameplay o
 
 ## Loading and lighting materials
 
-Drop the generated `newdawn-materials.o2r` into the game's `mods/` directory and enable it
-in the mod menu, after the albedo pack. It is an ordinary mod archive; no new loader or
-external asset directory is needed. Enable **New Dawn → Lighting → Companion Materials**
-and per-pixel lighting. The New Dawn preset enables both. `gNewDawn.Materials.Enabled`
-defaults to 0 outside the preset; `gNewDawn.Materials.Strength` defaults to 1 (0 restores
-original shading, range 0–2). The effect works in HDR and LDR on OpenGL.
+Players do not run `materials.py`. The game builds the maps (and the recolour below) itself on first launch from the
+HD textures it has loaded and caches them; see [docs/RUNTIME_MATERIALS.md](../../docs/RUNTIME_MATERIALS.md). The Python
+tools here are the reference implementation and development aids; `compare_maps.py` checks the in-game C++ port against them.
+Enable **New Dawn → Lighting → Companion Materials** and per-pixel lighting (the New Dawn preset enables both).
+`gNewDawn.Materials.Enabled` defaults to 0 outside the preset; `gNewDawn.Materials.Strength` defaults to 1 (0 restores
+original shading, range 0–2). The effect works in HDR and LDR on OpenGL. The recipe data
+(`materials.json`, `material-classification.json`, `recolor.json`) lives in `mm/assets/custom/newdawn_materials/` and
+is packed into `2ship.o2r`; the Python tools read it from there.
 
-`capture.py --mods` accepts one directory and uses a private mod list. For full-pack plus
-companion captures, make a small directory of symlinks (the following only links local files):
+`capture.py --mods DIR` passes community mods only (use `~/dev/ghm-mods/sets/community`). The game generates the maps
+for that mod set on the first capture and `capture.py` keeps the cache between runs. Hand-built `zy-`/`zz-` archives in
+`--mods` are redundant (the generated ones override identical content). `--cvar gNewDawn.Materials.Generate=0` turns
+the generator off, e.g. to compare against Python-built archives mounted as mods.
 
 ```sh
-mkdir -p /tmp/nd/matbind/mods
-for f in /home/loganp/dev/ghm-mods/sets/full/*.o2r; do
-    ln -s "$f" /tmp/nd/matbind/mods/
-done
-ln -s /path/to/generated/newdawn-materials.o2r /tmp/nd/matbind/mods/zz-newdawn-materials.o2r
-python tools/newdawn/capture.py --bin-dir build/mm --mods /tmp/nd/matbind/mods \
-    --points south_clock_town --rot 180 --out /tmp/nd/matbind/on \
-    --cvar gEnhancements.Mods.AlternateAssets=1 \
-    --cvar gNewDawn.Lighting.PerPixel=1 --cvar gNewDawn.Materials.Enabled=1
+python tools/newdawn/capture.py --bin-dir build/mm --mods ~/dev/ghm-mods/sets/community --preset \
+    --points south_clock_town --rot 320 --out /tmp/nd/matbind/on
+python tools/newdawn/compare_maps.py --cpp <captures>/.materials-cache-*/newdawn-materials/live \
+    --materials /path/to/python/zz-newdawn-materials.o2r --recolor /path/to/python/zy-newdawn-recolor.o2r
 ```
 
-Add all `kRows` Ultra values from `mm/2s2h/BenGui/NewDawnPresets.cpp` for a full-preset
-comparison; the command above only demonstrates loading. Change Materials.Enabled to 0
-for the matching off image. Archives actually loaded are printed by the capture tool.
+Archives actually loaded are printed by the capture tool.
 
 Only supported opaque, lit world surfaces use maps: no rectangles, environment-generated
 UVs, masked/blended replacements, framebuffer textures, custom shaders or translucent draws.
@@ -283,7 +280,8 @@ python3 tools/newdawn/recolor.py --pack /path/to/4K.o2r --base /path/to/mm.o2r \
     --out /private/mods/zy-newdawn-recolor.o2r
 ```
 
-Regenerate material companions from the final albedo: add
+The game applies this recolour itself at first launch (docs/RUNTIME_MATERIALS.md); `recolor.py` is the reference and preview tool.
+To build matching Python material companions, add
 `--overlay-pack /private/mods/zy-newdawn-recolor.o2r` to the existing `materials.py` generation command.
 Repeat `--overlay-pack` in archive load order if there are several overrides; the last matching entry wins.
 Unchanged source content reuses the existing material cache. Old companions for changed albedos fail the
