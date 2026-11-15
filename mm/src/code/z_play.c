@@ -1458,8 +1458,13 @@ void Play_DrawMain(PlayState* this) {
 
             if (1) {
                 if (R_PLAY_FILL_SCREEN_ON) {
-                    Environment_FillScreen(gfxCtx, R_PLAY_FILL_SCREEN_R, R_PLAY_FILL_SCREEN_G, R_PLAY_FILL_SCREEN_B,
-                                           R_PLAY_FILL_SCREEN_ALPHA, FILL_SCREEN_OPA | FILL_SCREEN_XLU);
+                    // 2S2H [New Dawn] the mask-transformation fill can be drawn as an HDR radial flash by the renderer
+                    if (!NewDawnVfx_MaskFlash(this, R_PLAY_FILL_SCREEN_R, R_PLAY_FILL_SCREEN_G, R_PLAY_FILL_SCREEN_B,
+                                              R_PLAY_FILL_SCREEN_ALPHA)) {
+                        Environment_FillScreen(gfxCtx, R_PLAY_FILL_SCREEN_R, R_PLAY_FILL_SCREEN_G,
+                                               R_PLAY_FILL_SCREEN_B, R_PLAY_FILL_SCREEN_ALPHA,
+                                               FILL_SCREEN_OPA | FILL_SCREEN_XLU);
+                    }
                 }
 
                 switch (this->envCtx.fillScreen) {
