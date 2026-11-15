@@ -82,14 +82,18 @@ last differs in a single byte by 1 level (relief channel of `Z2_TOWNTex_01ADD0_r
 normal X max error 0, normal Y 0, roughness 0, relief 1 (one value in about 2.7 GB). All 42 recolour entries are
 byte-identical. The same holds when the Python archives are also mounted as mods (`--mods sets/full`).
 
-**Renders** (`~/dev/ghm-mods/showcase/runtime-materials/`, fixture: clock 12, frame 200, Ultra preset, identity cvars from
-the agent rules; reference = the same binary with `gNewDawn.Materials.Generate=0` and the Python archives as mods):
-Termina Field, South Clock Town (rot 320, the POM paving) and the Stock Pot Inn. 22 and 9 materials became ready in the
-Termina Field and Clock Town reference and generated runs alike (`NewDawn material ready` log lines; none in the Inn).
-Mean absolute difference reference vs generated equals reference vs reference run-to-run noise (Termina Field 0.41 vs 0.95,
-Clock Town 0.8956 vs 0.8990, paving crop 0.182 vs 0.200 on a 0-255 scale); `crop_sct_pom_1to1.png` is the 1:1 paving crop.
-Outdoor and Inn frames are not frame-exact repeatable on this fixture even against themselves, so the byte-identical
-archives are the exact proof and the renders are the end-to-end check. 0 GL errors (`MESA_DEBUG=context`) in every run.
+**Renders** (`~/dev/ghm-mods/showcase/runtime-materials/final/`, on the merged tip f6b1e4ac1 + libultraship 570f4d9c; fixture:
+clock 12, frame 200, Ultra preset, identity cvars from the agent rules; reference = the same binary with
+`gNewDawn.Materials.Generate=0` and the Python archives as mods): Termina Field, South Clock Town (rot 320, the POM paving)
+and the Stock Pot Inn, 1:1 crops in `crop_*_1to1.png`. The same materials became ready in the reference and generated runs
+(22 at Termina Field, 9 at Clock Town, none in the Inn; 0 skipped). Mean absolute difference reference vs generated on a
+0-255 scale: Termina Field 0.126 (10.5 % of pixels differ, 0.19 % by more than 8 levels), Clock Town 0.035 (0.003 % above
+8 levels). Before the merge, reference vs reference run-to-run noise was 0.95 and 0.90 at those two points, so the
+difference is at or below noise. The Inn frame differs only where Link's pose lands on another animation frame (the
+wood floor is identical; the fixture is not frame-exact even reference vs reference, mean 5.5), and no map is bound
+there. The byte-identical archives are the exact proof; the renders are the end-to-end check. 0 GL errors
+(`MESA_DEBUG=context`) in every run. The clean-cache first launch on the final build generated in 9.1 s (peak RSS 2.4 GB), the
+next launch mounted the cache with no popup.
 
 ## Python tools
 
