@@ -1332,6 +1332,34 @@ void BenMenu::AddSettings() {
         .CVar("gNewDawn.Lighting.CharactersStrength")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
         .Options(FloatSliderOptions().Min(0.0f).Max(2.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
+    AddWidget(path, "Character Light Neutralising: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Characters.LightNeutral")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.5f).Tooltip(
+            "Removes part of the colour from the light that reaches Link, NPCs and enemies, keeping its brightness and "
+            "direction, so skin, hair and cloth keep their own colour in warm sun instead of turning yellow or acid. "
+            "The world keeps its grade. 0 is the scene's light as it is. Needs Character Lighting."));
+    AddWidget(path, "Character Highlight Shoulder: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Characters.LightShoulder")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.5f).Tooltip(
+            "Rolls the brightest channel of lit characters off softly before the tonemap, so saturated greens and "
+            "reds do not run away from the other two channels. 0 is off. Needs Character Lighting."));
+    AddWidget(path, "Character Soft Wrap: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Characters.LightWrap")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.35f).Tooltip(
+            "Softens the edge between light and shade on characters: the sun's light wraps past the terminator and "
+            "takes on the colour of the skin or cloth, like skin and fabric in a modern remake. 0 is plain diffuse. "
+            "Needs Character Lighting."));
+    AddWidget(path, "Character Grade Relief: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Characters.GradeRelief")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.8f).Tooltip(
+            "Applies the display grade (contrast, saturation and the art direction's green boost) to characters at "
+            "reduced strength, so Link's tunic and everyone's skin keep their colour instead of clipping to acid green "
+            "and yellow. The world keeps its full grade. 0 grades characters like the world. Needs Character Lighting "
+            "and Local Lights."));
     AddWidget(path, "Smooth Characters", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Characters.Smooth")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })

@@ -42,7 +42,7 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.7.1";
+constexpr const char* kConverterVersion = "1.10.0";
 
 struct Entry {
     const char* object;
@@ -589,7 +589,7 @@ struct ColourParams {
     float lightRef, saturation;
 };
 ColourParams GetColourParams() {
-    return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.55f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.15f) };
+    return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.92f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.0f) };
 }
 
 struct Tint {
@@ -650,8 +650,16 @@ void ApplyTint(Mm3d::Image& img, const Tint& t) {
 }
 
 void MapColour(Mm3d::Image& img, const Mm3d::Material& mat, const ColourParams& cp) {
+    // The 3DS shows texture x scale x (ambient x A + diffuse x D x N.L): the combiner stages' RGB scales (2 for most characters, 1
+    // for some) multiply, and the N64 shows texture x (a + d x N.L). Materials without lighting (eyes, glows, water) are
+    // texture x scale and are drawn unlit.
+    float scale = 1.0f;
+    for (int j = 0; j < mat.combinerCount; ++j) {
+        scale *= mat.combiners[j][2] == 2 ? 2.0f : (mat.combiners[j][2] == 4 ? 4.0f : 1.0f);
+    }
+    const bool lit = mat.fragmentLighting || mat.vertexLighting;
     const float coeff = (0.6f * mat.diffuse[0] + 0.4f * mat.ambient[0]) / 255.0f;
-    const float gain = coeff > 0.05f ? cp.lightRef / coeff : 1.0f;
+    const float gain = lit ? (coeff > 0.05f ? scale * coeff / cp.lightRef : 1.0f) : scale;
     for (size_t i = 0; i + 3 < img.rgba.size(); i += 4) {
         float c[3] = { (float)img.rgba[i], (float)img.rgba[i + 1], (float)img.rgba[i + 2] };
         const float lum = 0.299f * c[0] + 0.587f * c[1] + 0.114f * c[2];
@@ -1127,7 +1135,7 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                 const Mm3d::Material& mat = model.materials[m];
                 const int dw = texDeclared[m][0], dh = texDeclared[m][1];
                 const uint32_t cull = mat.cull == 1 ? 0x400 : (mat.cull == 2 ? 0x200 : 0);
-                const bool unlit = skipSpec.unlit.count(m) != 0;
+                const bool unlit = skipSpec.unlit.count(m) != 0 || (!mat.fragmentLighting && !mat.vertexLighting);
                 dl.W(0xD9000000, ((unlit ? 0x00210405u : 0x00230405u) & ~0x400u) | cull); // unlit: no G_LIGHTING, white vertex colours
                 dl.W(0xE200001C, mat.alpha == Mm3d::Material::Opaque ? 0xC8112078u
                                  : mat.alpha == Mm3d::Material::Cutout ? 0xC81049D8u : 0xC8113078u);
