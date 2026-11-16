@@ -148,3 +148,16 @@ Record only decisions that materially constrain future work. Avoid logs, specula
 - **Tradeoffs / rollback:** triangles that span a joint stretch (p99 about 2 to 3.4x). Faces are static until the CMAB animations are mapped. `gNewDawn.MM3D.Characters=0` (or no dump) leaves the frame pixel-identical to main (frozen Stock Pot Inn).
 - **Validation:** `docs/MM3D_CHARACTERS.md` (counts, colour studies, off identity, validation set and its gaps).
 
+
+### ND-016 — Texture pipeline: replace with practical-set CC0 materials wherever possible; local upscale for what can't be replaced
+- **Date:** 2026-11-16
+- **Status:** Accepted (maintainer)
+- **Goal:** one unified experience with the smallest possible download. New Dawn ships code, effects and about 30 compressed CC0 base materials, with a 150–250 MB target. Everything Nintendo-shaped is generated on the player's machine from their own N64 ROM and *Majora's Mask 3D* dump.
+- **Replace first:** every texture that can be expressed by a generic material (stone, brick, cobble, wood, plaster, roof, dirt, rock, moss, metal, fabric…) is replaced, "literally as much as possible", by an art-directed CC0 PBR material in the practical-set look of ND-014 (the round-2 spike).
+  - Materials are recoloured to the original's palette, scaled to the original UVs, given layer roles for multi-texture draws, and generated locally per texture.
+- **Upscale only what can't be replaced:** unique painted art (murals, signs, emblems, carvings, faces) and any texture with no generic equivalent.
+  - The source is the *Majora's Mask 3D* version of that texture when it exists, upscaled locally and graded to match the replaced surfaces around it.
+  - Without a 3DS dump, the N64 original is upscaled locally instead, as the fallback.
+- **MM3D dump:** the strongly recommended reference experience: 3DS models plus 3DS-sourced unique art. Without it, New Dawn still works with the same materials and effects.
+- **Community packs** (MM Reloaded, 3DS Link…) are no longer recommended: they are superseded by this pipeline and remain compatible as unofficial extras.
+- **Supersedes:** the "no native upgrades" rule for exactly one case, unique art that cannot be replaced, which is upscaled to match.
