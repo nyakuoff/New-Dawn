@@ -78,4 +78,7 @@ struct Model {
 
 bool ParseCmb(const std::vector<uint8_t>& data, Model& out, std::string& error);
 
+// The texture frames of a CMAB (texture pattern animation: the eye and mouth states of a character), level 0 as RGBA8.
+bool ParseCmabFrames(const std::vector<uint8_t>& data, std::vector<Image>& frames, std::string& error);
+
 } // namespace Mm3d

@@ -763,4 +763,43 @@ bool ParseCmb(const std::vector<uint8_t>& raw, Model& out, std::string& error) {
     }
 }
 
+// CMAB: "cmab", the pixel data offset at 0x1c, and a "txpt" table (count, then 24-byte entries: size, levels, width, height,
+// GL format, data offset, index).
+bool ParseCmabFrames(const std::vector<uint8_t>& raw, std::vector<Image>& frames, std::string& error) {
+    try {
+        Reader r(raw.data(), raw.size());
+        r.Magic(0, "cmab");
+        const uint32_t base = r.R32(0x1c);
+        size_t p = 0;
+        for (size_t i = 0; i + 4 <= raw.size(); ++i) {
+            if (std::memcmp(&raw[i], "txpt", 4) == 0) {
+                p = i;
+                break;
+            }
+        }
+        if (!p) {
+            throw FormatError("no texture table");
+        }
+        const uint32_t count = r.R32(p + 4);
+        if (count > 256) {
+            throw FormatError("implausible frame count");
+        }
+        for (uint32_t k = 0; k < count; ++k) {
+            const size_t q = p + 8 + 24 * (size_t)k;
+            const uint32_t size = r.R32(q), w = r.R16(q + 8), h = r.R16(q + 10), gl = r.R32(q + 12), off = r.R32(q + 16);
+            Fmt fmt;
+            std::string name;
+            if (!FormatOf(gl, fmt, name)) {
+                throw FormatError("unknown frame format");
+            }
+            r.Need((size_t)base + off, size);
+            frames.push_back(DecodeTexture(fmt, (int)w, (int)h, raw.data() + base + off, size));
+        }
+        return !frames.empty();
+    } catch (const std::exception& e) {
+        error = e.what();
+        return false;
+    }
+}
+
 } // namespace Mm3d

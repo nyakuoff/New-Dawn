@@ -92,9 +92,24 @@ size. If all 58 models were enabled the upscale would be about 190 textures, 60 
 
 ## Faces
 The 3DS eyes and mouths are separate planes with one 32x32 texture each, animated by the actor's material animations
-(`*.cmab`, texture patterns and UV offsets). The N64 draws its eyes from segment 0x08/0x09 textures chosen by the actor.
-Converted models keep the 3DS eye and mouth planes static (open eyes, neutral mouth); the actor's blink and talk textures
-are not mapped. Mapping them needs the CMAB decoded and a per-actor table from N64 eye states to 3DS frames (milestone 2).
+(`*.cmab`: a table of texture frames, the animation frame picks the texture). The N64 draws its eyes and mouth from
+segment 8 and 9, which the actor points at one of its state textures (open, half, closed, happy, ...) each frame.
+- The converted head display list reads the same segment for the eye and mouth materials (`G_SETTIMG` with the segment
+  address, bit 0 set for the interpreter), so the actor's own blink and talk logic drives the face.
+- The overlay holds a 3DS frame under each N64 state texture's path (`mm3d/objects/<object>/<state texture>`). Which frame
+  stands for which state is the `FACE` table in `chartable.py` (`E`/`M`, segment, CMAB, `state=frame`), matched by eye on
+  montages of the N64 textures and the CMAB frames (`ParseCmabFrames` reads them; they are RGB565 or ETC1).
+- A face part is applied only when frame 0 of the CMAB matches one of the model's textures (mean RGB difference below 40);
+  otherwise the face keeps its first frame as before. Frames go through the same upscale and colour mapping as the rest.
+- The segment-addressed texture path had to learn about the overlay: with alternate assets on, the interpreter's async path
+  went straight to `alt/` and drew the HD pack's N64 face textures on the 3DS faces (libultraship, `ResolveTextureResource`).
+- Checked in game (same frame N64 vs 3DS, `showcase/mm3d-characters/review/`): Anju blinks (open, half-lid, closed) and
+  her mouth changes (smile, parted lips) with the N64 actor's states; the treasure gal's open eyes and lips; Romani, Cremia and
+  a Bomber draw their faces without artefacts but too small to judge states; the tree climber faces away; Kafei, the receptionist
+  and the other wired states were not framed. No frame of a talking mouth in Anju's N64 conversation opened wider than parted lips.
+- States wired: Anju (6 eye, 3 mouth), the tree climber, receptionist, treasure gal, Romani, Cremia, a Bomber (eyes), Kafei.
+  Others keep the first frame. Not mapped: the Bombers' number textures (segment 9 on the shirt), the Wolfos and other
+  models with a CMAB but no per-state table yet, UV-offset animations.
 
 ## Status (milestone 1)
 Implemented, built (RelWithDebInfo, `nd-heavy build`) and run in game.
@@ -182,7 +197,7 @@ in the experimental option. The five Bombers share one 3DS model (one hat), so w
 N64 gives each their own hat colour.
 
 ### Limits
-- Eye and mouth textures are static (see Faces). Props baked into a CMB are listed per skeleton (guard bottle, Anju's
+- Eye and mouth states exist only for the models listed under Faces. Props baked into a CMB are listed per skeleton (guard bottle, Anju's
   moon mask, the bomb shopkeeper's bomb); other models were not scanned for props beyond the validation set.
 - Flex-weld assumes the actor draws every limb through the Flex matrix pool in table order. An actor that skips limbs
   in its override callback shifts the slots; that is what the review in game is for.
