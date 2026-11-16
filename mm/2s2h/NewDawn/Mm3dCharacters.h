@@ -42,5 +42,16 @@ void Regenerate();
 void ApplyToggle();
 // True when the switch can do anything (archive mounted).
 bool Available();
+// True while the 3DS model of this Player form (0 Fierce Deity, 1 Goron, 2 Zora, 3 Deku, 4 human) is converted, enabled and on.
+bool LinkFormConverted(int form);
 
 } // namespace NewDawnMm3d
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+// Extra transform (x, y, z, scale) for a mask on a converted head; 0 when nothing applies (see Mm3dCharacters.cpp).
+int NewDawnMm3d_MaskFit(int form, int mask, float* out);
+#ifdef __cplusplus
+}
+#endif

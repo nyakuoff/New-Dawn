@@ -69,6 +69,7 @@ std::atomic<bool> gRunning{ false };
 bool gMounted = false, gPendingRestart = false, gStagedOk = false, gOverlayOn = false;
 std::string gMessage;
 uint32_t gConverted = 0, gFailed = 0, gEnabled = 0;
+uint32_t gLinkForms = 0; // bit per Player form whose 3DS model is converted and enabled (0 Fierce Deity .. 4 human)
 double gSeconds = 0;
 
 void SetState(State s, const std::string& message = "") {
@@ -1334,6 +1335,16 @@ void Mount(const json& stamp) {
     gEnabled = stamp.value("enabled", 0);
     gSeconds = stamp.value("seconds", 0.0);
     gState = State::Ready;
+    gLinkForms = 0;
+    for (const json& e : stamp.value("entries", json::array())) {
+        if (!e.value("ok", false) || !e.value("reviewed", false)) {
+            continue;
+        }
+        const std::string o = e.value("object", "");
+        // Player forms: 0 Fierce Deity, 1 Goron, 2 Zora, 3 Deku, 4 human.
+        gLinkForms |= o == "object_link_boy" ? 1 : o == "object_link_goron" ? 2 : o == "object_link_zora" ? 4 : o == "object_link_nuts" ? 8 :
+                      o == "object_link_child" ? 16 : 0;
+    }
 }
 
 // ------------------------------------------------------------------ the generator
@@ -1635,4 +1646,39 @@ void ApplyToggle() {
     SOH::SkeletonPatcher::UpdateSkeletons();
 }
 
+bool LinkFormConverted(int form) {
+    return gOverlayOn && form >= 0 && form < 5 && (gLinkForms & (1u << form)) != 0;
+}
+
 } // namespace NewDawnMm3d
+
+// Masks that sit on the head are placed for the N64 head and cap. The 3DS head is shifted back and its cap is bigger, so a
+// mask drawn with the head limb's matrix as is ends up inside the cap. Returns 1 and the extra transform (x, y, z, scale in
+// head limb units, applied about the limb origin before the mask) when the form's 3DS model is on. The first rows are measured
+// from the two heads (docs/MM3D_CHARACTERS.md, "Masks"); gNewDawn.MM3D.MaskFit.{X,Y,Z,S} override every mask while tuning.
+extern "C" int NewDawnMm3d_MaskFit(int form, int mask, float* out) {
+    if (!NewDawnMm3d::LinkFormConverted(form)) {
+        return 0;
+    }
+    struct Fit {
+        int form, mask;
+        float x, y, z, s;
+    };
+    static const Fit kFits[] = {
+        { 4, 15, 0.0f, 0.0f, 0.0f, 1.18f }, // Captain's Hat on human Link: 18% larger, so the crest clears the 3DS cap (tuned in game against the N64)
+    };
+    out[0] = out[1] = out[2] = 0.0f;
+    out[3] = 1.0f;
+    for (const Fit& f : kFits) {
+        if (f.form == form && f.mask == mask) {
+            out[0] = f.x, out[1] = f.y, out[2] = f.z, out[3] = f.s;
+        }
+    }
+    if (CVarGetInteger("gNewDawn.MM3D.MaskFit.On", 0) != 0) {
+        out[0] = CVarGetFloat("gNewDawn.MM3D.MaskFit.X", out[0]);
+        out[1] = CVarGetFloat("gNewDawn.MM3D.MaskFit.Y", out[1]);
+        out[2] = CVarGetFloat("gNewDawn.MM3D.MaskFit.Z", out[2]);
+        out[3] = CVarGetFloat("gNewDawn.MM3D.MaskFit.S", out[3]);
+    }
+    return out[0] != 0.0f || out[1] != 0.0f || out[2] != 0.0f || out[3] != 1.0f;
+}
