@@ -284,7 +284,7 @@ against the original (colour distance, luminance correlation at 8, 16 and 32 px,
 milestone 3 are among them, with the highest ranks of the table where the art survived the redraw (0.72, 0.71, 0.49). **The metric is a ranking, not a verdict**: redrawn art correlates poorly even when it is right (3 of the 13 verified pairs rank 0.08), and the
 geometry only says what the 3DS shows *at that place* (a mural can be redrawn with another composition). So `match` + `sheet` build review sheets (3 panels: N64 original, registered region, whole 3DS texture; IDs R0001...; a `decisions.txt` with one line per candidate
 to mark `r`, `w` or `n`), and `apply` writes the approved lines into `recipes.json: unique.mm3d_regions_verified`. The default stays strict (`Unique3ds=1`: approved pairs only). 126 candidates are on the sheets (rank >= 0.15, share >= 0.5, coverage >= 0.3, the 3DS crop denser than
-the N64 texture); 13 clear matches are pre-approved (Mayor's residence wall, lottery sign disc, a Woodfall log end, castle checker, Termina Field spiral tiles, three panels with vines, a stained window, the alley doors, the swamp shooting gallery landscape, the Tougites curtain, a bookshelf); the F40/F41 murals
+the N64 texture); 10 of them are approved (see "3DS pair review" below; the first pass had pre-approved 13, among them the Mayor's residence wall, lottery sign disc, a Woodfall log end, castle checker, Termina Field spiral tiles, three panels with vines, a stained window, the alley doors, the swamp shooting gallery landscape, the Tougites curtain, a bookshelf); the F40/F41 murals
 (the 3DS mural is a different composition with the text lost) and the Sonchonoie wallpaper (the redrawn roses are faint) were looked at and left undecided. `mm3d_regions.json` carries the sheet candidates (130 entries, 62 KB, names and numbers only).
 Runtime: `UniqueArt::SampleRegion` samples the 3DS atlas through the affine map (bilinear, wrap, v bottom-up) at 2x to 4x the N64 size, and the result goes through the same upscaler and grading as a whole 3DS texture (colour statistics follow the original). A reviewed pair skips the coarse content rule; an unreviewed pair (mode 2) keeps it.
 
@@ -318,10 +318,37 @@ Everything in `~/dev/ghm-mods/showcase/texture-pipeline-4/`: 15 prop-heavy views
 **Not done / limits**
 * The prop sheets judge the textures, not the objects in play: crates, pots and chests sit at the edge of every captured frame.
 * The tree trunk (`object_tree` body) reads as a soft brown bark after the replacement; it is plainer than the original's painted strokes.
-* 3DS region approvals are a person's job: the metric is a ranking (see above), and 13 of 126 are approved. The F40/F41 murals and the redrawn wallpaper show what the 3DS has at that place, not the same art.
+* 3DS region approvals are a person's job: the metric is a ranking (see above), and 10 of 126 are approved after the review below. The F40/F41 murals and the redrawn wallpaper show what the 3DS has at that place, not the same art.
 * The 3DS-sourced textures are verified on the extracted textures only; no in-game capture of the rooms that use them (the mayor's residence, the shooting gallery, the Tougites shop, Termina Field's spiral tiles...).
 * Sharded archives (parallel resume) were not needed: one archive resumes with a journal.
 
 
 **Identity run lesson (again).** The first identity attempt compared against frames of the "Preparing remastered textures" popup: the play build's cache was cold after its 10:17 rebuild, and the frozen fixture cannot attach while the popup blocks the boot (the runner reports `fixture never attached`).
 A long-wait capture of the play build warms its cache; after that its frozen runs attach. Warm both builds' caches before an identity run.
+
+## 3DS pair review (feature/3ds-pairs-review)
+
+All 126 candidates of `region3ds.py` were reviewed against one rule: **approve only the same artwork (motif, layout and colour scheme) when the 3DS version is clearly better; reject different compositions, lost text and scale or framing shifts.**
+Result: **7 region (`r`), 3 whole texture (`w`), 116 rejected (`n`)** (`recipes.json: unique.mm3d_regions_verified`; decisions with the IDs in `~/dev/ghm-mods/showcase/texture-pipeline-4/3ds-review/decisions_final.txt`, larger second-look cells in `3ds-review/zoom/`).
+
+| ID | texture | source | why |
+|---|---|---|---|
+| R0001, R0002 | Deku Palace zigzag border (two rooms) | r | same motif and layout, crisper |
+| R0015 | Woodfall Temple log end with the red squiggle | r | same art, rings crisp |
+| R0019 | Ikana Castle teal and gold checker | r | same 2x2 layout, embossed tiles |
+| R0042 | Stone Tower (inverted) stained window | r | same red leaves and sunburst |
+| R0079 | swamp shooting-gallery palm on the beach | r | same subject and framing |
+| R0126 | bookshelf spines | r | same row of books, crisp |
+| R0006 | lottery shop green disc | w | the framed disc, no blur |
+| R0011 | swordsman school plaster | w | same wall, plaster grain |
+| R0014 | Fisherman's wave band | w | same wave and dots |
+
+Rejected on purpose: the F40/F41 murals (the 3DS mural is another composition, the text is gone, scale shifts), the Sonchonoie wallpaper (different layout, faint roses), the Termina Field spiral tiles (different layout and colour), the vine-panel textures of the Moon trials (white and teal in the N64, grey and olive in the 3DS), the Pirate fortress plates (grey to rusty),
+the item-shop log slice (the whole texture is an atlas, the region crop shows a different part of the log), and the rest as different motifs. Two approvals were withdrawn after checking: R0048 (Laundry Pool panel: in game the 3DS slats are green and mossy, not the same colour scheme) and R0018 (Music Box House: the N64 texture is an intensity texture, which the pipeline never replaces).
+
+**In game** (3DS RomFS set, `Unique3ds=0` against the default, the same frame; `~/dev/ghm-mods/showcase/texture-pipeline-4/3ds-review/ingame/`): R0015 (Woodfall floor rings), R0011 (swordsman school wall) and R0001 (Deku Palace garden border; small) show the 3DS source as intended; R0048 (Laundry Pool) was seen and withdrawn.
+The other approved textures could not be framed: the capture points land on the wrong spot or a fixed or dark camera (Ikana Castle's warp lands in the Stock Pot Inn lobby, the fisherman's hut and the lottery shop have fixed cameras, the Stone Tower is dark, the shooting-gallery palm is not in view of the warp), R0126's scene (`Z2_DANPEI2TEST`) has no entrance. Those six are approved from the sheets and the extracted textures only.
+The `r3_*` points in `tools/newdawn/capture.py` put Link in front of the largest triangle that uses a texture (computed from the geometry); they work on walls and floors of scenes with a following camera.
+
+The review tool gained `zoom` (chosen IDs at a larger size, keeping the sheet IDs) and `apply` now honours `n` (withdraws an earlier approval).
+
