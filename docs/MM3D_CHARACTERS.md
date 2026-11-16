@@ -103,6 +103,10 @@ segment 8 and 9, which the actor points at one of its state textures (open, half
   otherwise the face keeps its first frame as before. Frames go through the same upscale and colour mapping as the rest.
 - The segment-addressed texture path had to learn about the overlay: with alternate assets on, the interpreter's async path
   went straight to `alt/` and drew the HD pack's N64 face textures on the 3DS faces (libultraship, `ResolveTextureResource`).
+- Checked in game (same frame N64 vs 3DS, `showcase/mm3d-characters/review/`): Anju blinks (open, half-lid, closed) and
+  her mouth changes (smile, parted lips) with the N64 actor's states; the treasure gal's open eyes and lips; Romani, Cremia and
+  a Bomber draw their faces without artefacts but too small to judge states; the tree climber faces away; Kafei, the receptionist
+  and the other wired states were not framed. No frame of a talking mouth in Anju's N64 conversation opened wider than parted lips.
 - States wired: Anju (6 eye, 3 mouth), the tree climber, receptionist, treasure gal, Romani, Cremia, a Bomber (eyes), Kafei.
   Others keep the first frame. Not mapped: the Bombers' number textures (segment 9 on the shirt), the Wolfos and other
   models with a CMAB but no per-state table yet, UV-offset animations.
