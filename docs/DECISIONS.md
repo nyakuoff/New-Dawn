@@ -161,3 +161,13 @@ Record only decisions that materially constrain future work. Avoid logs, specula
 - **MM3D dump:** the strongly recommended reference experience: 3DS models plus 3DS-sourced unique art. Without it, New Dawn still works with the same materials and effects.
 - **Community packs** (MM Reloaded, 3DS Link…) are no longer recommended: they are superseded by this pipeline and remain compatible as unofficial extras.
 - **Supersedes:** the "no native upgrades" rule for exactly one case, unique art that cannot be replaced, which is upscaled to match.
+
+### ND-017 — 3DS character textures are upscaled 4x on the player's machine with a CC0 CPU network; transfer and detail maps are not adopted yet
+- **Date:** 2026-11-16
+- **Status:** Accepted (maintainer approved AI upscaling of the 3DS textures)
+- **Context / evidence:** the 3DS models are better than the N64 ones but their textures are 128 px against the pack's 1024 px. Compared 1:1 in game on the guard, Anju and the receptionist: bicubic, PBRify SPAN, Real-ESRGAN anime, HD transfer from the N64 model, and normal/roughness maps (`docs/MM3D_CHARACTERS.md`, "Textures").
+- **Decision:** the converter runs PBRify SPAN V4 (CC0-1.0, weights committed under `mm/assets/newdawn/mm3d/`) over every character texture before the colour mapping, in a C++ port that matches ONNX Runtime within 1/255 (no ONNX Runtime dependency). `gNewDawn.MM3D.Upscale` switches it.
+- **Alternatives considered:** Real-ESRGAN anime (sharper faces, destroys the guard's mail, dataset licence unstated); transfer from the HD pack (artefacts where designs differ, needs a reliability mask); detail maps (skin and faces degrade without a class mask and tone compensation); ONNX Runtime in the build (a large dependency for one 1.7 MB network).
+- **Tradeoffs / rollback:** up to about 60 s of one core if all 58 models are enabled (cached afterwards); the textures stay softer than the 4K pack on faces. `gNewDawn.MM3D.Upscale=0` restores the 3DS size.
+- **Validation:** side-by-side sheets in `~/dev/ghm-mods/showcase/mm3d-characters/textures/`, numeric match to ONNX Runtime, 0 GL errors.
+

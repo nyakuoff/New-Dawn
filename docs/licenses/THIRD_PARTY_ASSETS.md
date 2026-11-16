@@ -16,6 +16,7 @@ None of it comes from the game. Total size: about 8.2 MB.
 | `grass/tuft_atlas.png` | grass tufts | made for New Dawn: `tools/newdawn/grass-tufts/render_tufts.py` | CC0 1.0 | n/a |
 | `grass/flower_atlas.png` | daisies, buttercups, violet wildflowers, clover patch | made for New Dawn: `tools/newdawn/grass-tufts/render_tufts.py OUT 7 1024 flower_atlas.png` | CC0 1.0 | n/a |
 | `oga-lens-flares/flare/{star,extend,hexangle,iris,sun,ring}.png` | sun lens flare | hackcraft.de ("hc"), "Lens-Flares and Particles", https://opengameart.org/content/lens-flares-and-particles | CC-BY 3.0 or CC0 (page); archive says CC0. **Credited as CC-BY 3.0** | none (byte-identical) |
+| `mm3d/span_v4_4x.bin` | 4x upscale of the player's own 3DS character textures (generated on their machine) | PBRify_Remix, model 4x-PBRify_UpscalerSPANV4, https://github.com/Kim2091/PBRify_Remix | CC0 1.0 (repo licence; trained on CC0 data per its README) | converted to a raw float32 layout, values unchanged |
 | `nightsky/stars.bin` | night stars | David Nash, HYG Database v4.1, https://github.com/astronexus/HYG-Database (from Hipparcos, Yale Bright Star, Gliese) | **CC BY-SA 4.0**; this derivative is under the same licence | filtered to magnitude <= 6.9, colour from B-V, binary packed |
 | `nightsky/milkyway_eq.jpg`, `.txt` | Milky Way | NASA/GSFC Scientific Visualization Studio, "Deep Star Maps 2020" (SVS 4851), https://svs.gsfc.nasa.gov/4851; Gaia DR2: ESA/Gaia/DPAC; animator Ernie Wright | NASA media: not copyrighted, credit requested; Gaia DR2 **CC BY-SA 3.0 IGO**, so this derivative is distributed under CC BY-SA 3.0 IGO | stars despiked, galactic 8192x4096 resampled to equatorial 4096x2048, cube-root 8-bit JPEG (q95) |
 
@@ -33,7 +34,7 @@ and the verdict for every source checked (including the excluded ones) is in `to
 - **Stars:** HYG Database by David Nash (astronexus.com), CC BY-SA 4.0.
 - **Milky Way:** NASA/Goddard Space Flight Center Scientific Visualization Studio. Gaia DR2: ESA/Gaia/DPAC (CC BY-SA 3.0 IGO).
 - **Lens flares:** "Lens-Flares and Particles" by hackcraft.de via OpenGameArt, CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
-- Kenney particle sprites, the leaf, and New Dawn's own caustics, grass and fire art are CC0 (credit not required, given anyway).
+- Kenney particle sprites, the leaf, New Dawn's own caustics, grass and fire art, and the PBRify SPAN upscaler weights are CC0 (credit not required, given anyway).
 
 These appear in the menu under Settings > About ("Bundled art and data") and in the README.
 

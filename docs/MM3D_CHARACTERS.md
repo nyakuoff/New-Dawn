@@ -66,6 +66,30 @@ lean saturated rather than faithful to the 3DS palette. The study images (`~/dev
 colour_*_study.png`) compare LightRef 0.5 to 0.8 and saturation 1.1 to 1.55 on the guard, Anju and the receptionist:
 1.35 keeps skin and hair vivid without clipping; 1.55 turns the guard's skin and Anju's hair garish.
 
+## Textures
+The 3DS character textures are 128x128 atlases (faces and hair 32x32), against 1024x1024 in the community pack for the
+same N64 characters. Four ways to close the gap were compared 1:1 in game on the guard, Anju and the receptionist
+(`~/dev/ghm-mods/showcase/mm3d-characters/textures/`, one sheet per option and character):
+
+| Option | Result | Verdict |
+|---|---|---|
+| **A. 4x AI upscale at conversion time**, PBRify SPAN V4 (CC0 weights) | Mail reads as rings instead of zebra stripes, ETC1 dithering and block edges disappear, hair and faces stay clean; the 3DS design and colours are untouched | **Shipped.** CPU port, 0.76 s per 128 px texture on one core, about 1 s for the four enabled models on 20 threads |
+| A2. Real-ESRGAN anime x4plus (BSD-3 code) | Crisper face line art and hair strands in the atlas, but it flattens the guard's mail into horizontal bars, so in game the guard is worse than with SPAN; training data not stated (anime images from the web) | Not shipped: worse on the model players notice most, and its dataset licence is unclear |
+| B. Transfer of the N64 model's HD texture onto the 3DS mesh in the shared bind pose | Full transfer imports the N64 colours and the wrong content wherever the two designs differ: tiger stripes on the guard's thighs, a grey spear, hair strands on Anju. A high-pass-only transfer (3DS design kept, HD detail added) looks like A plus artefacts | **Not adopted.** Needs a per-region reliability mask (faces, skin and shapes that differ) that does not exist yet; also needs the N64 display lists and the pack at conversion time |
+| C. Normal and roughness maps for the upscaled textures (`tools/newdawn/materials.py` recipe) | Helmet and mail gain a metallic response; skin and faces go flat, greenish and patchy, and the whole character is darker (the material shading has no matching gain) | **Not adopted** as generated. Needs a class mask (skin, hair, cloth, metal) and tone compensation |
+
+The renderer binds generated maps to textures under `alt/scenes/` only. Option C was tested with a temporary change
+that also accepted `mm3d/` albedos (maps stored next to the albedo, nothing to verify); the change is not part of this
+branch, so enabling C later is a small `BindMaterialMaps` edit plus the class mask.
+
+Implementation: `SpanUpscale.cpp` is a direct CPU port of the network (22 convolutions, 426k parameters; weights in
+`mm/assets/newdawn/mm3d/span_v4_4x.bin`, 1.7 MB, CC0, `export_span.py` makes it from the ONNX export). It matches ONNX
+Runtime 1.32 within 1/255 on a real texture. Textures are edge-replicated (they are atlases, not tiles) and alpha is
+resized bilinearly; the upscale runs before the colour mapping. The display list keeps declaring the original size, so
+the UVs still fit. `gNewDawn.MM3D.Upscale=0` (menu checkbox) skips it; weights missing or the switch off leave the 3DS
+size. If all 58 models were enabled the upscale would be about 190 textures, 60 s of single-core CPU, so roughly 5 s on
+20 threads and 30 s on two cores; the result is cached with the models.
+
 ## Faces
 The 3DS eyes and mouths are separate planes with one 32x32 texture each, animated by the actor's material animations
 (`*.cmab`, texture patterns and UV offsets). The N64 draws its eyes from segment 0x08/0x09 textures chosen by the actor.
@@ -79,8 +103,8 @@ Implemented, built (RelWithDebInfo, `nd-heavy build`) and run in game.
 |---|---|
 | Skeletons in the table | 58 Flex skeletons with a hierarchy identical to a CMB of the same-named 3DS archive (`chartable.py`) |
 | Converted / failed | **58 / 0** (every CMB parses, binds and writes) |
-| Conversion time | **0.03 s** for all 58 (20 threads, includes reading the GARs and the N64 skeletons; 51,078 triangles, 154 textures, 9,114 triangles span a joint) |
-| Cache | 173 KB for the 4 enabled models |
+| Conversion time | **0.03 s** for all 58 without the texture upscale; **1.0 s** with it for the 4 enabled models (20 threads, includes reading the GARs and the N64 skeletons; 51,078 triangles, 154 textures, 9,114 triangles span a joint) |
+| Cache | 2.4 MB for the 4 enabled models with the 512 px textures (173 KB before the upscale) |
 | Enabled in game (reviewed) | **4**: Clock Town guard, Anju, Mayor's Residence receptionist, Business Scrub |
 | Held back (converted, not enabled) | 54, until each has been looked at in game |
 | Off identity | toggle off with the cache mounted, and no dump at all: frozen Stock Pot Inn (clock 12, frame 30, the extended off list) is **pixel-identical** (0 differing pixels) to main `85fbd4fd4`, which itself reproduces exactly run to run |
