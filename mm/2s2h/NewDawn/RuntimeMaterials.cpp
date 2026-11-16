@@ -1,6 +1,7 @@
 // See RuntimeMaterials.h and docs/RUNTIME_MATERIALS.md. A C++ port of tools/newdawn/materials.py (the
 // numpy path, resolution divisor 2) and tools/newdawn/recolor.py, run on the player's own HD textures.
 #include "RuntimeMaterials.h"
+#include "ZipWriter.h"
 
 #include <algorithm>
 #include <atomic>
@@ -159,117 +160,7 @@ std::vector<uint8_t> EncodeTexture(uint32_t kind, uint32_t w, uint32_t h, uint32
     return out;
 }
 
-// ------------------------------------------------------------------ zip writer (deflate in the caller's thread)
-class ZipWriter {
-  public:
-    bool Open(const fs::path& path) {
-        mOut.open(path, std::ios::binary | std::ios::trunc);
-        return mOut.is_open();
-    }
-
-    // Thread safe. Entries are deflated outside the lock and appended whole.
-    void Add(const std::string& name, const uint8_t* data, size_t n) {
-        std::vector<uint8_t> packed;
-        uint16_t method = 0;
-        if (n > 0 && Deflate(data, n, packed) && packed.size() < n) {
-            method = 8;
-        }
-        const uint8_t* body = method ? packed.data() : data;
-        const size_t bodySize = method ? packed.size() : n;
-        const uint32_t crc = (uint32_t)crc32(0, data, (uInt)n);
-
-        std::lock_guard<std::mutex> lock(mMutex);
-        if (mFailed || mPos + bodySize + name.size() + 30 > 0xFFFFFFF0ull || mEntries.size() >= 65534) {
-            mFailed =
-                true; // would need zip64; the maps are ~1 GB so this is a real error, not a limit to engineer around
-            return;
-        }
-        uint8_t h[30] = {};
-        Put32(h, 0x04034b50);
-        h[4] = 20;
-        h[8] = (uint8_t)method;
-        h[11] = 0x00;
-        h[12] = 0x21; // date 1980-01-01, time 0: reproducible
-        Put32(h + 14, crc);
-        Put32(h + 18, (uint32_t)bodySize);
-        Put32(h + 22, (uint32_t)n);
-        h[26] = (uint8_t)name.size();
-        h[27] = (uint8_t)(name.size() >> 8);
-        mOut.write(reinterpret_cast<const char*>(h), 30);
-        mOut.write(name.data(), name.size());
-        mOut.write(reinterpret_cast<const char*>(body), bodySize);
-        mEntries.push_back({ name, crc, (uint32_t)bodySize, (uint32_t)n, (uint32_t)mPos, method });
-        mPos += 30 + name.size() + bodySize;
-    }
-
-    bool Close() {
-        std::lock_guard<std::mutex> lock(mMutex);
-        if (mFailed || !mOut.is_open()) {
-            return false;
-        }
-        const uint64_t cdStart = mPos;
-        for (const auto& e : mEntries) {
-            uint8_t h[46] = {};
-            Put32(h, 0x02014b50);
-            h[4] = 20;
-            h[6] = 20;
-            h[10] = (uint8_t)e.method;
-            h[13] = 0x00;
-            h[14] = 0x21;
-            Put32(h + 16, e.crc);
-            Put32(h + 20, e.csize);
-            Put32(h + 24, e.usize);
-            h[28] = (uint8_t)e.name.size();
-            h[29] = (uint8_t)(e.name.size() >> 8);
-            Put32(h + 42, e.offset);
-            mOut.write(reinterpret_cast<const char*>(h), 46);
-            mOut.write(e.name.data(), e.name.size());
-            mPos += 46 + e.name.size();
-        }
-        uint8_t eocd[22] = {};
-        Put32(eocd, 0x06054b50);
-        eocd[8] = eocd[10] = (uint8_t)mEntries.size();
-        eocd[9] = eocd[11] = (uint8_t)(mEntries.size() >> 8);
-        Put32(eocd + 12, (uint32_t)(mPos - cdStart));
-        Put32(eocd + 16, (uint32_t)cdStart);
-        mOut.write(reinterpret_cast<const char*>(eocd), 22);
-        mOut.close();
-        return !mOut.fail();
-    }
-
-    size_t Count() const {
-        return mEntries.size();
-    }
-
-  private:
-    struct Entry {
-        std::string name;
-        uint32_t crc, csize, usize, offset;
-        uint16_t method;
-    };
-
-    static bool Deflate(const uint8_t* in, size_t n, std::vector<uint8_t>& out) {
-        z_stream s{};
-        if (deflateInit2(&s, 3, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
-            return false;
-        }
-        out.resize(deflateBound(&s, (uLong)n));
-        s.next_in = const_cast<Bytef*>(in);
-        s.avail_in = (uInt)n;
-        s.next_out = out.data();
-        s.avail_out = (uInt)out.size();
-        const int rc = deflate(&s, Z_FINISH);
-        out.resize(s.total_out);
-        deflateEnd(&s);
-        return rc == Z_STREAM_END;
-    }
-
-    std::ofstream mOut;
-    std::mutex mMutex;
-    std::vector<Entry> mEntries;
-    uint64_t mPos = 0;
-    bool mFailed = false;
-};
+using NewDawn::ZipWriter;
 
 // ------------------------------------------------------------------ materials.py: normal / roughness / relief
 struct MatRecipe {

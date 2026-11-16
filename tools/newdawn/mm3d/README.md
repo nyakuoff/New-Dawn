@@ -14,6 +14,11 @@ included here. The scene table is generated from this fork's source table.
 `collisionpack.py <scene>` packs the ZSI collision into `<out>/<scene>/collision.ndcol` for the opt-in
 `gNewDawn.MM3D.Collision` trial; see `docs/MM3D_COLLISION_TRIAL.md` for format, probes and findings.
 
+## Character table
+
+`chartable.py` regenerates `mm/2s2h/NewDawn/Mm3dCharacterTable.inc` (names only) for the in-game 3DS character converter; see
+`docs/MM3D_CHARACTERS.md`. Its `SKIP` and `REVIEWED` sets are the curated part.
+
 ## Usage
 
 From the superproject root:
