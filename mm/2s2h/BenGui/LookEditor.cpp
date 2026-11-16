@@ -3,8 +3,10 @@
 
 #include <libultraship/libultraship.h>
 #include <imgui.h>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <set>
 #include <string>
 
 extern "C" {
@@ -52,6 +54,14 @@ void Preview(const char* label, const char* cvar, float live) {
     }
     ImGui::EndDisabled();
     ImGui::PopID();
+}
+
+// Continues the line when an item about `width` wide still fits in the window, otherwise starts a new one.
+void SameLineIfFits(float width) {
+    const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + width < right) {
+        ImGui::SameLine();
+    }
 }
 
 } // namespace
@@ -122,22 +132,38 @@ void LookEditorWindow::DrawElement() {
 
     // Which block of the profile the sliders write.
     int target = sTarget >= 0 ? sTarget : in.clockLit ? TARGET_CLOCK : TARGET_BASE;
+    const float radio = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x;
     ImGui::RadioButton("Base", &target, TARGET_BASE);
-    ImGui::SameLine();
+    SameLineIfFits(radio + ImGui::CalcTextSize("Clock key").x);
     ImGui::BeginDisabled(!in.clockLit);
     ImGui::RadioButton("Clock key", &target, TARGET_CLOCK);
     ImGui::EndDisabled();
-    ImGui::SameLine();
+    SameLineIfFits(radio + ImGui::CalcTextSize("Light setting").x);
     ImGui::BeginDisabled(in.clockLit);
     ImGui::RadioButton("Light setting", &target, TARGET_LIGHT);
     ImGui::EndDisabled();
-    ImGui::SameLine();
+    SameLineIfFits(radio + ImGui::CalcTextSize("Overcast").x);
     ImGui::RadioButton("Overcast", &target, TARGET_OVERCAST);
-    ImGui::SameLine();
+    SameLineIfFits(radio + ImGui::CalcTextSize("Dread").x);
     ImGui::RadioButton("Dread", &target, TARGET_DREAD);
     sTarget = target;
 
     Fields* fields = &profile.base;
+    if (static int keyScene = -1; keyScene != in.scene) {
+        // On entering a scene, start on the chain's key nearest the clock (or on the current half hour).
+        keyScene = in.scene;
+        sKeyHour = std::fmod(std::round(in.hour * 2.0f) / 2.0f, 24.0f);
+        float nearest = 25.0f;
+        for (int p : chain) {
+            for (const auto& [hour, unused] : profiles[p].clock) {
+                const float gap = std::fabs(hour - in.hour), around = std::min(gap, 24.0f - gap);
+                if (around < nearest) {
+                    nearest = around;
+                    sKeyHour = hour;
+                }
+            }
+        }
+    }
     if (target == TARGET_CLOCK) {
         ImGui::SetNextItemWidth(160.0f);
         ImGui::SliderFloat("Key hour", &sKeyHour, 0.0f, 23.5f, "%.1f");
@@ -146,14 +172,18 @@ void LookEditorWindow::DrawElement() {
         if (ImGui::SmallButton("Now")) {
             sKeyHour = std::fmod(std::round(in.hour * 2.0f) / 2.0f, 24.0f);
         }
-        for (int p : chain) { // the hours that already have keys, in this profile and its parents
+        std::set<float> hours; // the hours that already have keys, in this profile and its parents
+        for (int p : chain) {
             for (const auto& [hour, unused] : profiles[p].clock) {
-                char label[24];
-                snprintf(label, sizeof(label), "%g##key%d", hour, p);
-                ImGui::SameLine();
-                if (ImGui::SmallButton(label)) {
-                    sKeyHour = hour;
-                }
+                hours.insert(hour);
+            }
+        }
+        for (float hour : hours) {
+            char label[24];
+            snprintf(label, sizeof(label), "%g##key", hour);
+            SameLineIfFits(ImGui::CalcTextSize("17.5").x + 2.0f * ImGui::GetStyle().FramePadding.x);
+            if (ImGui::SmallButton(label)) {
+                sKeyHour = hour;
             }
         }
         const auto key = profile.clock.find(sKeyHour);

@@ -42,12 +42,20 @@ def difference(a, b):
 
 
 def compare(dir_a, dir_b):
+    """Fixture noise moves pixels about (rmse) without moving the tone (d-median, d-sat); a look change moves both."""
     names = sorted({p.name for p in Path(dir_a).glob("*.png")} & {p.name for p in Path(dir_b).glob("*.png")})
-    print(f"{'image':44}{'same file':>10}{'rmse':>10}{'max':>5}{'pixels':>9}")
+    print(f"{'image':44}{'same file':>10}{'rmse':>10}{'max':>5}{'pixels':>9}{'d-median':>10}{'d-sat':>8}")
+    same = 0
     for n in names:
         fa, fb = Path(dir_a) / n, Path(dir_b) / n
-        rmse, peak, count = difference(np.asarray(Image.open(fa).convert("RGB")), np.asarray(Image.open(fb).convert("RGB")))
-        print(f"{n[:-4]:44}{'yes' if fa.read_bytes() == fb.read_bytes() else 'no':>10}{rmse:10.6f}{peak:5d}{count:9d}")
+        a, b = (np.asarray(Image.open(f).convert("RGB")) for f in (fa, fb))
+        rmse, peak, count = difference(a, b)
+        sa, sb = stats(a / 255.0), stats(b / 255.0)
+        identical = fa.read_bytes() == fb.read_bytes()
+        same += identical
+        print(f"{n[:-4]:44}{'yes' if identical else 'no':>10}{rmse:10.6f}{peak:5d}{count:9d}"
+              f"{sb['p50'] - sa['p50']:10.4f}{sb['sat'] - sa['sat']:8.4f}")
+    print(f"{same} of {len(names)} files identical")
 
 
 def self_check():

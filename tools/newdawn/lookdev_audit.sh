@@ -3,7 +3,8 @@
 # with the Ultra look. Frozen frames (capture.py --freeze), so a later run of the same build gives the same pixels and a
 # run of another build is a fair before/after.
 #   tools/newdawn/lookdev_audit.sh OUT_DIR [extra capture.py options, e.g. --cvar NAME=VALUE]
-# Writes OUT_DIR/<place>_<state>.png and OUT_DIR/sheets/<place>.png. Needs gamescope, ImageMagick and nd-heavy.
+# Writes OUT_DIR/<place>_<state>.png, OUT_DIR/sheets/<place>.png and the capture logs in OUT_DIR/raw. Needs gamescope,
+# ImageMagick and nd-heavy.
 set -u
 out=${1:?usage: lookdev_audit.sh OUT_DIR [capture.py options]}; shift
 cd "$(dirname "$0")/../.."
@@ -13,9 +14,11 @@ mkdir -p "$out/sheets" "$raw"
 
 cap() { # cap STATE POINTS [capture.py options]
     local state=$1 points=$2; shift 2
-    nd-heavy game -- python3 tools/newdawn/capture.py --bin-dir build/mm --preset --mods "$mods" \
-        --out "$raw/$state" --points "$points" "$@" > "$raw/$state.log" 2>&1 || echo "WARNING: $state, see $raw/$state.log"
-    for f in "$raw/$state"/*.png; do [ -e "$f" ] && cp "$f" "$out/$(basename "${f%.png}")_$state.png"; done
+    # MESA_DEBUG and the stats switch make the logs report GL errors; neither changes the picture.
+    MESA_DEBUG=context nd-heavy game -- python3 tools/newdawn/capture.py --bin-dir build/mm --preset --mods "$mods" \
+        --out "$raw/$state" --points "$points" --cvar gNewDawn.PostFx.Debug.Stats=1 "$@" > "$raw/$state.log" 2>&1 ||
+        echo "WARNING: $state, see $raw/$state.log"
+    for f in "$raw/$state"/*.png; do [ -e "$f" ] && mv "$f" "$out/$(basename "${f%.png}")_$state.png"; done
 }
 hour() { echo "--cvar gNewDawn.Debug.BootHour=$1"; }
 frozen="--freeze 60 --wait 24"
@@ -30,8 +33,9 @@ cap night $outdoor,$town $frozen $(hour 23.0) "$@"
 # Places with their own fixed light.
 cap day   stock_pot_inn,woodfall_temple,snowhead_temple,stone_tower_temple,great_bay_temple,zora_hall,grotto $frozen $(hour 12.0) "$@"
 cap late  stock_pot_inn $frozen $(hour 23.0) "$@"
-# Day 2 rain (live: the rain needs the game running) and the final day (noon, and the last hours before the Moon falls).
-cap rain       south_clock_town_plaza,termina_field --wait 18 $(hour 12.0) --cvar gNewDawn.Debug.BootDay=2 "$@"
+# Day 2 rain (live: the rain needs the game running; the long wait is to be past the day's opening fade, which an
+# earlier 18 s capture sometimes caught) and the final day (noon, and the last hours before the Moon falls).
+cap rain       south_clock_town_plaza,termina_field --wait 30 $(hour 12.0) --cvar gNewDawn.Debug.BootDay=2 "$@"
 cap finalnoon  south_clock_town_plaza,termina_field $frozen $(hour 12.0) --cvar gNewDawn.Debug.BootDay=3 "$@"
 cap finalhours south_clock_town_plaza,termina_field,north_clock_town $frozen $(hour 3.0) --cvar gNewDawn.Debug.BootDay=3 "$@"
 
@@ -43,5 +47,6 @@ for place in $(ls "$out"/*.png | sed -E "s|.*/||; s/_(${states// /|})\.png\$//" 
     montage -label '%t' "${files[@]}" -resize 960x540 -tile 2x -geometry +4+4 -pointsize 22 \
         -background '#181818' -fill white "$out/sheets/$place.png"
 done
-grep -h "WARNING\|GL error\|GL_INVALID" "$raw"/*.log "$raw"/*/logs/*.log 2>/dev/null | sort | uniq -c | head -20
+echo "GL error lines: $(cat "$raw"/*/logs/*.log 2>/dev/null | grep -c "GL error\|Mesa: error\|GL_INVALID")"
+grep -h "WARNING" "$raw"/*.log 2>/dev/null | sort | uniq -c | head -20
 echo "done: $out"

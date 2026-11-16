@@ -1,7 +1,8 @@
 # New Dawn look bible
 
-**Status:** Phase 1 proposal, 2026-11-16, for maintainer review. Nothing here is implemented yet. The audit that led to
-it is `docs/LOOK_AUDIT.md`; how to build it is `docs/LOOK_PLAN.md`.
+**Status:** approved by the maintainer on 2026-11-16, with the dark night of section 4 and the choices recorded in
+section 9. It is the target, not a description of the game: what is built so far is in `docs/LOOK_PLAN.md`. The audit
+that led to it is `docs/LOOK_AUDIT.md`.
 
 This document defines what every place in the game should look like at every time of day. It is the target the look
 profiles are authored against, and its vocabulary (section 3) is the profile schema. The anchor is ND-014: a
@@ -273,18 +274,19 @@ Characters sit a third of a stop above the set around them and never clip.
   Those are kept and pushed further, not replaced.
 - **No gameplay state is written.** Everything above reads the scene, the clock, the day and the story flags.
 
-## 9. Ideas beyond the brief, for a decision
+## 9. Beyond the brief
 
-Each is render-only and can be left out without affecting the rest.
+Each is render-only. The maintainer's decision of 2026-11-16 is in the last column.
 
-| Idea | Where | Why |
-| --- | --- | --- |
-| Cloud shadows moving over the ground | Field, coast, canyon | Breaks up flat noon light for almost no cost |
-| Horizon haze coloured by direction | Termina Field | Makes the hub feel connected to four different worlds |
-| The Moon as a red shadow-casting key | Final night, everywhere outdoors | The strongest single image of dread available |
-| Lit windows and lanterns from 17:00 | Clock Town, villages | The town visibly comes alive at dusk |
-| Clock-driven windows indoors | All interiors with windows | Ties interiors to the three-day clock |
-| Heat shimmer | Ikana by day | Sells the dead heat |
-| Film response: halation, fine grain, slight vignette | Everywhere, each switchable | The "analog" half of ND-014 |
-| Aurora | Snowhead nights | Not in the original; a bold addition, flagged as such |
-| Phosphorescent surf | Great Bay nights | Small, memorable |
+| Idea | Where | Why | Decision |
+| --- | --- | --- | --- |
+| Cloud shadows moving over the ground | Field, coast, canyon | Breaks up flat noon light for almost no cost | In |
+| Horizon haze coloured by direction | Termina Field | Makes the hub feel connected to four different worlds | In |
+| The Moon as a red shadow-casting key | Final night, everywhere outdoors | The strongest single image of dread available | In |
+| Lit windows and lanterns from 17:00 | Clock Town, villages | The town visibly comes alive at dusk | In |
+| Heat shimmer | Ikana by day | Sells the dead heat | In |
+| Aurora | Snowhead nights | Not in the original; a bold addition | In |
+| Phosphorescent surf | Great Bay nights | Small, memorable | In |
+| Overcast day 2 where the game does not rain; ash on day 3 | Outdoors | The three-day arc of section 5 | In (visual only) |
+| Clock-driven windows indoors | All interiors with windows | Ties interiors to the three-day clock | Not yet decided |
+| Film response: halation, fine grain, slight vignette | Everywhere | The "analog" half of ND-014 | Out |

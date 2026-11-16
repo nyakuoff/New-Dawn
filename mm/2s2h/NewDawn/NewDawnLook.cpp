@@ -537,6 +537,23 @@ bool SelfCheck() {
         SPDLOG_ERROR("NewDawnLook self-check: a saved profile does not read back the same");
         ok = false;
     }
+    // The real save: write into the save folder, read the file back, remove it.
+    {
+        Profile copy = sProfiles[3], back;
+        copy.name = "self-check";
+        std::string error;
+        const fs::path file = SaveDir() / "self-check.json";
+        const bool saved = Save(copy, &error);
+        std::ifstream in(file);
+        if (!saved || !FromJson(json::parse(in, nullptr, false, true), back, file.string()) || back.base != copy.base ||
+            back.inherits != "a" || back.scenes.size() != 1) {
+            SPDLOG_ERROR("NewDawnLook self-check: saving to {} and reading back failed {}", file.string(), error);
+            ok = false;
+        }
+        in.close();
+        std::error_code ec;
+        fs::remove(file, ec);
+    }
     if (Dread(1, 12.0f) != 0.0f || std::fabs(Dread(3, 6.0f) - 0.5f) > 1e-4f ||
         std::fabs(Dread(3, 5.99f) - 1.0f) > 1e-2f) {
         SPDLOG_ERROR("NewDawnLook self-check: dread curve");

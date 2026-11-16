@@ -1,7 +1,8 @@
 # Scene look: engineering plan
 
-**Status:** Phase 1 proposal, 2026-11-16, for maintainer review before any of it is built. The target is
-`docs/LOOK_BIBLE.md`; the evidence is `docs/LOOK_AUDIT.md`.
+**Status:** approved by the maintainer on 2026-11-16 (decisions in section 7). Milestone 2.0 is built; the system as
+it exists is described in `docs/LOOK_PROFILES.md`. The target is `docs/LOOK_BIBLE.md`; the evidence is
+`docs/LOOK_AUDIT.md`.
 
 ## 1. Where the look lives today
 
@@ -73,9 +74,11 @@ groups of the bible:
 - `particles`: biome and amount; `weather`: rain, snow, dust or ash amounts;
 - `character`: rim colour and level, set-relative exposure.
 
-The game side fills it once per game frame and attaches it to the existing `WORLD_BEGIN` marker, so it travels in the
-display list: interpolated frames and the frozen-frame fixture see exactly the values of the frame they draw. The
-renderer keeps a copy for the frame and every consumer reads from it.
+The game side fills it once per game frame and copies it into the parameters of every post-fx marker, so it travels
+in the display list: interpolated frames and the frozen-frame fixture see exactly the values of the frame they draw.
+The renderer keeps a copy for the frame and every consumer reads from it. As built it is a flat array of floats with
+one registry row per field, and it grows a milestone at a time: 2.0 carries the 36 fields that existing cvars and
+tables already decided.
 
 `gNewDawn.Look.Profiles` (0 until approved, then 1 in every New Dawn tier) selects the source. Off, every feature takes
 its numbers from where it takes them today, so off stays byte-identical to main on the frozen-frame fixture and the
@@ -165,14 +168,17 @@ A developer window (Dev Tools, next to the performance overlay), built on the ex
 | R5 | Sky by profile | Every outdoor clock-lit scene is eligible; the variant constants become profile data; coverage, haze and wind keyed by clock, overcast and dread. Cloud shadows on the ground from the coverage map in the shadow pass. The Moon as a red key on the final night through the existing moonlight shadow path | All; clouds as today | +0.02 ms |
 | R6 | Practicals | Lamp and flame gain and colour by profile; a schedule and a surface list for lit windows and lanterns outdoors; interior windows coloured by the clock | Ultra to Medium | As today |
 | R7 | States | Overcast and dread modifiers; blizzard gusts, dust and ash through the existing wind and particle systems | All | As today |
-| R8 | Film response | Halation, fine grain, slight vignette in the composite pass; each switchable, off under the frozen-frame fixture | All | 0.01 ms |
 | R9 | Small effects | Heat shimmer (Ikana), horizon haze by direction (Field), in R3's pass | Ultra to Medium | 0.02 ms |
 
 `default.shader.glsl` changes only for R2 and R3 (two uniforms change type, the fog mix gains a switch); both copies stay
 identical and `Generate2ShipOtr` is rebuilt, as the rules require. The MM3D room shader reads the same look.
 
 **Budget** (RX 7800 XT, 1080p, the eight scenes of `docs/PERFORMANCE.md`; worst scene today in brackets): Ultra at most
-6.4 ms (5.74), High 3.9 (3.55), Medium 2.4 (2.26), Low 1.95 (1.85). Low and Medium take only R1, R2, the analytic part
+6.4 ms (5.74), High 3.9 (3.55), Medium 2.4 (2.26), Low 1.95 (1.85). Those brackets are the figures of
+`docs/PERFORMANCE.md`. Measured again at milestone 2.0 on main `57a76428e` with `tools/newdawn/lookdev_perf.py`, before
+any new rendering, the worst scenes are Ultra 5.70, High 3.98, Medium 2.32 and Low 1.75 ms: High starts above its
+ceiling, the others below theirs. Each milestone is therefore judged on its increase over a same-session run with
+profiles off as well as on the ceiling. Low and Medium take only R1, R2, the analytic part
 of R3 and data; that is where most of the visible change is, so the look holds on every tier. Each milestone re-runs
 the performance matrix.
 
@@ -184,12 +190,12 @@ profiles off.
 
 | Milestone | Builds | Art direction delivered |
 | --- | --- | --- |
-| 2.0 Foundation | `NewDawnLookState`, resolver, JSON loading and inheritance, script following, the editor with sliders and save. Base profiles that land close to today's look | None: the proof is that profiles can drive what the cvars and tables drive |
-| 2.1 Light and tone | R1, R2, editor scopes | **Clock Town and Termina Field**, all clock states and rain: neutral noon, 5:1, golden hour, lamp-lit night |
+| 2.0 Foundation (**done**) | The look array, resolver, JSON loading and inheritance, the editor with sliders and save. Base profiles that reproduce today's look | None: the proof is that profiles drive what the cvars and tables drove |
+| 2.1 Light and tone | R1, R2, script following (3.3; it only matters once profiles set colours), editor scopes | **Clock Town and Termina Field**, all clock states and rain: neutral noon, 5:1, golden hour, lamp-lit night |
 | 2.2 Air and sky | R3, R4, R5 | Field vistas and horizons, cloud shadows; **Great Bay** |
 | 2.3 Regions | R9, data | **Swamp and Woodfall**, then **Snowhead**, then **Ikana and Stone Tower**: one sheet each |
 | 2.4 Enclosed places | R6 | **Interiors, dungeons, caves, fountains** |
-| 2.5 The three days | R7, the Moon key, R8 | **Day 2, day 3, the final night, the Moon**; the cutscene pass |
+| 2.5 The three days | R7, the Moon key | **Day 2, day 3, the final night, the Moon**; the cutscene pass |
 | 2.6 Clean-up | Delete the superseded tables and cvars; tier re-measurement; documentation | The whole-game sheet |
 
 Work that can be handed to implementation agents once 2.0's header is fixed: the JSON loader and its self-check, the
@@ -214,10 +220,13 @@ share the composite pass, the opaque-end pass and the default shader.
 - **Other tables in flight.** Water palettes, particle biomes and interior windows move into profiles last (2.4-2.6),
   after their owners' current work has merged.
 
-## 7. Decisions needed before Phase 2
+## 7. Decisions (maintainer, 2026-11-16)
 
-1. Profiles absolute in ordinary play, following the script otherwise (3.3): agreed?
-2. How dark is night allowed to be (bible section 4: frame median 0.09 outdoors, lamp pools to 0.85)?
-3. Weather the original did not have: an overcast day 2 in regions where the game does not rain, and ash on day 3.
-4. Which of the ideas in the bible's section 9 are in.
-5. The tier ceilings in section 4.
+1. **Profiles are absolute in ordinary play and follow the game's own scripted lighting** in cutscenes and events (3.3).
+2. **Night is dark:** frame median about 0.09 outdoors, lamp and torch pools up to 0.85.
+3. **Added weather, visual only:** an overcast day 2 where the game does not rain, and ash on day 3.
+4. **Extras in:** the red shadow-casting Moon key on the final night, cloud shadows, lit windows from 17:00,
+   direction-coloured haze in the Field, an aurora over Snowhead, phosphorescent surf at Great Bay by night, heat
+   shimmer in Ikana. **Out:** film grain and halation (R8 is dropped).
+5. **Tier ceilings** of section 4 accepted, with latitude: a clearly better image may take a little more, justified with
+   numbers.

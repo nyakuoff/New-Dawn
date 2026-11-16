@@ -27,6 +27,7 @@ New Dawn is a **visual-only modernization** of *Majora's Mask*, built on a fork 
 - `docs/VALIDATION.md` — acceptance criteria, visual comparisons, and regression checks.
 - `docs/DECISIONS.md` — durable design decisions and their rationale.
 - `docs/NEW_DAWN.md` — project explanation.
+- `docs/LOOK_BIBLE.md`, `docs/LOOK_PLAN.md`, `docs/LOOK_PROFILES.md`, `docs/LOOK_AUDIT.md` — the scene look rework: the target per place and time, the plan and its milestones, the look profile system, and the audit it started from.
 
 ## Definition of done
 An implementation is complete only when its changed files are clear, relevant checks have run (or blockers are recorded), original-game behavior is preserved as far as verified, and its visual impact is shown or explicitly marked as unverified.
