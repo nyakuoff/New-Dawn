@@ -2429,7 +2429,9 @@ void Play_Init(GameState* thisx) {
     D_801D0D54 = false;
 
     FrameAdvance_Init(&this->frameAdvCtx);
-    Rand_Seed(osGetTime());
+    // Test fixture (gNewDawn.Debug.FreezeTime): a fixed seed, so a frozen frame has the same random torch flicker and
+    // particle values in every run. Never set outside captures.
+    Rand_Seed(CVarGetInteger("gNewDawn.Debug.FreezeTime", 0) ? 1 : osGetTime());
     Matrix_Init(&this->state);
 
     this->state.main = Play_Main;

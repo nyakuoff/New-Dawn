@@ -294,6 +294,9 @@ def main():
     ap.add_argument("--pos", metavar="X,Y,Z", help="override the point's standing position (world units), e.g. to stand at a spot of the same scene")
     ap.add_argument("--burst", metavar="N,INTERVAL", help="take N screenshots INTERVAL seconds apart per point, starting at --wait, "
                     "named <point>_00.png ... (each screenshot adds its own latency, so the real spacing can be larger)")
+    ap.add_argument("--freeze", type=int, metavar="FRAME", help="deterministic frozen frame: stop the game logic at play frame FRAME "
+                    "(gNewDawn.Debug.FreezeFrame), stop the render clock (gNewDawn.Debug.FreezeTime) and fix interpolation at 20 FPS. "
+                    "Same FRAME on the same game state gives the same pixels run after run (e.g. --freeze 30)")
     ap.add_argument("--no-points", action="store_true", help="skip the named points (use with --attract)")
     ap.add_argument("--wait", type=float, default=10.0, help="seconds after launch before the screenshot of a point (default %(default)s)")
     ap.add_argument("--width", type=int, default=1920)
@@ -305,6 +308,10 @@ def main():
     ap.add_argument("--list", action="store_true", help="list capture points and exit")
     ap.add_argument("--compare", nargs=2, metavar=("DIR_A", "DIR_B"), help="write labelled side-by-side images of two capture directories into --out")
     a = ap.parse_args()
+    if a.freeze:
+        # before the user's own --cvar options, so those still win
+        a.cvar = [("gNewDawn.Debug.FreezeTime", 1), ("gNewDawn.Debug.FreezeFrame", a.freeze), ("gMatchRefreshRate", 0),
+                  ("gInterpolationFPS", 20)] + a.cvar
     if a.preset:
         # the looks no longer touch asset mods (the player's choice); captures that link mods still want them on
         a.cvar = preset_cvars() + ([("gEnhancements.Mods.AlternateAssets", 1)] if a.mods else []) + a.cvar
