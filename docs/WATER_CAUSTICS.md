@@ -58,9 +58,16 @@ wrap-around; seamless in space and time. 2048×1024 grey, 32 frames of 256², va
   HDR on); ours vs main is inside that band (mean 0.03–0.18, max ≤ 6). Hashes differ run to run for both.
 
 ## Limits
-- Zora Hall: the pass runs (0.06 ms) but the central pool is deep and dark at the sampled views; no visible bed. The dive fixture
-  could not hold Link underwater there (floor collision), so the underwater look in interiors is unverified. The Clock Town
-  fountain was not located/verified. Laundry Pool underwater (camera below the surface) not captured.
+- Zora Hall interior pool (verified 2026-11-16, #76): `gNewDawn.Debug.EyeDrop=N` (test fixture in `z_play.c`, draw only, default 0)
+  draws the world with the camera N units lower, so the camera goes below the WaterBox plane without moving Link (the game
+  does not let him dive there). Pool at (0,-14,400), eye drop 90, full preset, `showcase/bugsweep/76-zora-*`: the underwater pass
+  runs (fog and absorption in the area palette, soft shafts, caustics on the bed, bubbles). Left of `76-zora-off-vs-on.png`: Underwater=0.
+- Refraction no longer wobbles Link and actors (#76): the shimmer now fades in between 200 and 700 units from the eye and a
+  displaced sample that lands on a surface whose distance differs by more than 8 % is rejected, so near objects and their
+  edges stay put while the distant bed and walls still swim. Cost: two extra depth fetches per pixel.
+- Clock Town fountain: the South Clock Town WaterBox at (-200..0, -600..-400), surface y -20, is a dry stone basin at 12:00 on
+  day 1; with the camera forced below the plane the pass tints the view although no water mesh is drawn there. Nothing
+  swimmable, so it cannot occur in play; not changed. Laundry Pool underwater (camera below the surface) not captured.
 - Underwater is not applied while the game's screen transitions or fills are active (same gate as Restyle).
 - The distortion applies to the whole scene including Link and actors; the HUD is unaffected. The half-resolution shafts are
   filtered linearly (no depth awareness), so a faint shaft halo can touch silhouettes; hatching from the jitter is visible only
