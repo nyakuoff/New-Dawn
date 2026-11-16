@@ -27,39 +27,72 @@ class ZipWriter {
         return mOut.is_open();
     }
 
+    // One central-directory record (also what a resumable generator journals per entry).
+    struct Entry {
+        std::string name;
+        uint32_t crc, csize, usize, offset;
+        uint16_t method;
+    };
+    // An entry deflated (or stored) and ready to append; made outside any lock.
+    struct Packed {
+        std::string name;
+        std::vector<uint8_t> body;
+        uint32_t crc = 0, usize = 0;
+        uint16_t method = 0;
+    };
+
+    static Packed Pack(const std::string& name, const uint8_t* data, size_t n) {
+        Packed p;
+        p.name = name;
+        std::vector<uint8_t> packed;
+        if (n > 0 && Deflate(data, n, packed) && packed.size() < n) {
+            p.method = 8;
+            p.body = std::move(packed);
+        } else {
+            p.body.assign(data, data + n);
+        }
+        p.crc = (uint32_t)crc32(0, data, (uInt)n);
+        p.usize = (uint32_t)n;
+        return p;
+    }
+
     // Thread safe. Entries are deflated outside the lock and appended whole.
     void Add(const std::string& name, const uint8_t* data, size_t n) {
-        std::vector<uint8_t> packed;
-        uint16_t method = 0;
-        if (n > 0 && Deflate(data, n, packed) && packed.size() < n) {
-            method = 8;
-        }
-        const uint8_t* body = method ? packed.data() : data;
-        const size_t bodySize = method ? packed.size() : n;
-        const uint32_t crc = (uint32_t)crc32(0, data, (uInt)n);
-
+        Packed p = Pack(name, data, n);
         std::lock_guard<std::mutex> lock(mMutex);
-        if (mFailed || mPos + bodySize + name.size() + 30 > 0xFFFFFFF0ull || mEntries.size() >= 65534) {
-            mFailed =
-                true; // would need zip64; the maps are ~1 GB so this is a real error, not a limit to engineer around
-            return;
+        Append(p, nullptr);
+    }
+
+    // Thread safe. Appends the entries as one unit, flushes the stream and returns their records and the archive position after them
+    // (the checkpoint a resumable generator journals). False when the archive has failed.
+    bool AddBatch(std::vector<Packed>& batch, std::vector<Entry>& records, uint64_t& posAfter) {
+        std::lock_guard<std::mutex> lock(mMutex);
+        for (const auto& p : batch) {
+            Append(p, &records);
         }
-        uint8_t h[30] = {};
-        PutLe32(h, 0x04034b50);
-        h[4] = 20;
-        h[8] = (uint8_t)method;
-        h[11] = 0x00;
-        h[12] = 0x21; // date 1980-01-01, time 0: reproducible
-        PutLe32(h + 14, crc);
-        PutLe32(h + 18, (uint32_t)bodySize);
-        PutLe32(h + 22, (uint32_t)n);
-        h[26] = (uint8_t)name.size();
-        h[27] = (uint8_t)(name.size() >> 8);
-        mOut.write(reinterpret_cast<const char*>(h), 30);
-        mOut.write(name.data(), name.size());
-        mOut.write(reinterpret_cast<const char*>(body), bodySize);
-        mEntries.push_back({ name, crc, (uint32_t)bodySize, (uint32_t)n, (uint32_t)mPos, method });
-        mPos += 30 + name.size() + bodySize;
+        mOut.flush();
+        posAfter = mPos;
+        return !mFailed && !mOut.fail();
+    }
+
+    // Reopens a half-written archive at a journalled checkpoint: the file is cut back to `pos` and `entries` are the records before it.
+    bool Resume(const std::filesystem::path& path, uint64_t pos, std::vector<Entry> entries) {
+        std::error_code ec;
+        if (!std::filesystem::is_regular_file(path, ec) || std::filesystem::file_size(path, ec) < pos) {
+            return false;
+        }
+        std::filesystem::resize_file(path, pos, ec);
+        if (ec) {
+            return false;
+        }
+        mOut.open(path, std::ios::binary | std::ios::in | std::ios::out);
+        if (!mOut.is_open()) {
+            return false;
+        }
+        mOut.seekp(0, std::ios::end);
+        mPos = pos;
+        mEntries = std::move(entries);
+        return true;
     }
 
     bool Close() {
@@ -102,11 +135,33 @@ class ZipWriter {
     }
 
   private:
-    struct Entry {
-        std::string name;
-        uint32_t crc, csize, usize, offset;
-        uint16_t method;
-    };
+    // Caller holds mMutex.
+    void Append(const Packed& p, std::vector<Entry>* records) {
+        if (mFailed || mPos + p.body.size() + p.name.size() + 30 > 0xFFFFFFF0ull || mEntries.size() >= 65534) {
+            mFailed =
+                true; // would need zip64; the maps are ~1 GB so this is a real error, not a limit to engineer around
+            return;
+        }
+        uint8_t h[30] = {};
+        PutLe32(h, 0x04034b50);
+        h[4] = 20;
+        h[8] = (uint8_t)p.method;
+        h[11] = 0x00;
+        h[12] = 0x21; // date 1980-01-01, time 0: reproducible
+        PutLe32(h + 14, p.crc);
+        PutLe32(h + 18, (uint32_t)p.body.size());
+        PutLe32(h + 22, p.usize);
+        h[26] = (uint8_t)p.name.size();
+        h[27] = (uint8_t)(p.name.size() >> 8);
+        mOut.write(reinterpret_cast<const char*>(h), 30);
+        mOut.write(p.name.data(), p.name.size());
+        mOut.write(reinterpret_cast<const char*>(p.body.data()), p.body.size());
+        mEntries.push_back({ p.name, p.crc, (uint32_t)p.body.size(), p.usize, (uint32_t)mPos, p.method });
+        if (records) {
+            records->push_back(mEntries.back());
+        }
+        mPos += 30 + p.name.size() + p.body.size();
+    }
 
     static bool Deflate(const uint8_t* in, size_t n, std::vector<uint8_t>& out) {
         z_stream s{};
