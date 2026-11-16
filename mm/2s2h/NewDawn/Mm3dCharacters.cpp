@@ -42,7 +42,7 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.10.0";
+constexpr const char* kConverterVersion = "1.11.0";
 
 struct Entry {
     const char* object;
@@ -54,6 +54,7 @@ struct Entry {
     float lightRef, saturation; // colour overrides for this model, 0 = the global defaults
     const char* rig;            // "bone:limb,..." when the 3DS rig differs from the N64 one (see ParseRig); "" = same hierarchy
     const char* face;           // eye and mouth states (see ParseFace); "" = the faces stay at their first frame
+    const char* matcls;         // "texture name part=class,...": character material classes that differ from the defaults (see ClassOfTexture)
     const char* tint;           // "material:hue degrees:saturation factor[:value factor[:from hue:to hue]],..." per CMB material (hair that reads hotter than the N64's)
 };
 const Entry kTable[] = {
@@ -69,6 +70,7 @@ std::atomic<bool> gRunning{ false };
 bool gMounted = false, gPendingRestart = false, gStagedOk = false, gOverlayOn = false;
 std::string gMessage;
 uint32_t gConverted = 0, gFailed = 0, gEnabled = 0;
+uint32_t gLinkForms = 0; // bit per Player form whose 3DS model is converted and enabled (0 Fierce Deity .. 4 human)
 double gSeconds = 0;
 
 void SetState(State s, const std::string& message = "") {
@@ -556,7 +558,43 @@ std::vector<uint8_t> VtxArray(const std::vector<std::array<uint8_t, 16>>& verts)
     return out;
 }
 
-std::vector<uint8_t> TextureResource(const Mm3d::Image& img) {
+// Material class of a CMB texture, written into the texture's flags (TEX_FLAG_NEWDAWN_CHARCLASS): 1 skin, 2 costume (cloth, leather
+// and metal told apart per texel in the shader), 3 hair, 4 eyes and mouth, 5 metal, 6 cloth, 7 leather, 0 none. Defaults by the
+// texture's name and whether its material is lit; the table row overrides by name part ("link_child_f01=3").
+int ClassOfTexture(const std::string& name, const Mm3d::Material& mat, const char* overrides) {
+    std::string lower = name;
+    for (char& c : lower) {
+        c = (char)std::tolower((unsigned char)c);
+    }
+    std::string all(overrides ? overrides : "");
+    size_t pos = 0;
+    while (pos < all.size()) {
+        size_t end = all.find(',', pos);
+        end = end == std::string::npos ? all.size() : end;
+        const std::string tok = all.substr(pos, end - pos);
+        pos = end + 1;
+        const size_t eq = tok.find('=');
+        if (eq != std::string::npos && lower.find(tok.substr(0, eq)) != std::string::npos) {
+            return std::atoi(tok.c_str() + eq + 1);
+        }
+    }
+    auto tail = [&](const char* mark) { // "_e00", "_m00": the mark followed by a digit
+        const size_t at = lower.find(mark);
+        return at != std::string::npos && at + std::strlen(mark) < lower.size() && std::isdigit((unsigned char)lower[at + std::strlen(mark)]);
+    };
+    if (tail("_e") || tail("_m") || tail("_ev") || tail("_eb")) {
+        return 4;
+    }
+    if (lower.find("hair") != std::string::npos) {
+        return 3;
+    }
+    if (lower.find("skin") != std::string::npos) {
+        return 1;
+    }
+    return mat.fragmentLighting || mat.vertexLighting ? 2 : 0;
+}
+
+std::vector<uint8_t> TextureResource(const Mm3d::Image& img, int materialClass = 0) {
     std::vector<uint8_t> out = Header("XETO", 1);
     float one = 1.0f;
     uint32_t oneBits;
@@ -564,7 +602,8 @@ std::vector<uint8_t> TextureResource(const Mm3d::Image& img) {
     Put32(out, 1); // RGBA32
     Put32(out, img.width);
     Put32(out, img.height);
-    Put32(out, 2); // TEX_FLAG_LOAD_AS_IMG: the resource's own size, not the declared one
+    // TEX_FLAG_LOAD_AS_IMG: the resource's own size, not the declared one; bits 9 to 12 the material class.
+    Put32(out, 2u | ((uint32_t)materialClass << 9));
     Put32(out, oneBits);
     Put32(out, oneBits);
     Put32(out, (uint32_t)img.rgba.size());
@@ -1039,7 +1078,7 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                     }
                 }
                 MapColour(img, model.materials[fu.material], colour);
-                write(std::string("mm3d/objects/") + e.object + "/" + st.first, TextureResource(img));
+                write(std::string("mm3d/objects/") + e.object + "/" + st.first, TextureResource(img, 4));
                 ++res.textures;
             }
         }
@@ -1084,7 +1123,7 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                         }
                     }
                 }
-                write(texName[(int)mi], TextureResource(img));
+                write(texName[(int)mi], TextureResource(img, ClassOfTexture(model.textures[ti].name, m, e.matcls)));
                 ++res.textures;
             }
         }
@@ -1275,7 +1314,7 @@ std::string Signature(const std::string& dump) {
     }
     std::set<std::string> archives;
     for (const Entry& e : kTable) {
-        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig + e.face + e.tint, h);
+        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig + e.face + e.matcls + e.tint, h);
         h = Fnv1a(&e.lightRef, sizeof(e.lightRef), h);
         h = Fnv1a(&e.saturation, sizeof(e.saturation), h);
         archives.insert(e.archive);
@@ -1334,6 +1373,16 @@ void Mount(const json& stamp) {
     gEnabled = stamp.value("enabled", 0);
     gSeconds = stamp.value("seconds", 0.0);
     gState = State::Ready;
+    gLinkForms = 0;
+    for (const json& e : stamp.value("entries", json::array())) {
+        if (!e.value("ok", false) || !e.value("reviewed", false)) {
+            continue;
+        }
+        const std::string o = e.value("object", "");
+        // Player forms: 0 Fierce Deity, 1 Goron, 2 Zora, 3 Deku, 4 human.
+        gLinkForms |= o == "object_link_boy" ? 1 : o == "object_link_goron" ? 2 : o == "object_link_zora" ? 4 : o == "object_link_nuts" ? 8 :
+                      o == "object_link_child" ? 16 : 0;
+    }
 }
 
 // ------------------------------------------------------------------ the generator
@@ -1635,4 +1684,39 @@ void ApplyToggle() {
     SOH::SkeletonPatcher::UpdateSkeletons();
 }
 
+bool LinkFormConverted(int form) {
+    return gOverlayOn && form >= 0 && form < 5 && (gLinkForms & (1u << form)) != 0;
+}
+
 } // namespace NewDawnMm3d
+
+// Masks that sit on the head are placed for the N64 head and cap. The 3DS head is shifted back and its cap is bigger, so a
+// mask drawn with the head limb's matrix as is ends up inside the cap. Returns 1 and the extra transform (x, y, z, scale in
+// head limb units, applied about the limb origin before the mask) when the form's 3DS model is on. The first rows are measured
+// from the two heads (docs/MM3D_CHARACTERS.md, "Masks"); gNewDawn.MM3D.MaskFit.{X,Y,Z,S} override every mask while tuning.
+extern "C" int NewDawnMm3d_MaskFit(int form, int mask, float* out) {
+    if (!NewDawnMm3d::LinkFormConverted(form)) {
+        return 0;
+    }
+    struct Fit {
+        int form, mask;
+        float x, y, z, s;
+    };
+    static const Fit kFits[] = {
+        { 4, 15, 0.0f, 0.0f, 0.0f, 1.18f }, // Captain's Hat on human Link: 18% larger, so the crest clears the 3DS cap (tuned in game against the N64)
+    };
+    out[0] = out[1] = out[2] = 0.0f;
+    out[3] = 1.0f;
+    for (const Fit& f : kFits) {
+        if (f.form == form && f.mask == mask) {
+            out[0] = f.x, out[1] = f.y, out[2] = f.z, out[3] = f.s;
+        }
+    }
+    if (CVarGetInteger("gNewDawn.MM3D.MaskFit.On", 0) != 0) {
+        out[0] = CVarGetFloat("gNewDawn.MM3D.MaskFit.X", out[0]);
+        out[1] = CVarGetFloat("gNewDawn.MM3D.MaskFit.Y", out[1]);
+        out[2] = CVarGetFloat("gNewDawn.MM3D.MaskFit.Z", out[2]);
+        out[3] = CVarGetFloat("gNewDawn.MM3D.MaskFit.S", out[3]);
+    }
+    return out[0] != 0.0f || out[1] != 0.0f || out[2] != 0.0f || out[3] != 1.0f;
+}

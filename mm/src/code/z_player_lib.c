@@ -51,6 +51,15 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/BenGui/CosmeticEditor.h"
+
+// New Dawn: a mask on a converted 3DS head is placed for the N64 head (NewDawn/Mm3dCharacters.cpp).
+#ifdef __cplusplus
+extern "C" {
+#endif
+int NewDawnMm3d_MaskFit(int form, int mask, float* out);
+#ifdef __cplusplus
+}
+#endif
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <libultraship/bridge/resourcebridge.h>
 
@@ -4088,6 +4097,19 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
                         (BEN_ANIM_EQUAL(player->skelAnime.animation, gPlayerAnim_cl_setmaskend))) {
                         maskMinusOne += 4;
                     }
+                }
+
+                // New Dawn: head-top masks on a converted 3DS head (the 3DS head sits further back and its cap is bigger).
+                float maskFit[4];
+                if (player->currentMask < PLAYER_MASK_FIERCE_DEITY && player->currentMask != PLAYER_MASK_COUPLE &&
+                    player->currentMask != PLAYER_MASK_CIRCUS_LEADER && player->currentMask != PLAYER_MASK_BLAST &&
+                    player->currentMask != PLAYER_MASK_BUNNY && player->currentMask != PLAYER_MASK_GREAT_FAIRY &&
+                    NewDawnMm3d_MaskFit(player->transformation, player->currentMask, maskFit)) {
+                    Matrix_Push();
+                    Matrix_Translate(maskFit[0], maskFit[1], maskFit[2], MTXMODE_APPLY);
+                    Matrix_Scale(maskFit[3], maskFit[3], maskFit[3], MTXMODE_APPLY);
+                    MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
+                    Matrix_Pop();
                 }
 
                 gSPDisplayList(POLY_OPA_DISP++, D_801C0B20[maskMinusOne]);

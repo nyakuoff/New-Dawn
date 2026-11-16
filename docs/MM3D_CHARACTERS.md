@@ -325,6 +325,17 @@ cutscenes, the Goron roll and spikes, the Zora swim, boomerang fins and barrier,
 and Fierce Deity read differently from the N64 ones (the 3DS Goron has a blue necklace and white beard, the Fierce Deity
 teal clothes and green hair).
 
+### Masks on the 3DS head (Captain's Hat)
+Masks are drawn by the game with the head limb's matrix, placed for the N64 head. The 3DS head sits further back (its face plane
+is 275 units behind the N64's, the head 1.2 times larger overall) and its cap is bigger, so the Captain's Hat was mostly
+buried in the cap from behind. `NewDawnMm3d_MaskFit(form, mask, out)` (Mm3dCharacters.cpp, called from the head post-draw in
+`z_player_lib.c`) returns an extra transform (x, y, z, scale in head limb units) for head-top masks while the form's 3DS model is
+converted and on; the Player draw wraps the mask display list in it. Tuned in game against the N64 with
+`gNewDawn.MM3D.MaskFit.{On,X,Y,Z,S}` (override for every mask): the Captain's Hat on human Link is 1.18x, which puts the skull
+face where the N64 one is and the crest and horns above the cap (a lift of the whole mask instead moved the skull face off
+the chin). `review/../materials/captains_hat_fit.png`: N64, before and after, front and back. Other masks are untouched (no fit
+row); the reference gate covers the model, not masks.
+
 ### Remaining unverified
 - **Masks:** Bunny Hood and Captain's Hat on human Link only, through the debug path above; the Captain's Hat is mostly hidden by the longer 3DS cap (a head-top mask placed for the N64 head). Other masks, other forms (a transformed Link cannot wear the Bunny Hood), mask change animations.
 - **Held items and form moves** on the converted forms: hookshot, bottle and ocarina on human Link; the Goron roll and spikes,

@@ -1360,6 +1360,19 @@ void BenMenu::AddSettings() {
             "reduced strength, so Link's tunic and everyone's skin keep their colour instead of clipping to acid green "
             "and yellow. The world keeps its full grade. 0 grades characters like the world. Needs Character Lighting "
             "and Local Lights."));
+    AddWidget(path, "Character Materials: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Characters.Materials")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.8f).Tooltip(
+            "Skin that scatters light red at the edge of the shadow and glows when backlit, a velvet sheen on cloth, a low gloss "
+            "on leather, metal that reads as metal, and bands of light along strands of hair. Characters are classified by "
+            "their textures (3DS models exactly, original ones by name). Needs Character Lighting."));
+    AddWidget(path, "Character Relief: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gNewDawn.Characters.Relief")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).Format("%.2f").DefaultValue(0.6f).Tooltip(
+            "Fine surface relief on clothing, leather and hair taken from the texture's own light and dark detail, so the "
+            "upscaled 3DS textures show weave and grain in the light. Needs Character Materials."));
     AddWidget(path, "Smooth Characters", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Characters.Smooth")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_PER_PIXEL_LIGHTING_OFF); })
