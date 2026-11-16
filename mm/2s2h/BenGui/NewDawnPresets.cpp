@@ -27,7 +27,7 @@ const Row kRows[] = {
     //                                                   Ultra  High   Med    Low    Original
     // Resolution, anti-aliasing and frame pacing.
     { "gSettings.InternalResolution",                  F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
-    { "gSettings.MSAAValue",                           I, { 4,     4,     2,     1,     1 } },
+    { "gSettings.MSAAValue",                           I, { 4,     1,     2,     1,     1 } },
     { "gNewDawn.TAA.Enabled",                          I, { 1,     1,     0,     0,     0 } },
     { "gMatchRefreshRate",                             I, { 1,     1,     1,     1,     0 } },
     // Textures. Asset mods (gEnhancements.Mods.AlternateAssets) are the player's own choice and never part of a look.
@@ -67,7 +67,7 @@ const Row kRows[] = {
     { "gNewDawn.Sky.Special",                          I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Sky.Night",                            I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Sky.Moonlight",                        I, { 1,     1,     1,     1,     0 } },
-    { "gNewDawn.Sky.Clouds",                           I, { 1,     1,     1,     0,     0 } },
+    { "gNewDawn.Sky.Clouds",                           I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Sky.Coverage",                         F, { 0.55f, 0.55f, 0.55f, 0.55f, 0.55f } },
     { "gNewDawn.Sky.CloudStrength",                    F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
     // Atmosphere and effects (render-only).
@@ -97,7 +97,7 @@ const Row kRows[] = {
     { "gNewDawn.Interior.Emissive",                    I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Materials.Enabled",                    I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Materials.Strength",                   F, { 1.5f,  1.5f,  1.5f,  1.5f,  1.0f } },
-    { "gNewDawn.Materials.Parallax",                   I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Materials.Parallax",                   I, { 1,     0,     0,     0,     0 } },
     // Shadows, fog, shafts, GI.
     { "gNewDawn.Shadows.Enabled",                      I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Shadows.Strength",                     F, { 0.85f, 0.85f, 0.85f, 0.85f, 1.0f } },
@@ -108,7 +108,7 @@ const Row kRows[] = {
     { "gNewDawn.Shadows.Foliage",                      I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Shadows.Coverage",                     I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Shadows.PointLights",                  I, { 2,     1,     0,     0,     0 } },
-    { "gNewDawn.Fog.Volumetric",                       I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Fog.Volumetric",                       I, { 1,     0,     0,     0,     0 } },
     { "gNewDawn.SunShafts.Enabled",                    I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.SunShafts.Mode",                       I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.SunShafts.Strength",                   F, { 0.30f, 0.30f, 0.30f, 0.30f, 0.4f } },
@@ -124,7 +124,7 @@ const Row kRows[] = {
     { "gNewDawn.Water.Refraction",                     I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.Water.RefractionStrength",             F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
     { "gNewDawn.Water.Restyle",                        I, { 1,     1,     1,     1,     0 } },
-    { "gNewDawn.Water.Caustics",                       I, { 1,     1,     0,     0,     0 } },
+    { "gNewDawn.Water.Caustics",                       I, { 1,     0,     0,     0,     0 } },
     { "gNewDawn.Water.Underwater",                     I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.Water.Waves",                          I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Water.WaveStrength",                   F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
@@ -148,12 +148,17 @@ const char* TierName(Tier tier) {
 }
 
 const char* TierBlurb(Tier tier) {
+    // Costs: mean GPU ms per frame over eight heavy scenes at 1080p on a Radeon RX 7800 XT (docs/PERFORMANCE.md).
     static const char* blurbs[] = {
-        "Everything on: bounce light, volumetric fog, 4 shadow cascades, dense grass, 4x MSAA.",
-        "No bounce light and a lighter shadow map and grass. Nearly Ultra for a much lower cost.",
-        "No volumetric fog, water reflections, parallax or foliage shadows; 2x MSAA.",
-        "The core remaster look at a fraction of the cost: modern lighting, physical sky, per-pixel lighting, one shadow cascade.",
-        "Every New Dawn effect off. The game renders exactly like the N64 original path.",
+        "Everything on: world and screen-space bounce light, volumetric fog and clouds, 4 shadow cascades, caustics, "
+        "dense grass, 4x MSAA with temporal AA. About 4.6 ms of GPU time per frame (reference card).",
+        "Ultra without screen-space bounce light, volumetric fog, caustics and parallax; lighter shadows and grass; "
+        "temporal AA instead of MSAA. About 2.8 ms, 61% of Ultra.",
+        "Modern lighting, sky, shadows (2 cascades), ambient occlusion, water foam and refraction, "
+        "grass and effects; no bounce light, fog, clouds or temporal AA; 2x MSAA. About 1.7 ms, 38% of Ultra.",
+        "The core remaster look: modern lighting and tonemap, physical sky, per-pixel lighting, materials, one shadow "
+        "cascade, local lights. About 1.3 ms, 29% of Ultra (the floor of that look).",
+        "Every New Dawn effect off. The game renders exactly like the N64 original path. About 0.2 ms.",
     };
     return blurbs[static_cast<int>(tier)];
 }
