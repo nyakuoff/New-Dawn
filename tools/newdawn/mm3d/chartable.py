@@ -23,9 +23,22 @@ OUT = Path(__file__).resolve().parents[3] / 'mm/2s2h/NewDawn/Mm3dCharacterTable.
 
 # object/skeleton -> comma separated CMB material indices to leave out; filled in while reviewing each model.
 SKIP = {
+    ('object_tru', 'gKoumeSkel'): '5,6',            # the potion bottle (the N64 draws gKoumeBottleDL itself); her broom is a limb
     ('object_sdn', 'gSoldierSkel'): '2,3',
     ('object_an1', 'gAnju1Skel'): '0,1',
     ('object_rsn', 'gBombShopkeeperSkel'): '2,3,4',
+}
+# Never converted, even with "Include unreviewed 3DS models": wrong or unverified in game (docs/MM3D_CHARACTERS.md).
+EXCLUDE = {
+    ('object_bigokuta', 'gBigOctoSkel'),               # draws translucent and in a different shape
+    ('object_harfgibud', 'gPamelasFatherGibdoSkel'),   # the archive only has the human model
+    ('object_dnq', 'gDekuPrincessSkel'),               # not the Deku Princess
+    ('object_boss05', 'gBioDekuBabaLilyPadSkel'),      # a flat placeholder
+    ('object_mm', 'object_mm_Skel_0096E8'),            # Postman: identical frames, cause unknown
+    ('object_ik', 'gIronKnuckleSkel'),                 # keeps limb display lists to draw flying armour later
+    ('object_thiefbird', 'gTakkuriSkel'),              # same: the death pieces reuse the limb display lists
+    ('object_kz', 'gFighterPirateSkel'),               # weapons not compared with the N64 swords
+    ('object_dy_obj', 'gGreatFairySkel'),              # one skeleton, five colour models: the model cannot follow her param
 }
 # Skeletons whose archive holds several CMBs with the same hierarchy (variants of one character): the one to use.
 CMB = {
@@ -117,6 +130,8 @@ def main():
         if not parent or len(parent) < 3:
             continue
         obj, skel = parts[1], parts[2]
+        if (obj, skel) in EXCLUDE:
+            continue
         arch = 'zelda2_' + obj[len('object_'):]
         path = Path(a.romfs, 'actors', arch + '.gar.lzs')
         if not path.exists():

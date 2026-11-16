@@ -144,7 +144,8 @@ std::string UpscalerPath() {
 bool UpscaleWanted() {
     return CVarGetInteger("gNewDawn.MM3D.Upscale", 1) != 0;
 }
-// Reviewer switch (no menu entry): gNewDawn.MM3D.ReviewAll=1 also writes the held-back models, to look at them in game.
+// "Include unreviewed 3DS models" (gNewDawn.MM3D.ReviewAll, off by default): also writes the models not yet reviewed in game.
+// The table leaves out the known broken ones, so they stay excluded.
 bool Enabled(const Entry& e) {
     return e.reviewed || CVarGetInteger("gNewDawn.MM3D.ReviewAll", 0) != 0;
 }
