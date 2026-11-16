@@ -279,6 +279,7 @@ struct Job {
     std::string face;
     bool stoch = false;
     std::string role = "base";
+    std::string region;  // scene region priority list ("interiors,clock_town") for manifest selectors
     std::string measure; // "layout" (brick, ashlar), "planks": count the rows and columns on the original's pixels
     bool hasRows = false, hasCols = false;
 };
@@ -383,6 +384,15 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
         }
     }
 
+    const json sceneRegions = data.recipes.value("scene_regions", json::object());
+    auto regionOf = [&](const std::string& resource) -> std::string { // scenes/nonmq/<SCENE>/...
+        if (resource.rfind("scenes/", 0) != 0) return "";
+        const size_t a = resource.find('/', 7);
+        const size_t b = a == std::string::npos ? a : resource.find('/', a + 1);
+        if (b == std::string::npos) return "";
+        const std::string scene = resource.substr(a + 1, b - a - 1);
+        return sceneRegions.contains(scene) ? sceneRegions[scene].get<std::string>() : "";
+    };
     auto addJob = [&](const std::string& resource, const json& entry, const std::string& cls, const std::string& pal, int tier) {
         if (!classes.contains(cls)) {
             return;
@@ -392,6 +402,7 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
         j.palette = pal;
         j.seed = entry.value("seed", NameSeed(resource));
         j.tier = tier;
+        j.region = regionOf(resource);
         const json& c = classes[cls];
         j.gen = entry.value("gen", c.value("gen", ""));
         j.stoch = entry.contains("stoch") ? entry.value("stoch", false) : c.value("stoch", false);
@@ -404,6 +415,13 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
         }
         if (entry.contains("p")) {
             p.update(entry["p"]);
+        }
+        // physical scale: repeat the CC0 set so one of its tiles covers about world_m metres of the surface
+        if (c.contains("world_m") && !(p.contains("k")) && data.scale.contains("textures") && data.scale["textures"].contains(resource) &&
+            data.scale["textures"][resource].contains("tile_m")) {
+            const auto& tm = data.scale["textures"][resource]["tile_m"];
+            const double span = std::max(tm[0].get<double>(), tm[1].get<double>());
+            p["k"] = std::clamp((int)std::lround(span / c["world_m"].get<double>()), 1, data.recipes.value("max_repeat", 8));
         }
         j.hasRows = p.contains("rows") && entry.contains("p") && entry["p"].contains("rows");
         j.hasCols = p.contains("cols") && entry.contains("p") && entry["p"].contains("cols");
@@ -565,7 +583,7 @@ void RunJob(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip,
     const double k = (double)job.tier / std::max(o.w, o.h);
     const int W = std::max(64, (int)std::lround(o.w * k) & ~1), H = std::max(64, (int)std::lround(o.h * k) & ~1);
     NewDawnSynth::Mat mat;
-    if (!NewDawnSynth::Generate(job.gen, lib, pal, params, W, H, job.seed, mat)) {
+    if (!NewDawnSynth::Generate(job.gen, lib, pal, params, W, H, job.seed, job.region, mat)) {
         ++out.unusable;
         return;
     }
@@ -637,7 +655,11 @@ void Generate(bool boot) {
                 NewDawnSynth::Library::Entry e;
                 e.id = m.value("id", "");
                 e.cls = m.value("class", "");
-                e.region = m.value("region", "any");
+                if (m.contains("regions")) {
+                    for (const auto& r : m["regions"]) e.regions.push_back(r.get<std::string>());
+                } else {
+                    e.regions.push_back(m.value("region", "any"));
+                }
                 for (const auto& r : m.value("roles", json::array())) {
                     e.roles.push_back(r.get<std::string>());
                 }

@@ -1,6 +1,6 @@
 {
  "version": 1,
- "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is.",
+ "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is. scene_regions: scene folder -> region priority list (manifest sets tagged for the first region with a match are chosen, then 'any'). world_m: metres one tile of the CC0 set covers; the generator repeats the set k = tile_m / world_m times per texture (scale.json tile_m, max_repeat), the stochastic sampling hides the repetition.",
  "tiers": {
   "hero": 1024,
   "rest": 512,
@@ -193,7 +193,8 @@
     "set": "role:bark",
     "contrast": 1.0,
     "hf": 1.0
-   }
+   },
+   "world_m": 1.0
   },
   "a_plaster": {
    "gen": "direct",
@@ -201,14 +202,16 @@
    "p": {
     "set": "class:plaster",
     "macro": 0.06
-   }
+   },
+   "world_m": 2.0
   },
   "a_roof": {
    "gen": "direct",
    "p": {
     "set": "role:tiles",
     "contrast": 1.0
-   }
+   },
+   "world_m": 1.5
   },
   "a_thatch": {
    "gen": "direct",
@@ -216,7 +219,8 @@
     "set": "role:thatch",
     "contrast": 1.0,
     "hf": 1.0
-   }
+   },
+   "world_m": 1.5
   },
   "a_dirt": {
    "gen": "direct",
@@ -225,7 +229,8 @@
     "set": "class:dirt",
     "macro": 0.1,
     "contrast": 1.1
-   }
+   },
+   "world_m": 2.0
   },
   "a_sand": {
    "gen": "direct",
@@ -233,19 +238,18 @@
     "set": "class:sand",
     "contrast": 1.0,
     "hf": 1.0
-   }
+   },
+   "world_m": 2.0
   },
   "a_mud": {
    "gen": "direct",
    "stoch": true,
    "p": {
-    "set": [
-     "ground048",
-     "ground109"
-    ],
+    "set": "class:mud|class:dirt",
     "macro": 0.12,
     "contrast": 1.0
-   }
+   },
+   "world_m": 2.0
   },
   "a_rock": {
    "gen": "direct",
@@ -254,17 +258,24 @@
     "set": "role:rock",
     "contrast": 1.15,
     "hf": 1.0
-   }
+   },
+   "world_m": 3.0
   },
   "a_grass": {
    "gen": "direct",
    "stoch": true,
    "p": {
-    "set": "class:grass",
-    "contrast": 1.0,
-    "macro": 0.2,
-    "macro_size": 100
-   }
+    "set": "class:dirt|class:mud",
+    "contrast": 0.7,
+    "hf": 0.5,
+    "macro": 0.3,
+    "macro_size": 140,
+    "relief": 8,
+    "nstrength": 0.6,
+    "grime": 0.2,
+    "wear": 0.1
+   },
+   "world_m": 3.0
   },
   "a_moss": {
    "gen": "direct",
@@ -272,7 +283,8 @@
    "p": {
     "set": "role:moss",
     "contrast": 1.0
-   }
+   },
+   "world_m": 1.5
   },
   "a_metal": {
    "gen": "direct",
@@ -282,7 +294,8 @@
     "rough0": 0.35,
     "rough1": 0.85,
     "chroma": 0.1
-   }
+   },
+   "world_m": 1.0
   },
   "a_fabric": {
    "gen": "direct",
@@ -296,8 +309,7 @@
   "a_rope": {
    "gen": "direct",
    "p": {
-    "set": "class:fabric",
-    "k": 2,
+    "set": "class:rope",
     "contrast": 1.0,
     "hf": 1.0,
     "chroma": 0.1
@@ -307,9 +319,10 @@
    "gen": "direct",
    "stoch": true,
    "p": {
-    "set": "class:snow",
+    "set": "class:ice_snow",
     "contrast": 0.8
-   }
+   },
+   "world_m": 2.0
   }
  },
  "scopes": [
@@ -333,8 +346,109 @@
   "grass": "a_grass",
   "moss": "a_moss",
   "metal": "a_metal",
-  "fabric": "a_fabric",
   "rope": "a_rope",
   "ice_snow": "a_snow"
- }
+ },
+ "scene_regions": {
+  "Z2_CLOCKTOWER": "clock_town",
+  "Z2_TOWN": "clock_town",
+  "Z2_BACKTOWN": "clock_town",
+  "Z2_ICHIBA": "clock_town",
+  "Z2_OPENINGDAN": "clock_town",
+  "Z2_ALLEY": "clock_town",
+  "Z2_OKUJOU": "clock_town",
+  "Z2_00KEIKOKU": "termina_field",
+  "Z2_ROMANYMAE": "termina_field",
+  "Z2_F01": "termina_field",
+  "Z2_F01_B": "termina_field",
+  "Z2_KOEPONARACE": "termina_field",
+  "Z2_20SICHITAI": "swamp_woodfall",
+  "Z2_20SICHITAI2": "swamp_woodfall",
+  "Z2_21MITURINMAE": "swamp_woodfall",
+  "Z2_22DEKUCITY": "swamp_woodfall",
+  "Z2_24KEMONOMITI": "swamp_woodfall",
+  "Z2_26SARUNOMORI": "swamp_woodfall",
+  "Z2_SYATEKI_MORI": "swamp_woodfall",
+  "Z2_DEKUTES": "swamp_woodfall",
+  "Z2_LOST_WOODS": "swamp_woodfall",
+  "Z2_DANPEI": "swamp_woodfall",
+  "Z2_KINSTA1": "swamp_woodfall",
+  "Z2_DEKU_KING": "swamp_woodfall",
+  "Z2_10YUKIYAMANOMURA": "snowhead",
+  "Z2_10YUKIYAMANOMURA2": "snowhead",
+  "Z2_11GORONNOSATO": "snowhead",
+  "Z2_11GORONNOSATO2": "snowhead",
+  "Z2_12HAKUGINMAE": "snowhead",
+  "Z2_13HUBUKINOMITI": "snowhead",
+  "Z2_14YUKIDAMANOMITI": "snowhead",
+  "Z2_16GORON_HOUSE": "snowhead",
+  "Z2_17SETUGEN": "snowhead",
+  "Z2_17SETUGEN2": "snowhead",
+  "Z2_GORONRACE": "snowhead",
+  "Z2_GORONSHOP": "snowhead",
+  "Z2_GORON_HAKA": "snowhead",
+  "Z2_KAJIYA": "snowhead",
+  "Z2_30GYOSON": "great_bay",
+  "Z2_31MISAKI": "great_bay",
+  "Z2_33ZORACITY": "great_bay",
+  "Z2_35TAKI": "great_bay",
+  "Z2_BANDROOM": "great_bay",
+  "Z2_KAIZOKU": "great_bay",
+  "Z2_PIRATE": "great_bay",
+  "Z2_TORIDE": "great_bay",
+  "Z2_LABO": "great_bay",
+  "Z2_FISHERMAN": "great_bay",
+  "Z2_KINDAN2": "great_bay",
+  "Z2_KONPEKI_ENT": "great_bay",
+  "Z2_SINKAI": "great_bay",
+  "Z2_IKANA": "ikana_tower",
+  "Z2_IKANAMAE": "ikana_tower",
+  "Z2_BOTI": "ikana_tower",
+  "Z2_CASTLE": "ikana_tower",
+  "Z2_F40": "ikana_tower",
+  "Z2_F41": "ikana_tower",
+  "Z2_REDEAD": "ikana_tower",
+  "Z2_HAKASHITA": "ikana_tower",
+  "Z2_DANPEI2TEST": "ikana_tower",
+  "Z2_IKNINSIDE": "ikana_tower",
+  "Z2_TOUGITES": "ikana_tower",
+  "Z2_SECOM": "ikana_tower",
+  "Z2_8ITEMSHOP": "interiors,clock_town",
+  "Z2_AYASHIISHOP": "interiors,clock_town",
+  "Z2_BOMYA": "interiors,clock_town",
+  "Z2_BOWLING": "interiors,clock_town",
+  "Z2_DOUJOU": "interiors,clock_town",
+  "Z2_INSIDETOWER": "interiors,clock_town",
+  "Z2_MAP_SHOP": "interiors,clock_town",
+  "Z2_MILK_BAR": "interiors,clock_town",
+  "Z2_MUSICHOUSE": "interiors,clock_town",
+  "Z2_OMOYA": "interiors,termina_field",
+  "Z2_POSTHOUSE": "interiors,clock_town",
+  "Z2_SONCHONOIE": "interiors,clock_town",
+  "Z2_TAKARAKUJI": "interiors,clock_town",
+  "Z2_TAKARAYA": "interiors,clock_town",
+  "Z2_WITCH_SHOP": "interiors,swamp_woodfall",
+  "Z2_YADOYA": "interiors,clock_town",
+  "Z2_SYATEKI_MIZU": "interiors,clock_town",
+  "Z2_TENMON_DAI": "interiors,clock_town",
+  "Z2_F01C": "interiors,termina_field",
+  "Z2_MITURIN": "dungeon,swamp_woodfall",
+  "Z2_MITURIN_BS": "dungeon,swamp_woodfall",
+  "Z2_HAKUGIN": "dungeon,snowhead",
+  "Z2_HAKUGIN_BS": "dungeon,snowhead",
+  "Z2_SEA": "dungeon,great_bay",
+  "Z2_SEA_BS": "dungeon,great_bay",
+  "Z2_INISIE_N": "dungeon,ikana_tower",
+  "Z2_INISIE_R": "dungeon,ikana_tower",
+  "Z2_LAST_BS": "dungeon",
+  "Z2_LAST_DEKU": "dungeon",
+  "Z2_LAST_GORON": "dungeon",
+  "Z2_LAST_LINK": "dungeon",
+  "Z2_LAST_ZORA": "dungeon",
+  "Z2_KYOJINNOMA": "dungeon",
+  "Z2_SOUGEN": "dungeon",
+  "Z2_RANDOM": "dungeon",
+  "KAKUSIANA": "dungeon"
+ },
+ "max_repeat": 8
 }
