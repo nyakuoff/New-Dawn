@@ -1141,6 +1141,17 @@ Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint
     if (macro != 0) {
         mac = Fbm(W, H, seed + 5, macroSize * s, 3);
     }
+    // The original's own tonal patches: smooth, normalised, and added to the tone below (ground, grass, sand, mud).
+    const float mottle = (float)p.Get("native_mottle", 0.);
+    Field nat;
+    if (mottle > 0 && p.native && p.nativeW >= 4 && p.nativeH >= 4) {
+        nat = Upsample(*p.native, p.nativeW, p.nativeH, W, H);
+        nat = Blur(std::move(nat), W, H, .7f * (float)W / p.nativeW);
+        const float nm = (float)Mean(nat), ns = (float)StdDev(nat) + 1e-6f;
+        for (float& v : nat) {
+            v = (v - nm) / ns;
+        }
+    }
     Field bl = Blur(disp, W, H, 3 * s);
     Field cav(N);
     for (size_t i = 0; i < N; ++i) {
@@ -1163,6 +1174,9 @@ Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint
         t = tr0 + t * (tr1 - tr0);
         if (macro != 0) {
             t += mac[i] * macro;
+        }
+        if (!nat.empty()) {
+            t += nat[i] * .09f * mottle;
         }
         t = Clamp01(t + toneShift);
         t = t - grime * .06f * Smooth(cav[i], .3f, 2.5f) + wear * .05f * Smooth(-cav[i], .8f, 2.5f) + (aom[i] - aoMean) * aoK * .15f;

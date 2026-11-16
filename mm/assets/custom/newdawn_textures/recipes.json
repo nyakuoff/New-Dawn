@@ -1,6 +1,6 @@
 {
  "version": 1,
- "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is. scene_regions: scene folder -> region priority list (manifest sets tagged for the first region with a match are chosen, then 'any'). world_m: metres one tile of the CC0 set covers; the generator repeats the set k = tile_m / world_m times per texture (scale.json tile_m, max_repeat), the stochastic sampling hides the repetition. unique.scenes: scenes whose unique (painted) art is upscaled in this milestone; gNewDawn.Textures.UniqueScenes=all or a comma list overrides.",
+ "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is. scene_regions: scene folder -> region priority list (manifest sets tagged for the first region with a match are chosen, then 'any'). world_m: metres one tile of the CC0 set covers; the generator repeats the set k = tile_m / world_m times per texture (scale.json tile_m, max_repeat), the stochastic sampling hides the repetition. unique.scenes: scenes whose unique (painted) art is upscaled in this milestone; gNewDawn.Textures.UniqueScenes=all or a comma list overrides. region_params: per scene region (first region of the scene's list that has the class), merged over the class recipe before the entry's own p. native_mottle: weight of the original's own low-frequency luminance pattern in the tone map.",
  "tiers": {
   "hero": 1024,
   "rest": 512,
@@ -79,7 +79,8 @@
     "set": "grass004",
     "contrast": 1.0,
     "macro": 0.16,
-    "macro_size": 90
+    "macro_size": 90,
+    "native_mottle": 0.7
    },
    "stoch": true
   },
@@ -88,7 +89,8 @@
    "p": {
     "set": "ground079s",
     "macro": 0.1,
-    "contrast": 1.1
+    "contrast": 1.1,
+    "native_mottle": 0.5
    },
    "stoch": true
   },
@@ -114,7 +116,8 @@
    "p": {
     "set": "ground097",
     "contrast": 1.0,
-    "hf": 1.0
+    "hf": 1.0,
+    "native_mottle": 0.3
    }
   },
   "a_brick": {
@@ -228,7 +231,8 @@
    "p": {
     "set": "class:dirt",
     "macro": 0.1,
-    "contrast": 1.1
+    "contrast": 1.1,
+    "native_mottle": 0.5
    },
    "world_m": 2.0
   },
@@ -237,7 +241,8 @@
    "p": {
     "set": "class:sand",
     "contrast": 1.0,
-    "hf": 1.0
+    "hf": 1.0,
+    "native_mottle": 0.3
    },
    "world_m": 2.0
   },
@@ -248,7 +253,8 @@
     "set": "class:mud|class:dirt",
     "macro": 0.12,
     "contrast": 1.0,
-    "chroma": 0.1
+    "chroma": 0.1,
+    "native_mottle": 0.6
    },
    "world_m": 2.0
   },
@@ -258,7 +264,8 @@
    "p": {
     "set": "role:rock",
     "contrast": 1.15,
-    "hf": 1.0
+    "hf": 1.0,
+    "native_mottle": 0.25
    },
    "world_m": 3.0
   },
@@ -280,7 +287,8 @@
     "nstrength": 0.6,
     "grime": 0.2,
     "wear": 0.1,
-    "chroma": 0.04
+    "chroma": 0.04,
+    "native_mottle": 0.85
    },
    "world_m": 3.0
   },
@@ -461,10 +469,73 @@
  },
  "max_repeat": 8,
  "unique": {
-  "scenes": [
-   "Z2_CLOCKTOWER",
-   "Z2_YADOYA",
-   "Z2_00KEIKOKU"
-  ]
+  "scenes": "all",
+  "mm3d_verified": [
+   "scenes/nonmq/Z2_21MITURINMAE/Z2_21MITURINMAETex_009DD0",
+   "scenes/nonmq/Z2_INISIE_N/Z2_INISIE_N_room_01Tex_0076A8",
+   "scenes/nonmq/Z2_INISIE_R/Z2_INISIE_R_room_01Tex_007628",
+   "scenes/nonmq/Z2_INISIE_R/Z2_INISIE_R_room_02Tex_006DE8",
+   "scenes/nonmq/Z2_INISIE_R/Z2_INISIE_R_room_03Tex_008810",
+   "scenes/nonmq/Z2_KINDAN2/Z2_KINDAN2_room_03Tex_0086D0",
+   "scenes/nonmq/Z2_KINSTA1/Z2_KINSTA1_room_05Tex_001B30",
+   "scenes/nonmq/Z2_MITURIN/Z2_MITURIN_room_01Tex_006C60",
+   "scenes/nonmq/Z2_MITURIN/Z2_MITURIN_room_03Tex_0087A0",
+   "scenes/nonmq/Z2_MITURIN/Z2_MITURIN_room_05Tex_004288",
+   "scenes/nonmq/Z2_YADOYA/Z2_YADOYATex_00DA80",
+   "scenes/nonmq/Z2_YADOYA/Z2_YADOYA_room_00Tex_016120",
+   "scenes/nonmq/Z2_YADOYA/Z2_YADOYA_room_01Tex_0079E8"
+  ],
+  "comment": "unique art of every scene is upscaled; a 3DS texture is a source only for the hand-verified pairs below (and only when it also passes the content rule): the classification's correspondence cannot be verified automatically (40 rule-accepted pairs from 17 scenes: 13 clearly the same art, 14 clearly wrong, 13 same kind of surface; no pixel measure separated them). gNewDawn.Textures.Unique3ds: 0 off, 1 verified list (default), 2 every rule-accepted pair (experimental)."
+ },
+ "region_params": {
+  "interiors": {
+   "plaster": {
+    "hf": 0.35,
+    "contrast": 0.5,
+    "relief": 5,
+    "nstrength": 0.5,
+    "grime": 0.15,
+    "wear": 0.05,
+    "macro": 0.12,
+    "macro_size": 170,
+    "rough0": 0.75
+   },
+   "a_plaster": {
+    "hf": 0.35,
+    "contrast": 0.5,
+    "relief": 5,
+    "nstrength": 0.5,
+    "grime": 0.15,
+    "wear": 0.05,
+    "macro": 0.12,
+    "macro_size": 170,
+    "rough0": 0.75
+   },
+   "planks": {
+    "hf": 0.75,
+    "contrast": 0.8,
+    "relief": 9,
+    "nstrength": 0.9,
+    "grime": 0.2
+   },
+   "a_planks": {
+    "hf": 0.75,
+    "contrast": 0.8,
+    "relief": 9,
+    "nstrength": 0.9,
+    "grime": 0.2
+   }
+  },
+  "swamp_woodfall": {
+   "a_grass": {
+    "contrast": 1.0,
+    "hf": 0.9,
+    "macro": 0.35,
+    "macro_size": 55,
+    "relief": 11,
+    "nstrength": 0.8,
+    "native_mottle": 1.0
+   }
+  }
  }
 }
