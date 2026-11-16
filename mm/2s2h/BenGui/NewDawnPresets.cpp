@@ -50,6 +50,7 @@ const Row kRows[] = {
     { "gNewDawn.PostFx.Grade.Saturation",              F, { 1.12f, 1.12f, 1.12f, 1.12f, 1.08f } },
     { "gNewDawn.Grade.ArtDirection",                   I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.Grade.ArtStrength",                    F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
+    { "gNewDawn.Look.Profiles",                        I, { 1,     1,     1,     1,     0 } },
     { "gNewDawn.PostFx.Debug.View",                    I, { 0,     0,     0,     0,     0 } },
     { "gNewDawn.PostFx.Dither.Enabled",                I, { 1,     1,     1,     1,     0 } },
     // Modern (linear) lighting pipeline and display transform; SDR output.

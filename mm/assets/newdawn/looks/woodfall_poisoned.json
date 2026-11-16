@@ -1,0 +1,17 @@
+{
+  "name": "woodfall_poisoned",
+  "inherits": "swamp_poisoned",
+  "scenes": [
+    {
+      "scene": "21MITURINMAE",
+      "when": "!woodfall_cleared"
+    }
+  ],
+  "base": {
+    "air": {
+      "fogDensity": 1.3,
+      "fogHeight": 420,
+      "fogBase": 0.0
+    }
+  }
+}

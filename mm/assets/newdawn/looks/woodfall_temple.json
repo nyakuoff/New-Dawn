@@ -1,0 +1,14 @@
+{
+  "name": "woodfall_temple",
+  "inherits": "moss",
+  "scenes": [
+    "MITURIN"
+  ],
+  "base": {
+    "air": {
+      "fogDensity": 0.5,
+      "fogHeight": 800,
+      "fogBase": -1200
+    }
+  }
+}

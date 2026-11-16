@@ -1,5 +1,6 @@
 #include "NewDawnPostFx.h"
 #include "NewDawnAtmos.h"
+#include "2s2h/NewDawn/NewDawnLook.h"
 
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <fast/newdawn_postfx.h>
@@ -17,6 +18,12 @@ extern "C" {
 static float sMaskFlash[4];
 static u32 sMaskFlashFrame = ~0u;
 s32 Environment_IsSceneUpsideDown(PlayState* play);
+}
+
+// A look-profile quantity (fast/newdawn_look.h): the player's cvar, or this frame's look scaled by that cvar.
+static float NewDawnLookCv(PlayState* play, int id, float def) {
+    return Fast::NewDawnLookValue(NewDawn::Look::Resolve(play), id,
+                                  CVarGetFloat(Fast::NewDawnLookFieldInfo(id).cvar, def));
 }
 
 static float NewDawnClampF(float value, float low, float high) {
@@ -144,11 +151,11 @@ static void NewDawnFillShadowParams(PlayState* play, NewDawnPostFxParams* params
             fade = moonFade * 0.8f;
         }
     }
-    float strength = NewDawnClampF(CVarGetFloat("gNewDawn.Shadows.Strength", 1.0f), 0.0f, 1.0f) * fade;
+    float strength = NewDawnClampF(NewDawnLookCv(play, NEWDAWN_LOOK_SHADOW_STRENGTH, 1.0f), 0.0f, 1.0f) * fade;
     // Sun shafts ride on the shadow map and the same fades.
     float shaftStrength = 0.0f;
     if (!moonLit && CVarGetInteger("gNewDawn.SunShafts.Enabled", 0)) {
-        shaftStrength = NewDawnClampF(CVarGetFloat("gNewDawn.SunShafts.Strength", 0.4f), 0.0f, 1.0f) * fade;
+        shaftStrength = NewDawnClampF(NewDawnLookCv(play, NEWDAWN_LOOK_RAYS, 0.4f), 0.0f, 1.0f) * fade;
     }
     if (strength <= 0.001f && shaftStrength <= 0.001f) {
         return;
@@ -590,6 +597,7 @@ static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
         play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
         return;
     }
+    const Fast::NewDawnLookFrame& look = NewDawn::Look::Resolve(play);
     const bool temple = play->sceneId == SCENE_MITURIN && play->envCtx.lightMode == LIGHT_MODE_SETTINGS;
     if (temple) {
         params->fogVolumetric = 2;
@@ -633,7 +641,9 @@ static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
         params->fogBaseHeight = 0.0f;
         params->fogHeight = 700.0f;
         params->fogDensityScale = 1.0f;
-        switch (play->sceneId) {
+        switch (look.on ? -1 : play->sceneId) {
+            case -1: // look profiles decide which scenes have the medium (below)
+                break;
             case SCENE_00KEIKOKU:
                 break;
             case SCENE_30GYOSON:
@@ -658,6 +668,15 @@ static void NewDawnFillFogParams(PlayState* play, NewDawnPostFxParams* params) {
                 return;
         }
         params->fogVolumetric = 1;
+    }
+    if (look.on) {
+        params->fogBaseHeight = look.v[NEWDAWN_LOOK_FOG_BASE];
+        params->fogHeight = look.v[NEWDAWN_LOOK_FOG_HEIGHT];
+        params->fogDensityScale = look.v[NEWDAWN_LOOK_FOG_DENSITY];
+        if (params->fogDensityScale <= 0.0f) {
+            params->fogVolumetric = 0;
+            return;
+        }
     }
     for (int i = 0; i < 3; ++i) {
         params->fogAmbient[i] = play->lightCtx.ambientColor[i] / 255.0f;
@@ -900,6 +919,12 @@ static void NewDawnFillArtParams(PlayState* play, NewDawnPostFxParams* params) {
         sLastValid = true;
     }
 
+    if (const Fast::NewDawnLookFrame& profile = NewDawn::Look::Resolve(play); profile.on) {
+        // Look profiles: the same fifteen controls, already resolved and eased by the profile system.
+        static_assert(NEWDAWN_LOOK_GRADE_GREEN_SAT - NEWDAWN_LOOK_GRADE_GAIN + 1 == kArtFloats);
+        memcpy(&sCurrent, &profile.v[NEWDAWN_LOOK_GRADE_GAIN], sizeof(sCurrent));
+        sInit = false; // the table path starts afresh if profiles are switched off
+    }
     NewDawnLook look = ArtMix(kArtIdentity, sCurrent, strength);
     params->artEnabled = 1;
     params->artSlope[0] = look.gain * (1.0f + 0.30f * look.warmth);
@@ -948,6 +973,10 @@ static void NewDawnFillLocalLightParams(PlayState* play, NewDawnPostFxParams* pa
         const bool outdoor = play->envCtx.lightMode == LIGHT_MODE_TIME;
         float darken = outdoor ? 0.62f * night : 0.58f;
         params->localGain = outdoor ? 1.0f : 1.5f;
+        if (const Fast::NewDawnLookFrame& look = NewDawn::Look::Resolve(play); look.on) {
+            darken = look.v[NEWDAWN_LOOK_DARKEN];
+            params->localGain = look.v[NEWDAWN_LOOK_LAMP_GAIN];
+        }
         // Cutscenes (most of the opening) get the same moody treatment, a little lighter, so their flat authored light is
         // not left grey. The value eases over about a second so a cutscene starting or ending never pops.
         if (play->csCtx.state != CS_STATE_IDLE || Play_InCsMode(play)) {
@@ -1301,11 +1330,123 @@ static void NewDawnFillInteriorParams(PlayState* play, NewDawnPostFxParams* para
     }
 }
 
+// gNewDawn.Look.SelfCheck=1, logged once: the resolver's own logic check, then the shipped profiles against the tables
+// they stand in for. For every scene, both kinds of light, both Woodfall states and the whole clock the profiles must
+// give the table's grade, darkening and lamp gain, and the fog switch's numbers. It goes away with the tables.
+static void NewDawnLookSelfCheck() {
+    const bool logic = NewDawn::Look::SelfCheck();
+    NewDawn::Look::Profiles(); // loads the shipped files
+    float worst = 0.0f;
+    int cases = 0;
+    std::string worstCase;
+    const auto smooth = [](float a, float b, float x) {
+        const float t = NewDawnClampF((x - a) / (b - a), 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
+    };
+    for (int scene = 0; scene < SCENE_MAX; scene++) {
+        for (int cleared = 0; cleared < 2; cleared++) {
+            for (int clockLit = 0; clockLit < 2; clockLit++) {
+                for (float hour = 0.0f; hour < 24.0f; hour += 0.25f, cases++) {
+                    NewDawn::Look::Inputs in;
+                    in.scene = scene;
+                    in.clockLit = clockLit != 0;
+                    in.hour = hour;
+                    in.flag = [cleared](const std::string& name) { return name == "woodfall_cleared" && cleared; };
+                    float got[NEWDAWN_LOOK_COUNT];
+                    NewDawn::Look::Evaluate(in, got);
+                    const auto check = [&](int field, float want, float scale = 1.0f) {
+                        const float d = fabsf(want - got[field]) / scale;
+                        if (d > worst) {
+                            worst = d;
+                            worstCase = fmt::format("{} in {} ({}, {:.2f} h, Woodfall {}): table {}, profile {}",
+                                                    Fast::NewDawnLookFieldInfo(field).name,
+                                                    NewDawn::Look::SceneName(scene), clockLit ? "clock" : "fixed", hour,
+                                                    cleared ? "cleared" : "poisoned", want, got[field]);
+                        }
+                    };
+
+                    const NewDawnArtMood* mood = NewDawnArtMoodFor(scene, cleared != 0);
+                    NewDawnLook want = mood->base;
+                    if (clockLit) {
+                        float w[4];
+                        NewDawnArtTodWeights(hour, w);
+                        for (int b = 0; b < 4; b++) {
+                            want = ArtAdd(want, sArtTod[b], w[b]);
+                            want = ArtAdd(want, mood->extra[b], w[b]);
+                        }
+                    } else if (mood == &sArtOutdoor) {
+                        want = sArtInterior.base;
+                    }
+                    float grade[kArtFloats];
+                    memcpy(grade, &want, sizeof(grade));
+                    for (int i = 0; i < kArtFloats; i++) {
+                        check(NEWDAWN_LOOK_GRADE_GAIN + i, grade[i]);
+                    }
+                    const float night = hour >= 12.0f ? smooth(17.5f, 19.5f, hour) : 1.0f - smooth(4.5f, 6.5f, hour);
+                    check(NEWDAWN_LOOK_DARKEN, clockLit ? 0.62f * night : 0.58f);
+                    check(NEWDAWN_LOOK_LAMP_GAIN, clockLit ? 1.0f : 1.5f);
+
+                    // The fog switch of NewDawnFillFogParams: density, height, base; no entry = no medium.
+                    float fog[3] = { 0.0f, got[NEWDAWN_LOOK_FOG_HEIGHT], got[NEWDAWN_LOOK_FOG_BASE] };
+                    const auto set = [&](float density, float height, float base) {
+                        fog[0] = density, fog[1] = height, fog[2] = base;
+                    };
+                    switch (scene) {
+                        case SCENE_00KEIKOKU:
+                            set(1.0f, 700.0f, 0.0f);
+                            break;
+                        case SCENE_30GYOSON:
+                            set(0.7f, 450.0f, 0.0f);
+                            break;
+                        case SCENE_20SICHITAI2:
+                        case SCENE_21MITURINMAE:
+                            set(1.3f, 420.0f, 0.0f);
+                            break;
+                        case SCENE_CLOCKTOWER:
+                        case SCENE_TOWN:
+                        case SCENE_ICHIBA:
+                        case SCENE_BACKTOWN:
+                            set(0.35f, 700.0f, 0.0f);
+                            break;
+                        case SCENE_IKANA:
+                            set(1.0f, 700.0f, 400.0f);
+                            break;
+                        case SCENE_MITURIN:
+                            set(0.5f, 800.0f, -1200.0f);
+                            break;
+                        default:
+                            break;
+                    }
+                    check(NEWDAWN_LOOK_FOG_DENSITY, fog[0]);
+                    check(NEWDAWN_LOOK_FOG_HEIGHT, fog[1], 1000.0f);
+                    check(NEWDAWN_LOOK_FOG_BASE, fog[2], 1000.0f);
+                }
+            }
+        }
+    }
+    if (logic && worst < 1e-4f) {
+        SPDLOG_INFO("NewDawnLook self-check: ok ({} cases, worst difference from the tables {:.7f})", cases, worst);
+    } else {
+        SPDLOG_ERROR("NewDawnLook self-check: FAILED (logic {}, {} cases, worst difference from the tables {:.7f}: {})",
+                     logic, cases, worst, worstCase);
+    }
+}
+
 static NewDawnPostFxParams* NewDawnPostFx_AllocParams(PlayState* play) {
+    static bool sLookChecked = false;
+    if (!sLookChecked && CVarGetInteger("gNewDawn.Look.SelfCheck", 0)) {
+        sLookChecked = true;
+        NewDawnLookSelfCheck();
+    }
     // The display list is walked once per interpolated output frame, so the parameters live in the per-frame graphics
     // pool, which stays valid until the frame is done.
     auto* params = static_cast<NewDawnPostFxParams*>(GRAPH_ALLOC(play->state.gfxCtx, sizeof(NewDawnPostFxParams)));
     memset(params, 0, sizeof(*params));
+    {
+        const Fast::NewDawnLookFrame& look = NewDawn::Look::Resolve(play);
+        params->lookOn = look.on;
+        memcpy(params->look, look.v, sizeof(params->look));
+    }
 
     // The same values Play_DrawMain hands to the projection (View_SetPerspective) and to Play_SetFog.
     s32 fogFar = play->lightCtx.zFar * (5.0f / 64.0f);
@@ -1475,8 +1616,8 @@ extern "C" void NewDawnHDR_SunFlare(PlayState* play, const Vec3f* sunPos, int be
         float elevation = sun.y / ((len > 0.001f) ? len : 1.0f);
         float horizon = NewDawnClampF(elevation / 0.08f, 0.0f, 1.0f);
         float lowSun = 1.0f - NewDawnClampF(elevation / 0.65f, 0.0f, 1.0f);
-        params->screenShaftStrength = NewDawnClampF(CVarGetFloat("gNewDawn.SunShafts.Strength", 0.4f), 0.0f, 1.0f) *
-                                     horizon * (0.15f + 0.85f * lowSun * lowSun);
+        params->screenShaftStrength = NewDawnClampF(NewDawnLookCv(play, NEWDAWN_LOOK_RAYS, 0.4f), 0.0f, 1.0f) *
+                                      horizon * (0.15f + 0.85f * lowSun * lowSun);
         for (int i = 0; i < 3; ++i)
             params->screenShaftColor[i] = (0.75f * play->envCtx.dirLight1.params.dir.color[i] +
                                            0.25f * play->lightCtx.fogColor[i]) / 255.0f;

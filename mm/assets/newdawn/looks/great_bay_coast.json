@@ -1,0 +1,14 @@
+{
+  "name": "great_bay_coast",
+  "inherits": "great_bay",
+  "scenes": [
+    "30GYOSON"
+  ],
+  "base": {
+    "air": {
+      "fogDensity": 0.7,
+      "fogHeight": 450,
+      "fogBase": 0.0
+    }
+  }
+}

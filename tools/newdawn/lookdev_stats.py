@@ -2,6 +2,7 @@
 """Tone and colour numbers of captures, for the look audit (docs/LOOK_BIBLE.md).
 
   lookdev_stats.py DIR_OR_PNG...          one row per image
+  lookdev_stats.py --compare DIR_A DIR_B  per image present in both: are the files the same, and how far apart
   lookdev_stats.py --self-check
 
 Columns, all on the display-encoded image with the HUD rows cropped (top 60, bottom 160 of 1080):
@@ -34,6 +35,21 @@ def stats(rgb):
                 blk=100 * (mx < 4 / 255).mean(), wht=100 * (mn > 250 / 255).mean(), sat=sat, sh=sh, hi=hi, split=hi / sh)
 
 
+def difference(a, b):
+    """a, b: uint8 arrays of one shape. RMSE on a 0..1 scale, largest channel difference in code values, differing pixels."""
+    d = a.astype(np.int16) - b.astype(np.int16)
+    return float(np.sqrt((d.astype(np.float64) ** 2).mean()) / 255), int(np.abs(d).max()), int((d != 0).any(-1).sum())
+
+
+def compare(dir_a, dir_b):
+    names = sorted({p.name for p in Path(dir_a).glob("*.png")} & {p.name for p in Path(dir_b).glob("*.png")})
+    print(f"{'image':44}{'same file':>10}{'rmse':>10}{'max':>5}{'pixels':>9}")
+    for n in names:
+        fa, fb = Path(dir_a) / n, Path(dir_b) / n
+        rmse, peak, count = difference(np.asarray(Image.open(fa).convert("RGB")), np.asarray(Image.open(fb).convert("RGB")))
+        print(f"{n[:-4]:44}{'yes' if fa.read_bytes() == fb.read_bytes() else 'no':>10}{rmse:10.6f}{peak:5d}{count:9d}")
+
+
 def self_check():
     grey = np.full((1080, 8, 3), 0.5)
     s = stats(grey)
@@ -42,6 +58,10 @@ def self_check():
     warm_light[:, :4] = (0.1, 0.1, 0.2)  # cool shade
     warm_light[:, 4:] = (0.8, 0.6, 0.4)  # warm light
     s = stats(warm_light)
+    a = np.zeros((4, 4, 3), np.uint8)
+    b = a.copy()
+    b[0, 0] = (0, 255, 0)
+    assert difference(a, a) == (0.0, 0, 0) and difference(a, b)[1:] == (255, 1) and 0.14 < difference(a, b)[0] < 0.15
     assert s["sh"] < 1 < s["hi"] and s["split"] > 3 and 4.5 < s["range"] < 5.5, s
     print("ok")
 
@@ -49,6 +69,8 @@ def self_check():
 def main():
     if sys.argv[1:] == ["--self-check"]:
         return self_check()
+    if len(sys.argv) == 4 and sys.argv[1] == "--compare":
+        return compare(sys.argv[2], sys.argv[3])
     files = []
     for a in sys.argv[1:]:
         p = Path(a)
