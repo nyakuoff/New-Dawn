@@ -680,7 +680,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
 set(NEWDAWN_TEXTURE_LOGIC_FILES
     2s2h/NewDawn/RuntimeTextures.cpp 2s2h/NewDawn/RuntimeTextures.h 2s2h/NewDawn/TextureSynth.cpp 2s2h/NewDawn/TextureSynth.h
     2s2h/NewDawn/UniqueArt.cpp 2s2h/NewDawn/UniqueArt.h 2s2h/NewDawn/SpanUpscale.cpp 2s2h/NewDawn/SpanUpscale.h
-    2s2h/NewDawn/Mm3dFormats.cpp 2s2h/NewDawn/Mm3dFormats.h 2s2h/NewDawn/ZipWriter.h)
+    2s2h/NewDawn/Mm3dFormats.cpp 2s2h/NewDawn/Mm3dFormats.h 2s2h/NewDawn/ZipWriter.h
+    2s2h/NewDawn/RuntimeMaterials.cpp 2s2h/NewDawn/RuntimeMaterials.h)
 set(_nd_logic "")
 foreach(_f ${NEWDAWN_TEXTURE_LOGIC_FILES})
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/${_f}" _content)

@@ -1256,6 +1256,22 @@ void Play_DrawMain(PlayState* this) {
 
         View_SetPerspective(&this->view, this->view.fovy, this->view.zNear, zFar);
 
+        // Test fixture (gNewDawn.Debug.EyeDrop = N, default 0, never set in play): draws the world with the camera N units
+        // lower, to look from under a water surface where the game does not let Link dive. Draw only; no game state changes.
+        {
+            f32 eyeDrop = CVarGetFloat("gNewDawn.Debug.EyeDrop", 0.0f);
+
+            if (eyeDrop != 0.0f) {
+                Camera* dbgCam = GET_ACTIVE_CAM(this);
+
+                this->view.eye = dbgCam->eye;
+                this->view.at = dbgCam->at;
+                this->view.eye.y -= eyeDrop;
+                this->view.at.y -= eyeDrop;
+                View_UpdateViewingMatrix(&this->view);
+            }
+        }
+
         View_Apply(&this->view, 0xF);
 
         // Setup mirror mode matrix handling when we are not drawing kaleido
@@ -2429,7 +2445,9 @@ void Play_Init(GameState* thisx) {
     D_801D0D54 = false;
 
     FrameAdvance_Init(&this->frameAdvCtx);
-    Rand_Seed(osGetTime());
+    // Test fixture (gNewDawn.Debug.FreezeTime): a fixed seed, so a frozen frame has the same random torch flicker and
+    // particle values in every run. Never set outside captures.
+    Rand_Seed(CVarGetInteger("gNewDawn.Debug.FreezeTime", 0) ? 1 : osGetTime());
     Matrix_Init(&this->state);
 
     this->state.main = Play_Main;

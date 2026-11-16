@@ -3,6 +3,7 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
+#include "fast/newdawn_wind.h"
 
 extern "C" {
 #include "macros.h"
@@ -199,3 +200,22 @@ RegisterShipInitFunc initFuncActorDraw(RegisterPreventActorDrawHooks,
                                        { CVAR_PREVENT_ACTOR_DRAW_NAME, CVAR_DEBUG_MODE_NAME });
 RegisterShipInitFunc initFuncActorInit(RegisterPreventActorInitHooks,
                                        { CVAR_PREVENT_ACTOR_INIT_NAME, CVAR_DEBUG_MODE_NAME });
+
+// Test fixture (docs/VALIDATION.md "Deterministic frozen frame"): gNewDawn.Debug.FreezeFrame = N stops the game logic at
+// the start of play frame N by switching on the developer frame-advance pause, so a capture lands on the same game state
+// in every run and build. Together with gNewDawn.Debug.FreezeTime (which stops the render clock) the screen is repeatable.
+#define CVAR_FREEZE_FRAME_NAME "gNewDawn.Debug.FreezeFrame"
+
+void RegisterFreezeFrame() {
+    COND_HOOK(OnGameStateMainStart, CVarGetInteger(CVAR_FREEZE_FRAME_NAME, 0) > 0, []() {
+        const u32 frame = (u32)CVarGetInteger(CVAR_FREEZE_FRAME_NAME, 0);
+        const bool landed = gPlayState != NULL && gPlayState->gameplayFrames >= frame;
+        if (landed) {
+            gPlayState->frameAdvCtx.enabled = true;
+        }
+        // The renderer restarts its temporal accumulators once the frozen frame is on screen.
+        Fast::NewDawnFreezeLanded().store(landed, std::memory_order_relaxed);
+    });
+}
+
+RegisterShipInitFunc initFuncFreezeFrame(RegisterFreezeFrame, { CVAR_FREEZE_FRAME_NAME });

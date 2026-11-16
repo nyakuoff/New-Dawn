@@ -55,6 +55,17 @@ point('stone_tower', 0xaa00, 0, (0, -3000, 2810), 23040, 'Z2_F40 spawn 0 (entran
 point('snowhead_temple', 0x3c00, 0, (0, 0, 1650), 23109, 'Z2_HAKUGIN spawn 0, 345 units inside exit (entrance 0x3c00)')
 point('stone_tower_inverted', 0x2a00, 0, (0, -210, 810), 23082, 'Z2_INISIE_R spawn 0 (entrance 0x2a00)')
 point('north_clock_town', 0xd600, 0, (-473, 191, -2439), 0, 'Z2_BACKTOWN spawn 0 (entrance 0xd600); the three Clock Town entrance cutscenes marked as seen', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('west_clock_town', 0xd400, 0, (0, 0, 0), 0, 'Z2_ICHIBA spawn 0 (entrance 0xd400), the scene own spawn', cvars={"gNewDawn.Debug.BootClockTownVisited": 1, "gNewDawn.Debug.BootDefaultSpawn": 1})
+point('laundry_pool', 0xda10, 0, (-2121, -120, -49), -21760, 'Z2_ALLEY spawn 1 (entrance 0xda10)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('romani_house', 0x0600, 0, (-307, 0, 185), 23040, 'Z2_OMOYA spawn 0 (entrance 0x0600)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('romani_barn', 0x0610, 1, (1070, 0, 186), 23040, 'Z2_OMOYA spawn 1 (entrance 0x0610)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('swamp_tourist_centre', 0xa800, 0, (-13, 0, 96), 23040, 'Z2_MAP_SHOP spawn 0 (entrance 0xa800)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('pirate_fortress_exterior', 0x7000, 0, (0, 0, 0), 0, 'Z2_KAIZOKU, the entrance own spawn (entrance 0x7000)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1, "gNewDawn.Debug.BootDefaultSpawn": 1})
+point('pirate_fortress_interior', 0x4000, 0, (3160, 740, -880), 11520, 'Z2_PIRATE spawn 0 (entrance 0x4000)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('treasure_chest_shop', 0x2800, 0, (-70, 0, 161), 0, 'Z2_TAKARAYA spawn 0 (entrance 0x2800)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('pirate_fortress_interior_b', 0x4030, 0, (3300, 240, -1780), 11520, 'Z2_PIRATE spawn 3 (entrance 0x4030)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('pirate_fortress_interior_c', 0x4070, 0, (708, 160, -2260), 23040, 'Z2_PIRATE spawn 7 (entrance 0x4070)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('pirate_fortress_interior_d', 0x40a0, 0, (2520, 200, 660), 23040, 'Z2_PIRATE spawn 10 (entrance 0x40a0)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
 # POINTS-TABLE-END
 # fmt: on
 
@@ -294,6 +305,9 @@ def main():
     ap.add_argument("--pos", metavar="X,Y,Z", help="override the point's standing position (world units), e.g. to stand at a spot of the same scene")
     ap.add_argument("--burst", metavar="N,INTERVAL", help="take N screenshots INTERVAL seconds apart per point, starting at --wait, "
                     "named <point>_00.png ... (each screenshot adds its own latency, so the real spacing can be larger)")
+    ap.add_argument("--freeze", type=int, metavar="FRAME", help="deterministic frozen frame: stop the game logic at play frame FRAME "
+                    "(gNewDawn.Debug.FreezeFrame), stop the render clock (gNewDawn.Debug.FreezeTime) and fix interpolation at 20 FPS. "
+                    "Same FRAME on the same game state gives the same pixels run after run (e.g. --freeze 30)")
     ap.add_argument("--no-points", action="store_true", help="skip the named points (use with --attract)")
     ap.add_argument("--wait", type=float, default=10.0, help="seconds after launch before the screenshot of a point (default %(default)s)")
     ap.add_argument("--width", type=int, default=1920)
@@ -305,6 +319,10 @@ def main():
     ap.add_argument("--list", action="store_true", help="list capture points and exit")
     ap.add_argument("--compare", nargs=2, metavar=("DIR_A", "DIR_B"), help="write labelled side-by-side images of two capture directories into --out")
     a = ap.parse_args()
+    if a.freeze:
+        # before the user's own --cvar options, so those still win
+        a.cvar = [("gNewDawn.Debug.FreezeTime", 1), ("gNewDawn.Debug.FreezeFrame", a.freeze), ("gMatchRefreshRate", 0),
+                  ("gInterpolationFPS", 20)] + a.cvar
     if a.preset:
         # the looks no longer touch asset mods (the player's choice); captures that link mods still want them on
         a.cvar = preset_cvars() + ([("gEnhancements.Mods.AlternateAssets", 1)] if a.mods else []) + a.cvar

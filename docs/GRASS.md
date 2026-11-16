@@ -103,6 +103,7 @@ no-op marker flag check; the interpreter records nothing and the renderer does n
 
 ## Limits
 
+- #75 (2026-11-16): the hue classifier left Romani Ranch's yellow-green lawn tile (`Z2_F01Tex_00ED40`, `01BA00`, and the same tile in Ranch Milk Road/Ikana Valley entrance/Gorman Track/Laundry Pool/Moon) as "stone", so the ranch had **no tufts at all** (`Grass.Debug=1`: 0 triangles). `grass_textures.py` now also takes non-grass-class outdoor tiles with hue 60-70, saturation >= 0.55, luminance >= 0.5 and size >= 512 (checked by eye; the `20SICHITAI2` gradient strips match the numbers and are excluded). `gNewDawn.Grass.Debug=2` additionally logs, per texture, the level opaque ground triangles that were NOT recorded, to find the next missing lawn. Images: `showcase/bugsweep/75-*`. Still unchecked: East/South Clock Town have no classified lawn in the visited spots (cobbles), Great Bay's beach has tufts only on the 5 grass textures present. The "colour behind props" report was not reproduced: tufts take the ground-copy colour at their root (the ground copy has no actors), so they miss only the prop's own shadow/AO, which the later passes apply to tufts as geometry.
 - Placement follows classified textures only. The classification is a hypothesis (hue/saturation based), so a texture
   that is mossy stone or dirt but classified grass would get tufts; check `gNewDawn.Grass.Debug`. Ground whose real
   texture is classified `other`/`dirt` (parts of the ranch, Clock Town lawns) gets none.

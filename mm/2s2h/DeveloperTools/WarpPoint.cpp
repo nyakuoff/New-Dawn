@@ -59,6 +59,11 @@ void Warp(WarpPoint& warpPoint) {
         if (bootHour >= 0.0f) {
             gSaveContext.save.time = (u16)(bootHour * (0x10000 / 24.0f));
         }
+        // Capture/debug only: gNewDawn.Debug.BootDay (1-3) boots on that day, next to BootHour.
+        const int bootDay = CVarGetInteger("gNewDawn.Debug.BootDay", 0);
+        if (bootDay >= 1 && bootDay <= 3) {
+            gSaveContext.save.day = bootDay;
+        }
         gSaveContext.save.cutsceneIndex = 0;
         gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
         gSaveContext.save.linkAge = 0;
@@ -105,6 +110,11 @@ void Warp(WarpPoint& warpPoint) {
         gPlayState->transitionTrigger = TRANS_TRIGGER_START;
         gPlayState->transitionType = TRANS_TYPE_INSTANT;
     }
+    // Capture/debug only: gNewDawn.Debug.BootSpawn=1 enters the scene by the entrance's own spawn point (position, yaw and
+    // entrance rules of the game) and ignores the stored position, for scenes whose coordinates are not known.
+    if (gPlayState == NULL && CVarGetInteger("gNewDawn.Debug.BootSpawn", 0)) {
+        return;
+    }
     gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance =
         Entrance_Create(warpPoint.entranceId >> 9, 0, warpPoint.entranceId & 0xF);
     gSaveContext.respawn[RESPAWN_MODE_DOWN].roomIndex = warpPoint.roomNum;
@@ -113,6 +123,10 @@ void Warp(WarpPoint& warpPoint) {
     gSaveContext.respawn[RESPAWN_MODE_DOWN].playerParams = PLAYER_PARAMS(0xFF, PLAYER_START_MODE_D);
     gSaveContext.nextTransitionType = TRANS_TYPE_FADE_BLACK_FAST;
     gSaveContext.respawnFlag = -8;
+    // Capture/debug only: ignore the saved position and use the spawn the entrance names (scenes whose start positions are not known).
+    if (CVarGetInteger("gNewDawn.Debug.BootDefaultSpawn", 0)) {
+        gSaveContext.respawnFlag = 0;
+    }
 }
 
 // Warp to a scene entrance with a quick fade. Only touches the transition state; no respawn/save/time changes.

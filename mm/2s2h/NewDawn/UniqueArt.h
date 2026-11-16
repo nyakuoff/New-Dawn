@@ -41,6 +41,11 @@ class Mm3dScenes {
 // South Clock Town, Stock Pot Inn and Termina Field (hand-checked): exactly the three correct ones pass; see docs/TEXTURE_PIPELINE.md.
 bool AcceptCandidate(const Mm3d::Image& original, const Mm3d::Image& candidate);
 
+// Resamples the part of a 3DS texture that shows the same surface as an N64 texture (region registration of tools/newdawn/texclassify/
+// region3ds.py): output pixel (x, y) of the w*k by h*k image reads the 3DS image at uv = (m0 x' + m1 y' + m2, m3 x' + m4 y' + m5) with
+// (x', y') the N64 texel coordinates, bilinear with wrap, v bottom-up. False for degenerate input.
+bool SampleRegion(const Mm3d::Image& src, const double m[6], int w, int h, int k, Mm3d::Image& out);
+
 struct Options {
     const NewDawnMm3d::SpanUpscaler* span = nullptr;
     const NewDawnSynth::Surface* grain = nullptr; // a CC0 surface whose `fine` field adds a faint painted-surface grain
