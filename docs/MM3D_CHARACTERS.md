@@ -58,13 +58,13 @@ The 3DS combiner multiplies the texture by the fragment-lighting term
 `ambient * 0.4 + diffuse * 0.5 * N.L` (material constants 102 and 127 on nearly every character); the N64 display lists
 multiply by the actor's full light. The same texture therefore came out about half as bright and flat. The material
 constants are folded into the texture when it is converted: `gain = LightRef / (0.6 * diffuse + 0.4 * ambient)`, then
-a saturation lift. `gNewDawn.MM3D.LightRef` (0.6) and `gNewDawn.MM3D.Saturation` (1.35) are tunables and part of the
+a saturation lift. `gNewDawn.MM3D.LightRef` (0.55) and `gNewDawn.MM3D.Saturation` (1.15); a model whose palette is already strong carries its own values in the table (`COLOUR` in `chartable.py`: the guard 0.5 / 1.0, the receptionist 0.55 / 1.05) are tunables and part of the
 signature. Specular sphere maps (`sp_*` textures) and other second texture units are not mapped.
 
 Art direction (maintainer, 2026-11-16): characters are colourful and tactile against a darker world, so the defaults
 lean saturated rather than faithful to the 3DS palette. The study images (`~/dev/ghm-mods/showcase/mm3d-characters/
 colour_*_study.png`) compare LightRef 0.5 to 0.8 and saturation 1.1 to 1.55 on the guard, Anju and the receptionist:
-1.35 keeps skin and hair vivid without clipping; 1.55 turns the guard's skin and Anju's hair garish.
+1.35 looked vivid on Anju but made the guard's skin and trim and the receptionist's face garish (maintainer review, 2026-11-16), so the default is 1.15 with per-model overrides; 1.55 is garish everywhere.
 
 ## Textures
 The 3DS character textures are 128x128 atlases (faces and hair 32x32), against 1024x1024 in the community pack for the

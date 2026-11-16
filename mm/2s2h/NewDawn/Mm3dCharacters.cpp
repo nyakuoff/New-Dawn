@@ -51,6 +51,7 @@ struct Entry {
     const char* cmb; // GAR entry name
     const char* skip; // comma separated material indices of props the N64 draws elsewhere
     bool reviewed;
+    float lightRef, saturation; // colour overrides for this model, 0 = the global defaults
 };
 const Entry kTable[] = {
 #include "Mm3dCharacterTable.inc"
@@ -462,7 +463,7 @@ struct ColourParams {
     float lightRef, saturation;
 };
 ColourParams GetColourParams() {
-    return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.6f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.35f) };
+    return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.55f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.15f) };
 }
 
 void MapColour(Mm3d::Image& img, const Mm3d::Material& mat, const ColourParams& cp) {
@@ -859,6 +860,8 @@ std::string Signature(const std::string& dump) {
     std::set<std::string> archives;
     for (const Entry& e : kTable) {
         h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (e.reviewed ? "1" : "0"), h);
+        h = Fnv1a(&e.lightRef, sizeof(e.lightRef), h);
+        h = Fnv1a(&e.saturation, sizeof(e.saturation), h);
         archives.insert(e.archive);
     }
     std::error_code ec;
@@ -995,6 +998,13 @@ void Generate(bool boot) {
             for (size_t i; (i = next++) < kTableCount;) {
                 Job& job = jobs[i];
                 const Entry& e = *job.e;
+                ColourParams entryColour = colourParams;
+                if (e.lightRef > 0) {
+                    entryColour.lightRef = e.lightRef;
+                }
+                if (e.saturation > 0) {
+                    entryColour.saturation = e.saturation;
+                }
                 Result res;
                 if (!job.error.empty() || job.limbs.empty()) {
                     res.error = "N64 skeleton: " + job.error;
@@ -1022,7 +1032,7 @@ void Generate(bool boot) {
                                 }
                             }
                             zip.Add(name, data.data(), data.size());
-                        }, colourParams, e.reviewed ? upscaler : nullptr);
+                        }, entryColour, e.reviewed ? upscaler : nullptr);
                     }
                 }
                 (res.ok ? okCount : failCount)++;
