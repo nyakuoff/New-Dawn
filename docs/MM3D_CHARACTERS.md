@@ -168,6 +168,9 @@ three bones, or a wrist and hand where the N64 has a pivot and two parts at the 
 - the rest shift of a bone is the N64 offset to its nearest listed ancestor limb (the unlisted pivots in between added up,
   their rest rotation taken as identity) against the offset of the bone from the 3DS bone paired with that limb, both from
   the world bind matrices.
+Stature: a rigged model is scaled uniformly about the origin so its root bone sits at the N64 root limb's rest height
+(Kafei 1.10, Romani 0.95, Cremia 1.02, Bombers 1.0); without it the feet float or sink by up to 220 units, since the N64
+animation places the root, not the feet.
 Pairing the skirt bones with the N64 dress limbs flared Cremia's skirt: the 3DS skirt bones carry rest rotations (up to
 0.77 rad) the N64 dress limbs do not, so those chains were folded into one bone. Everything in a recipe must share rest
 rotations with the limb it is paired with; a chain that does not has to be folded.

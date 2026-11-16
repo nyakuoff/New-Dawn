@@ -602,6 +602,27 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
         for (const auto& kv : boneToLimb) {
             limbToBone[kv.second] = kv.first;
         }
+        if (rigged && limbToBone.count(0)) {
+            // Stature: the N64 root limb sits at its rest height; scale the whole 3DS model about the origin so its root
+            // bone does too (the feet then stay on the floor and the head where the N64 one is).
+            const double rootHeight = model.bones[boneIndex[limbToBone[0]]].bind[7];
+            const double k = rootHeight > 1 && limbs[0].trans[1] > 1 ? limbs[0].trans[1] / rootHeight : 1.0;
+            if (std::fabs(k - 1.0) > 0.005) {
+                for (Mm3d::Bone& b : model.bones) {
+                    b.bind[3] *= k, b.bind[7] *= k, b.bind[11] *= k;
+                    for (int c = 0; c < 3; ++c) {
+                        b.translation[c] *= (float)k;
+                    }
+                }
+                for (Mm3d::Draw& dr : model.draws) {
+                    for (Mm3d::Vertex& v : dr.vertices) {
+                        for (int c = 0; c < 3; ++c) {
+                            v.pos[c] *= (float)k;
+                        }
+                    }
+                }
+            }
+        }
         // Rigged: every 3DS bone follows its nearest listed ancestor (else a listed descendant, else the first listed bone).
         std::map<int, int> resolved;
         if (rigged) {
