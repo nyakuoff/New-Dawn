@@ -54,17 +54,68 @@ the skeleton table, the colour settings, `mm.o2r` and the size and mtime of the 
   back until someone has looked at them in game (props, slot order, faces). `chartable.py` keeps the curated sets.
 
 ## Colour
-The 3DS combiner multiplies the texture by the fragment-lighting term
-`ambient * 0.4 + diffuse * 0.5 * N.L` (material constants 102 and 127 on nearly every character); the N64 display lists
-multiply by the actor's full light. The same texture therefore came out about half as bright and flat. The material
-constants are folded into the texture when it is converted: `gain = LightRef / (0.6 * diffuse + 0.4 * ambient)`, then
-a saturation lift. `gNewDawn.MM3D.LightRef` (0.55) and `gNewDawn.MM3D.Saturation` (1.15); a model whose palette is already strong carries its own values in the table (`COLOUR` in `chartable.py`: the guard 0.5 / 1.0, the receptionist 0.55 / 1.05) are tunables and part of the
-signature. Specular sphere maps (`sp_*` textures) and other second texture units are not mapped.
+The 3DS combiner draws `texture x scale x (ambient x A + diffuse x D x N.L)` (`scale` is the product of the RGB scales of the
+combiner stages: 2 on nearly every character, 1 on a few; the material constants are 102 and 127 on most). The N64 display
+lists draw `texture x (a + d x N.L)` with the actor's light. The material constants are folded into the texture when it is
+converted, so the same light colours give the same look: `gain = scale x (0.6 x diffuse + 0.4 x ambient) / LightRef`, no
+saturation change by default. Materials without lighting (eyes, glows, water) are `texture x scale` and are drawn unlit.
+`gNewDawn.MM3D.LightRef` (default 0.92, the N64 actor light level the textures are scaled for) and
+`gNewDawn.MM3D.Saturation` (default 1.0) are tunables and part of the signature.
 
-Art direction (maintainer, 2026-11-16): characters are colourful and tactile against a darker world, so the defaults
-lean saturated rather than faithful to the 3DS palette. The study images (`~/dev/ghm-mods/showcase/mm3d-characters/
-colour_*_study.png`) compare LightRef 0.5 to 0.8 and saturation 1.1 to 1.55 on the guard, Anju and the receptionist:
-1.35 looked vivid on Anju but made the guard's skin and trim and the receptionist's face garish (maintainer review, 2026-11-16), so the default is 1.15 with per-model overrides; 1.55 is garish everywhere.
+These defaults are the result of the reference gate (next section), not of taste. The first defaults (LightRef 0.55 in the
+old convention, which left the combiner scale out, and saturation 1.15) were tuned by eye on the guard and Anju in the
+dim Stock Pot Inn; against the 3DS render at daylight they put the mean delta E of 15 models at 8.5 (11 to 12 on Link), the
+green tunic at value 0.62 and saturation 1.0 with the blue channel clipped to 0 (neon), and they needed per-model
+overrides (guard, receptionist, Goron) and, on Link, a hair tint and a green tint that made the colours worse in a
+different way. The sweep (`refgate.py --whatif LIGHTREF SAT`, daylight N64 light 0.55 + 0.65 N.L) over 15 models:
+
+| light reference (old convention) / saturation | mean delta E |
+|---|---|
+| 0.35 / 1.15 | 11.8 |
+| 0.40 / 1.15 | 6.3 |
+| **0.45 (= 0.92 now) / 1.0** | **2.0** |
+| 0.50 / 1.0 | 3.5 |
+| 0.55 / 1.0 | 7.0 |
+| 0.55 / 1.15 (the old defaults) | 8.5 |
+
+`COLOUR` (per-model overrides) and `TINT` (per-material hue, saturation, value) stay in `chartable.py` and are empty: add
+one only with a gate result that needs it.
+
+Art direction (maintainer, 2026-11-16): characters are colourful and tactile against a darker world. The faithful mapping
+keeps the 3DS palette; the "colourful" part comes from the 3DS textures themselves, and anything beyond that is a grade
+decision for the engine, not for the conversion. Specular sphere maps (`sp_*` textures) and other second texture units are
+not mapped.
+
+## Reference gate (required for every enabled model)
+`tools/newdawn/mm3d/refgate.py` renders each converted model twice, in the 3DS bind pose, from the front, side and back:
+- **REFERENCE**: the CMB drawn the way the 3DS would draw it, by software: its own materials (the PICA texture-environment
+  combiner stages with their sources, operands and scales, the material ambient / diffuse / emission constants, fragment
+  lighting, vertex colours, texture coordinate transforms), under neutral studio lights (key from the camera's upper left,
+  ambient 0.6, diffuse 0.8, which puts a lit surface at about 0.9 of its texture, as in 3DS screenshots). Nothing from
+  New Dawn: no N64 grade, no post. Written from the format facts; no zelda3d-coop code.
+- **CONVERTED**: the models the converter wrote (`mm3d-characters.o2r`: limb display lists, vertex arrays, RGBA32
+  textures), decoded and drawn the way the N64 microcode draws them (texel x (ambient + diffuse x N.L), unlit when the
+  display list says so), under the same key light with N64 daylight levels (ambient 0.55, diffuse 0.65), each limb at its 3DS
+  bone's bind matrix (the shift and stature scale undone).
+
+Per model it writes a sheet (reference | converted | difference x3, three views) and checks: per texture the CIE76 delta E
+of the mean colour (tolerance 12; alpha-blended eye and glow materials are listed, not compared), and the silhouette IoU and
+the width of the head, torso and leg bands against the reference (tolerance 12%). It exits 1 when anything is out.
+
+```sh
+nd-heavy tool -- python3 tools/newdawn/mm3d/refgate.py --cache .../cache/newdawn-mm3d/live/mm3d-characters.o2r \
+    --out DIR [--enabled | --object OBJ --skeleton SKEL] [--whatif LIGHTREF SAT]
+```
+(`--cache` is the archive a game run with the option on writes under the app directory's `cache/newdawn-mm3d/live/`; use
+"Include unreviewed 3DS models" to have every row in it.) **A model may be set `reviewed` only when its row passes this
+gate.** What the gate cannot see: the animated pose (flex-weld stretch, rest rotations), the scene lighting and New Dawn's
+grade; those are checked with the same-frame in-game pairs.
+
+Result with the current build (`~/dev/ghm-mods/showcase/mm3d-characters/reference/`, sheets per row in `sheets/`, all rows
+in `gate_all_rows.txt`): the 6 default-on rows and the Link forms, Romani, Cremia, the Bombers and Kafei all pass with
+silhouette IoU 1.00 and delta E 0.9 to 4.7 on every texture. Over all 58 rows two unreviewed models miss: the Dinolfos
+body (delta E 16.8) and the Poe balloon (29): multi-stage combiners with a second texture unit and the fragment secondary
+(specular) colour, which the converter folds as a plain lit texture.
 
 ## Textures
 The 3DS character textures are 128x128 atlases (faces and hair 32x32), against 1024x1024 in the community pack for the
@@ -206,13 +257,16 @@ row sits behind "Include unreviewed 3DS models" until masks and the other forms 
   (limb 19); the 3DS CMB carries the equipment too (draws 13-34 and 44-94: ~20 hand poses, bow, shield, sword models), which
   is left out for now with `d<n>` entries in the row's skip list. Every hold point therefore stays the N64's: the sword, shield
   and bow follow the hand limbs exactly as before.
-- **Hat:** the 3DS hat is 2636 units long and 1195 wide against the N64's 1702 and 901 (head 1.2x the N64's), so it read
-  as oversized. `s5=0.66:0.85@12` shortens draw 5 to 0.66 along its axis and narrows it to 0.85 about the hat bone's origin
-  (the base keeps covering the hair). Same-frame crops: `showcase/.../review/link_human_hat_green_before_after.png`.
-- **Green:** the tunic and hat greens measured value 0.50 (Clock Town) and 0.57 (Termina Field) against the N64's 0.29 and 0.44,
-  saturation 0.99 (r and b clipped to 0: neon). The row's tint, `1:-8:0.85:0.68:60:180`, shifts hue by -8 degrees, scales
-  saturation by 0.85 and value by 0.68 on greens only (hue 60-180, the buckle and boots share the texture): now 0.32 and 0.46,
-  hue 109 (N64 111). The hair gets its own tint (`11:20:0.8`, ginger towards the N64's blond).
+- **Hat and green (maintainer review, 2026-11-16, and what the reference gate showed):** the first conversion looked
+  neon and its hat looked big, and two compensations were added (a 0.66 / 0.85 cut of the hat, a green and a hair tint). The
+  gate showed that both made the conversion *less* like the 3DS: in bind pose the converted model matched the 3DS render to
+  IoU 1.00 once they were removed, with every texture within delta E 2.4 (4.4 on the face). The causes were elsewhere:
+  the global colour defaults (a gain 1.2 times too high at daylight and a saturation lift that clipped the green's blue
+  channel to 0, see Colour) and the animated pose, not the model. The hair is the 3DS ginger with darker roots, as in the
+  maintainer's reference image; the hat is the 3DS hat, 2636 long and 1195 wide against the N64's 1702 x 901 (the 3DS head
+  is 1.2 times the N64's too), which in the N64 idle pose rises 146 units above the head top (8% of its height) and hangs
+  back 1450 to 2100 units; the N64's hat stays within the head's height. Sheets: `reference/sheets/object_link_child_gLinkHumanSkel.png`;
+  in-game against the maintainer's image: `reference/link_human_ingame_vs_reference.png`.
 - **Faces:** the 3DS eye and mouth frames follow the N64 states (`FACE`); checked that eyes close (blink) and open in a run.
 - **Checked in game** (same scripted input, N64 vs 3DS, 0 GL errors): run, run to a halt, sword swing, shield up, bow aim
   (first-person view: the bow is the N64 bow display list in the right hand, identical in both), stand at idle.
@@ -230,20 +284,22 @@ row sits behind "Include unreviewed 3DS models" until masks and the other forms 
   the N64's in the limb frame: 6.8 degrees about the lateral axis, left as is (the heads differ in shape, so the fit
   absorbs some of it; the hat, shoulders and forearms fit within 7 to 37 degrees, the largest from the 3DS arms' different
   rest bend). The same fit would show a missing neck bone or a double rotation as a large angle on the head.
-- Masks: poking `equippedMask` in the save and `currentMask` on the live Player actor (both with the form fixture) draws no
-  mask in either build; in-game mask changes are unverified for all five forms.
-- Rig quirks found: the hat bone's rest rotation (2.16 rad) differs from the N64 hat limb's, so the hat hangs steeper than the
-  N64's; per-limb rotation registration over several animation frames did not give a clearly better frame for any limb.
+- **Masks:** through the debug path they work: `gDeveloperTools.DebugEnabled=1` with Debug Save File Mode "Vanilla Debug Save"
+  (all masks in the inventory), a test-only fixture that writes the Bunny Hood's item and slot into the human form's C-down
+  button and an injected C-down press. The Bunny Hood draws and sits on the head the same way in N64 and 3DS (head turned
+  and run; the N64 mask display list follows the head limb's matrix, which the converted head shares). One mask on one form
+  only; the other masks and forms were not exercised (a Zora Bunny Hood and the Captain's Hat were interrupted).
+- Rig quirks found: the hat bone's rest rotation (2.16 rad) differs from the N64 hat limb's; per-limb rotation registration over several animation frames did not give a clearly better frame for any limb.
 
 ### Link, Deku form
 `object_link_nuts/gLinkDekuSkel` against `zelda2_link_nuts_new/nuts/model/link_deknuts.cmb` (24 bones, 25 draws): the same 21-limb
 layout and the same rig recipe as human Link. Skipped: the hand and fist meshes (the N64 hand display lists are kept, limbs
 15 and 18, as for every hold point), the bottle and cork, a stray triangle and the 3DS Deku shell (`link_nuts_shiel`, a hood
-that sits around the head). The hat is 0.75 of its 3DS size (the N64 hat measures 3339 x 1859 x 1519, the 3DS 4495 x 2454 x 2043).
+that sits around the head). The hat is the 3DS hat (the N64 hat measures 3339 x 1859 x 1519, the 3DS 4495 x 2454 x 2043).
 - **Eyes:** the 3DS eye planes sit inside the face mesh (the face is an opaque shell). Draw 22 is pushed 300 units along its
-  normals (`o22=300`) and material 5 is drawn unlit (`u5`: the PICA material has no fragment lighting, so its glow is the
-  texture alone; without it the eyes came out brown). New skip tokens: `o<draw>=<units>` and `u<material>`.
-- **Greens:** hat and tunic use the human Link tint with the hue window starting at 85 (the hair is yellow-olive, hue 60).
+  normals (`o22=300`) and the eye material is drawn unlit (the PICA material has no fragment lighting; this is now automatic for every
+  material without lighting, the gate found it on the Business Scrub, the Wolfos and others). New skip tokens: `o<draw>=<units>`, `u<material>` (forced unlit) and
+  `s<draw>=<along>:<across>@<bone>`, kept for later and unused.
 - Checked in game (`gNewDawn`'s private fixture sets `playerForm` in the save: a Deku at spawn, run toward the camera,
   same input in both builds): the pose, hat and limbs follow the N64 animation; the face is the 3DS one (wood face with a
   tube mouth, orange eyes) against the N64's dark face with a black mouth.
@@ -263,6 +319,20 @@ N64 model and the pose follows. Not checked: the sword, shield, bow or anything 
 cutscenes, the Goron roll and spikes, the Zora swim, boomerang fins and barrier, the Fierce Deity sword beam. The 3DS Goron
 and Fierce Deity read differently from the N64 ones (the 3DS Goron has a blue necklace and white beard, the Fierce Deity
 teal clothes and green hair).
+
+### Remaining unverified
+- **Masks:** one mask (Bunny Hood) on human Link only, through the debug path above; other masks, other forms, mask change animations.
+- **Held items and form moves** on the converted forms: hookshot, bottle and ocarina on human Link; the Goron roll and spikes,
+  the Zora swim, fins and barrier, boomerang, the Deku pipes, bubbles, flower and spin, the Fierce Deity sword; transformation
+  cutscenes. Hands and equipment keep their N64 display lists, so hold points are unchanged, but this was not looked at.
+- **Fierce Deity face:** static (the N64 has one eye and one mouth texture); not framed closely.
+- **The Bombers' hats:** the five Bombers share one 3DS model (one hat colour), the N64 gives each its own.
+- **Kafei, the receptionist and the other wired face states** in game; the Poe balloon and the Dinolfos in the colour gate.
+- **Colour in game against the maintainer's reference image:** the gate checks the 3DS render under neutral light. In Termina
+  Field noon the converted tunic reads (37, 134, 1) against the reference image's (50, 108, 33) and the N64 original's
+  (44, 97, 7): the scene's warm, bright light pushes the blue channel to 0 for any saturated green. The reference image's
+  tunic is less saturated than the 3DS texture itself (saturation 0.70 against the texture's 0.91, red and blue lifted), which
+  no multiplicative lighting reproduces; it may be a video frame or another lighting setup. Skin and hair agree with it.
 
 ### Limits
 - Eye and mouth states exist only for the models listed under Faces. Props baked into a CMB are listed per skeleton (guard bottle, Anju's
