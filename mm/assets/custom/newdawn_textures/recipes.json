@@ -550,6 +550,40 @@
     "nstrength": 0.8,
     "native_mottle": 1.0
    }
+  },
+  "snowhead": {
+   "a_snow": {
+    "hf": 0.45,
+    "contrast": 0.6,
+    "relief": 6,
+    "nstrength": 0.6,
+    "grime": 0.15,
+    "wear": 0.05,
+    "macro": 0.1,
+    "macro_size": 160
+   }
+  },
+  "dungeon": {
+   "a_snow": {
+    "hf": 0.45,
+    "contrast": 0.6,
+    "relief": 6,
+    "nstrength": 0.6,
+    "grime": 0.15,
+    "wear": 0.05
+   }
+  },
+  "clock_town": {
+   "a_sand": {
+    "relief": 6,
+    "nstrength": 0.6,
+    "hf": 0.5,
+    "contrast": 0.75
+   },
+   "a_rock": {
+    "relief": 12,
+    "contrast": 0.9
+   }
   }
  }
 }
