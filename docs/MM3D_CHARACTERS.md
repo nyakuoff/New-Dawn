@@ -235,6 +235,21 @@ that sits around the head). The hat is 0.75 of its 3DS size (the N64 hat measure
   tube mouth, orange eyes) against the N64's dark face with a black mouth.
 - Not checked: pipes, flower, bubble, spin, hopping on water, the Deku Link cutscene transformations.
 
+### Link, Goron, Zora and Fierce Deity forms
+The same recipe again (`1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19`: all five 3DS
+Link rigs share the 21-limb layout; only the bone offsets differ and the rest shifts take care of that), per form a skip list
+that leaves the hand, gauntlet and equipment meshes out and keeps the N64 hand display lists (limbs 15, 18, 19):
+| Form | 3DS archive and model | Left out (draws) | Other |
+|---|---|---|---|
+| Goron | `link_goron_new` / `link_goron.cmb` | fists 10-14, cork 8, bottle 15 16 | eye states from the CMAB (open, half, closed, surprised); colour (0.5, 1.0) |
+| Zora | `link_zora_new` / `link_zora.cmb` | fins 12-15 (the game draws its own), hand poses 18-29, barrier 30, cork and bottle | eye and mouth states in human Link's order |
+| Fierce Deity | `link_boy_new` / `link_demon.cmb` | gauntlets 1-7, hand poses 15-19, the Double Helix 9, cork and bottle | static face (the N64 has one eye and one mouth texture) |
+Checked in game with the form set in the save (private fixture): each form runs toward the camera in the same frames as the
+N64 model and the pose follows. Not checked: the sword, shield, bow or anything held in these forms, transformation
+cutscenes, the Goron roll and spikes, the Zora swim, boomerang fins and barrier, the Fierce Deity sword beam. The 3DS Goron
+and Fierce Deity read differently from the N64 ones (the 3DS Goron has a blue necklace and white beard, the Fierce Deity
+teal clothes and green hair).
+
 ### Limits
 - Eye and mouth states exist only for the models listed under Faces. Props baked into a CMB are listed per skeleton (guard bottle, Anju's
   moon mask, the bomb shopkeeper's bomb); other models were not scanned for props beyond the validation set.

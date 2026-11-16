@@ -26,6 +26,12 @@ OUT = Path(__file__).resolve().parents[3] / 'mm/2s2h/NewDawn/Mm3dCharacterTable.
 # hair 39, shadow 41, hookshot and everything after 44), duplicates and unknown blobs (1, 2, 7).
 _LINK_DRAWS = [1, 2, 7, 35, 37, 39, 41] + list(range(13, 35)) + list(range(44, 95))
 SKIP = {
+    # Fierce Deity Link: the gauntlets and hand poses (1-7, 15-19), the Double Helix sword (9), cork and bottle (23, 28, 29) stay N64.
+    ('object_link_boy', 'gLinkFierceDeitySkel'): ','.join(['d%d' % d for d in list(range(1, 8)) + [9] + list(range(15, 20)) + [23, 28, 29]] + ['k15', 'k18', 'k19']),
+    # Zora Link: the fins (12-15), the hand poses (18-29), the barrier (30), the cork and bottle (11, 31, 32) stay N64 or are the game's own.
+    ('object_link_zora', 'gLinkZoraSkel'): ','.join(['d%d' % d for d in [11, 12, 13, 14, 15] + list(range(18, 33))] + ['k15', 'k18', 'k19']),
+    # Goron Link: the hand and fist meshes (10-14), the cork (8) and the bottle (15, 16) stay N64.
+    ('object_link_goron', 'gLinkGoronSkel'): 'd8,d10,d11,d12,d13,d14,d15,d16,k15,k18,k19',
     # Deku Link: hands (16-19) and the bottle and cork (12, 23, 24) stay N64, d10 is a stray triangle, d20 the shell (link_nuts_shiel).
     ('object_link_nuts', 'gLinkDekuSkel'): 'd10,d12,d16,d17,d18,d19,d20,d23,d24,k15,k18,k19,o22=300,u5,s13=0.75@12,s14=0.75@12',
     ('object_link_child', 'gLinkHumanSkel'): ','.join(['d%d' % d for d in _LINK_DRAWS] + ['k15', 'k18', 'k19', 's5=0.66:0.85@12']),
@@ -55,6 +61,15 @@ CMB = {
 # Skeletons whose 3DS rig is not the N64 one: (archive, CMB, "bone:limb,...") from the proportions and the joint offsets of both
 # (docs/MM3D_CHARACTERS.md, rig reduction). Unlisted 3DS bones follow their nearest listed ancestor; unlisted N64 limbs draw nothing.
 RIG = {
+    # Fierce Deity Link: the same layout again (3DS archive link_boy_new, model link_demon).
+    ('object_link_boy', 'gLinkFierceDeitySkel'): ('zelda2_link_boy_new', 'boy/model/link_demon.cmb',
+        '1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19'),
+    # Zora Link: the same layout; the 3DS bones 24 to 27 (under the shadow root) carry the fins, which the game draws itself.
+    ('object_link_zora', 'gLinkZoraSkel'): ('zelda2_link_zora_new', 'zora/model/link_zora.cmb',
+        '1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19'),
+    # Goron Link: the same layout (the 3DS bone 12 is the hair).
+    ('object_link_goron', 'gLinkGoronSkel'): ('zelda2_link_goron_new', 'goron/model/link_goron.cmb',
+        '1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19'),
     # Deku Link (nuts archive): the same layout again (the 3DS offsets differ, the recipe does not).
     ('object_link_nuts', 'gLinkDekuSkel'): ('zelda2_link_nuts_new', 'nuts/model/link_deknuts.cmb',
         '1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19'),
@@ -79,6 +94,14 @@ RIG = {
 # Eye and mouth states (docs/MM3D_CHARACTERS.md, faces): "E|M : segment the N64 head display list reads : the 3DS CMAB : N64 state
 # texture = 3DS frame, ...", parts joined by "|". The frames were matched to the N64 states by eye, in montages of both.
 FACE = {
+    # Zora Link: eight eye and four mouth states, in the human Link's order.
+    ('object_link_zora', 'gLinkZoraSkel'): 'E:8:zora/misc/link_zora_eye.cmab:gLinkZoraEyesOpenTex=0,gLinkZoraEyesHalfTex=1,'
+        'gLinkZoraEyesClosedTex=2,gLinkZoraEyesRightTex=3,gLinkZoraEyesLeftTex=4,gLinkZoraEyesUpTex=5,gLinkZoraEyesDownTex=6,'
+        'gLinkZoraEyesWincingTex=7|M:9:zora/misc/link_zora_mouth.cmab:gLinkZoraMouthClosedTex=0,gLinkZoraMouthHalfTex=1,'
+        'gLinkZoraMouthOpenTex=2,gLinkZoraMouthSmileTex=3',
+    # Goron Link: the N64 has four eye states (open, half, closed, surprised) and no mouth textures.
+    ('object_link_goron', 'gLinkGoronSkel'): 'E:8:goron/misc/link_goron_eye.cmab:gLinkGoronEyesOpenTex=0,gLinkGoronEyesHalfTex=1,'
+        'gLinkGoronEyesClosedTex=2,gLinkGoronEyesSurprisedTex=3',
     # Human Link: the 3DS frames follow the N64 enum (open, half, closed, right, left, up, down, wincing; closed, half, open, smile).
     ('object_link_child', 'gLinkHumanSkel'): 'E:8:child/misc/link_child_eye.cmab:gLinkHumanEyesOpenTex=0,gLinkHumanEyesHalfTex=1,'
         'gLinkHumanEyesClosedTex=2,gLinkHumanEyesRightTex=3,gLinkHumanEyesLeftTex=4,gLinkHumanEyesUpTex=5,gLinkHumanEyesDownTex=6,'
@@ -116,6 +139,7 @@ TINT = {
 # Per-model colour overrides (light reference, saturation); 0 keeps the global defaults (gNewDawn.MM3D.LightRef / .Saturation).
 # Set where a model's own palette is already saturated (checked 1:1 against the N64 model with the 4K pack).
 COLOUR = {
+    ('object_link_goron', 'gLinkGoronSkel'): (0.5, 1.0),   # the 3DS Goron's gold skin and orange gauntlets read hot at the defaults
     ('object_sdn', 'gSoldierSkel'): (0.5, 1.0),         # yellow skin and orange trim were garish at 1.35
     ('object_bg', 'object_bg_Skel_011B60'): (0.55, 1.05),  # the face turned orange
 }
