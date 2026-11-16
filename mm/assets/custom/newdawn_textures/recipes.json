@@ -1,6 +1,6 @@
 {
  "version": 1,
- "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is. scene_regions: scene folder -> region priority list (manifest sets tagged for the first region with a match are chosen, then 'any'). world_m: metres one tile of the CC0 set covers; the generator repeats the set k = tile_m / world_m times per texture (scale.json tile_m, max_repeat), the stochastic sampling hides the repetition. unique.scenes: scenes whose unique (painted) art is upscaled in this milestone; gNewDawn.Textures.UniqueScenes=all or a comma list overrides. region_params: per scene region (first region of the scene's list that has the class), merged over the class recipe before the entry's own p. native_mottle: weight of the original's own low-frequency luminance pattern in the tone map.",
+ "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is. scene_regions: scene folder -> region priority list (manifest sets tagged for the first region with a match are chosen, then 'any'). world_m: metres one tile of the CC0 set covers; the generator repeats the set k = tile_m / world_m times per texture (scale.json tile_m, max_repeat), the stochastic sampling hides the repetition. unique.scenes: scenes whose unique (painted) art is upscaled in this milestone; gNewDawn.Textures.UniqueScenes=all or a comma list overrides. region_params: per scene region (first region of the scene's list that has the class), merged over the class recipe before the entry's own p. native_mottle: weight of the original's own low-frequency luminance pattern in the tone map. ND-021: outside the snow regions the ice_snow class (grey cloud and speckle textures reviewed as snow, used as plaster and detail modulators in towns, interiors and temples) takes a soft plaster set with the original's own mottle (a_snow in those regions' region_params): the snow set's wind-blown ridges read as a herringbone on the North Clock Town vine wall.",
  "tiers": {
   "hero": 1024,
   "rest": 512,
@@ -499,7 +499,22 @@
    "scenes/nonmq/Z2_YADOYA/Z2_YADOYA_room_00Tex_016120",
    "scenes/nonmq/Z2_YADOYA/Z2_YADOYA_room_01Tex_0079E8"
   ],
-  "comment": "unique art of every scene is upscaled; a 3DS texture is a source only for the hand-verified pairs below (and only when it also passes the content rule): the classification's correspondence cannot be verified automatically (40 rule-accepted pairs from 17 scenes: 13 clearly the same art, 14 clearly wrong, 13 same kind of surface; no pixel measure separated them). gNewDawn.Textures.Unique3ds: 0 off, 1 verified list (default), 2 every rule-accepted pair (experimental)."
+  "comment": "unique art of every scene is upscaled; a 3DS texture is a source only for the hand-verified pairs below (and only when it also passes the content rule): the classification's correspondence cannot be verified automatically (40 rule-accepted pairs from 17 scenes: 13 clearly the same art, 14 clearly wrong, 13 same kind of surface; no pixel measure separated them). gNewDawn.Textures.Unique3ds: 0 off, 1 verified list (default), 2 every rule-accepted pair (experimental).",
+  "mm3d_regions_verified": {
+   "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_028250": "w",
+   "scenes/nonmq/Z2_ALLEY/Z2_ALLEYTex_00A300": "r",
+   "scenes/nonmq/Z2_CASTLE/Z2_CASTLE_room_03Tex_003548": "r",
+   "scenes/nonmq/Z2_DANPEI2TEST/Z2_DANPEI2TEST_room_01Tex_0055B0": "r",
+   "scenes/nonmq/Z2_INISIE_R/Z2_INISIE_RTex_011680": "r",
+   "scenes/nonmq/Z2_LAST_GORON/Z2_LAST_GORON_room_00Tex_012608": "r",
+   "scenes/nonmq/Z2_LAST_LINK/Z2_LAST_LINK_room_00Tex_0019C0": "r",
+   "scenes/nonmq/Z2_MITURIN/Z2_MITURIN_room_11Tex_006578": "r",
+   "scenes/nonmq/Z2_SONCHONOIE/Z2_SONCHONOIETex_005900": "r",
+   "scenes/nonmq/Z2_SYATEKI_MIZU/Z2_SYATEKI_MIZUTex_005E60": "r",
+   "scenes/nonmq/Z2_SYATEKI_MIZU/Z2_SYATEKI_MIZUTex_007E60": "r",
+   "scenes/nonmq/Z2_TAKARAKUJI/Z2_TAKARAKUJITex_001310": "w",
+   "scenes/nonmq/Z2_TOUGITES/Z2_TOUGITESTex_0033C0": "r"
+  }
  },
  "region_params": {
   "interiors": {
@@ -538,6 +553,19 @@
     "relief": 9,
     "nstrength": 0.9,
     "grime": 0.2
+   },
+   "a_snow": {
+    "set": "plaster006",
+    "hf": 0.3,
+    "contrast": 0.5,
+    "relief": 3,
+    "nstrength": 0.35,
+    "grime": 0.12,
+    "wear": 0.04,
+    "macro": 0.1,
+    "macro_size": 170,
+    "rough0": 0.75,
+    "native_mottle": 1.0
    }
   },
   "swamp_woodfall": {
@@ -548,6 +576,19 @@
     "macro_size": 55,
     "relief": 11,
     "nstrength": 0.8,
+    "native_mottle": 1.0
+   },
+   "a_snow": {
+    "set": "plaster006",
+    "hf": 0.3,
+    "contrast": 0.5,
+    "relief": 3,
+    "nstrength": 0.35,
+    "grime": 0.12,
+    "wear": 0.04,
+    "macro": 0.1,
+    "macro_size": 170,
+    "rough0": 0.75,
     "native_mottle": 1.0
    }
   },
@@ -583,6 +624,64 @@
    "a_rock": {
     "relief": 12,
     "contrast": 0.9
+   },
+   "a_snow": {
+    "set": "plaster006",
+    "hf": 0.3,
+    "contrast": 0.5,
+    "relief": 3,
+    "nstrength": 0.35,
+    "grime": 0.12,
+    "wear": 0.04,
+    "macro": 0.1,
+    "macro_size": 170,
+    "rough0": 0.75,
+    "native_mottle": 1.0
+   }
+  },
+  "great_bay": {
+   "a_snow": {
+    "set": "plaster006",
+    "hf": 0.3,
+    "contrast": 0.5,
+    "relief": 3,
+    "nstrength": 0.35,
+    "grime": 0.12,
+    "wear": 0.04,
+    "macro": 0.1,
+    "macro_size": 170,
+    "rough0": 0.75,
+    "native_mottle": 1.0
+   }
+  },
+  "ikana_tower": {
+   "a_snow": {
+    "set": "plaster006",
+    "hf": 0.3,
+    "contrast": 0.5,
+    "relief": 3,
+    "nstrength": 0.35,
+    "grime": 0.12,
+    "wear": 0.04,
+    "macro": 0.1,
+    "macro_size": 170,
+    "rough0": 0.75,
+    "native_mottle": 1.0
+   }
+  },
+  "termina_field": {
+   "a_snow": {
+    "set": "plaster006",
+    "hf": 0.3,
+    "contrast": 0.5,
+    "relief": 3,
+    "nstrength": 0.35,
+    "grime": 0.12,
+    "wear": 0.04,
+    "macro": 0.1,
+    "macro_size": 170,
+    "rough0": 0.75,
+    "native_mottle": 1.0
    }
   }
  }

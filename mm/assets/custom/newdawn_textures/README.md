@@ -23,6 +23,8 @@ they appear only as `pal` values.
 | `layers.json` | per two-texture draw: which texture plays which role |
 | `mm3d_match.json` | for `unique` scene textures: the matching *Majora's Mask 3D* texture name, with scores |
 | `scene_stats.json` | per scene: share of world surface that is replaceable / unique / skip |
+| `objects.json` | milestone 4: the prop folders of `objects/` the generator treats like scenery (no skeleton), their material classes and per-texture overrides |
+| `mm3d_regions.json` | milestone 4: for unique scene textures, where on the 3DS atlas the N64 texture's surface is (an affine map) and how well the crop matches |
 
 ## Classes
 
@@ -181,6 +183,34 @@ texture that triangle uses.
 - **Use an entry when it has no `weak` flag**: `share >= 0.6`, `coverage >= 0.3` and `margin >= 0.2`. `weak: true` entries
   (`share >= 0.4`, `coverage >= 0.1`) are only hints: a big N64 wall often corresponds to several 3DS textures, and the vote splits.
 - A unique texture with no entry has no usable 3DS counterpart: upscale the N64 original. `coverage` at the top holds the overall figures.
+
+## `objects.json`
+
+Names only (`tools/newdawn/texclassify` lists the folders from the player's own `mm.o2r`: a folder is a prop when it holds no skeleton resource).
+`folders`: the 258 prop folders (plus `object_box`, `object_hata`, `gameplay_field_keep`, `gameplay_dangeon_keep`); `material_classes`: classes replaced
+by generated materials (the rest of the folder is upscaled like unique art); `cutout_materials`: classes whose cut-outs (fences, grates, thatch edges)
+keep their alpha when replaced; `overrides`: per-texture `{"action": "unique" | "skip" | <class>}` for textures the classifier calls a material but
+which carry painted detail (crate sides, chandelier pots, palm bark) or the reverse.
+
+## `mm3d_regions.json`
+
+Written by `tools/newdawn/texclassify/region3ds.py match` + `table` (names and numbers only). Unlike `mm3d_match.json` it registers the N64 texture
+on the 3DS atlas: every 3DS triangle is located on the N64 triangle that contains it (same coordinates), the N64 texel coordinates at its three
+vertices come from the N64 triangle (mirror and clamp flags of the tile respected), and the affine map from N64 texels to 3DS UV is solved exactly per
+triangle; the area-weighted dominant map wins. Each entry holds two hypotheses scored against the original (crop resampled to the N64 grid; colour,
+luminance correlation at 8/16/32 px, gradient correlation):
+
+```json
+"scenes/nonmq/Z2_TOUGITES/Z2_TOUGITESTex_0033C0": {
+  "scene": "z2_tougites", "size": [24, 48], "best": "r", "share": 1.0, "reg": 0.74, "coverage": 1.0, "n": 12,
+  "r": {"mm3d": "yu0_dai_01", "m": [a, b, c, d, e, f], "scale": 3, "density": [3.1, 3.0], "tex3": [128, 256], "col": 18.2, "n8": .., "n16": .., "n32": .., "edge": ..},
+  "w": {"mm3d": "...", "m": [..], "...": "the whole 3DS texture in the best of four flips"}
+}
+```
+
+`m`: u = a x + b y + c, v = d x + e y + f with (x, y) in N64 texels and (u, v) in 3DS UV, v bottom-up. `scale`: the output is the N64 size times
+this (the 3DS pixels per N64 texel, 1 to 4). `reg`: share of the 3DS area on this texture that agrees with the chosen map. The tables are candidates only:
+a person approves them (`recipes.json: unique.mm3d_regions_verified`, `{resource: "r" | "w" | "y"}`); nothing from the 3DS is used otherwise.
 
 ## `scene_stats.json`
 

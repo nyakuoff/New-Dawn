@@ -242,6 +242,33 @@ bool AcceptCandidate(const Mm3d::Image& n, const Mm3d::Image& c) {
     return l1 / (kG * kG * 3) <= 36.0;
 }
 
+bool SampleRegion(const Mm3d::Image& src, const double m[6], int w, int h, int k, Mm3d::Image& out) {
+    if (src.width <= 0 || src.height <= 0 || src.rgba.size() < (size_t)src.width * src.height * 4 || w <= 0 || h <= 0 || k < 1 || k > 4) {
+        return false;
+    }
+    out.width = w * k;
+    out.height = h * k;
+    out.rgba.assign((size_t)out.width * out.height * 4, 255);
+    const int W = src.width, H = src.height;
+    auto wrap = [](int v, int n) { return ((v % n) + n) % n; };
+    for (int y = 0; y < out.height; ++y) {
+        for (int x = 0; x < out.width; ++x) {
+            const double fx = (x + 0.5) / k, fy = (y + 0.5) / k;
+            const double px = (m[0] * fx + m[1] * fy + m[2]) * W - 0.5;
+            const double py = (1.0 - (m[3] * fx + m[4] * fy + m[5])) * H - 0.5;
+            const int x0 = (int)std::floor(px), y0 = (int)std::floor(py);
+            const double tx = px - x0, ty = py - y0;
+            for (int ch = 0; ch < 3; ++ch) {
+                auto at = [&](int yy, int xx) { return (double)src.rgba[((size_t)wrap(yy, H) * W + wrap(xx, W)) * 4 + ch]; };
+                const double v = at(y0, x0) * (1 - tx) * (1 - ty) + at(y0, x0 + 1) * tx * (1 - ty) + at(y0 + 1, x0) * (1 - tx) * ty +
+                                 at(y0 + 1, x0 + 1) * tx * ty;
+                out.rgba[((size_t)y * out.width + x) * 4 + ch] = (uint8_t)std::clamp((int)std::lround(v), 0, 255);
+            }
+        }
+    }
+    return true;
+}
+
 // The colour stored under transparent pixels (palette entries, black) would bleed into the edges of a cut-out when it is upscaled:
 // extend the opaque colours outward a few pixels first (the alpha itself is untouched).
 static void BleedTransparent(Mm3d::Image& im) {
