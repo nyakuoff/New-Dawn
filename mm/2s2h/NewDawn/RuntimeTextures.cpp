@@ -3,6 +3,7 @@
 #include "RuntimeTextures.h"
 #include "TextureSynth.h"
 #include "UniqueArt.h"
+#include "RuntimeMaterials.h"
 #include "Mm3dCharacters.h"
 #include "ZipWriter.h"
 
@@ -293,11 +294,14 @@ struct Job {
     std::string measure; // "layout" (brick, ashlar), "planks": count the rows and columns on the original's pixels
     bool hasRows = false, hasCols = false;
     bool unique = false;              // painted art: upscaled, not replaced (UniqueArt.h)
+    bool object = false;              // a prop (objects/): alpha is kept, maps are derived for upscaled art
+    bool cutoutOk = false;            // a material class that may keep its original alpha (fences, grates)
+    std::string mapClass = "other";   // class of materials.json the derived maps of upscaled art use
     std::string mm3dScene, mm3dTex;   // confident 3DS counterpart from mm3d_match.json
 };
 
 struct Data {
-    json recipes, textures, classification, scale, layers, mm3d; // classification, scale, layers, mm3d: optional
+    json recipes, textures, classification, scale, layers, mm3d, objects; // classification, scale, layers, mm3d, objects: optional
     std::string libraryManifest;
     uint64_t hash = 0;
 };
@@ -324,7 +328,7 @@ bool LoadData(Data& data, std::string& error) {
     };
     if (!load("recipes.json", data.recipes) || !load("textures.json", data.textures) ||
         !load("classification.json", data.classification, true) || !load("scale.json", data.scale, true) ||
-        !load("layers.json", data.layers, true) || !load("mm3d_match.json", data.mm3d, true)) {
+        !load("layers.json", data.layers, true) || !load("mm3d_match.json", data.mm3d, true) || !load("objects.json", data.objects, true)) {
         return false;
     }
     std::ifstream in(LibraryDir() / "manifest.json", std::ios::binary);
@@ -442,7 +446,7 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
             p.update(entry["p"]);
         }
         // physical scale: repeat the CC0 set so one of its tiles covers about world_m metres of the surface
-        if (c.contains("world_m") && !(p.contains("k")) && data.scale.contains("textures") && data.scale["textures"].contains(resource) &&
+        if (c.contains("world_m") && !(p.contains("k")) && resource.rfind("objects/", 0) != 0 && data.scale.contains("textures") && data.scale["textures"].contains(resource) &&
             data.scale["textures"][resource].contains("tile_m")) {
             const auto& tm = data.scale["textures"][resource]["tile_m"];
             const double span = std::max(tm[0].get<double>(), tm[1].get<double>());
@@ -558,6 +562,85 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
             jobs.push_back(std::move(j));
         }
     }
+    // Props (objects/): generic materials are replaced (cut-outs of fences and grates keep their alpha), everything else that is not an
+    // effect is upscaled like unique art. objects.json lists the folders (no skeleton), the material classes and per-texture overrides.
+    if (CVarGetInteger("gNewDawn.Textures.Objects", 1) != 0 && data.objects.contains("folders") && data.classification.contains("textures")) {
+        std::unordered_set<std::string> folders, matClasses, cutoutClasses, taken;
+        for (const auto& f : data.objects["folders"]) folders.insert(f.get<std::string>());
+        for (const auto& c : data.objects.value("material_classes", json::array())) matClasses.insert(c.get<std::string>());
+        for (const auto& c : data.objects.value("cutout_materials", json::array())) cutoutClasses.insert(c.get<std::string>());
+        for (const auto& j : jobs) taken.insert(j.resource);
+        const json overrides = data.objects.value("overrides", json::object());
+        const json& cmap = data.recipes.value("class_map", json::object());
+        const double minConf = data.recipes.value("min_conf", 0.6);
+        // classes of materials.json (ND-009 maps) the derived maps of upscaled props use
+        static const std::unordered_map<std::string, std::string> mapClassOf = {
+            { "rock", "stone" }, { "flagstone", "stone" }, { "cobble", "stone" }, { "brick", "stone" }, { "wood_planks", "wood" },
+            { "wood_beam", "wood" }, { "dirt", "dirt" }, { "sand", "dirt" }, { "mud", "dirt" }, { "grass", "grass" }, { "moss", "dirt" },
+            { "plaster", "plaster" }, { "metal", "metal" }, { "roof_tiles", "roof_tile" }, { "thatch", "other" }, { "ice_snow", "wet" } };
+        for (auto it = data.classification["textures"].begin(); it != data.classification["textures"].end(); ++it) {
+            const std::string& res = it.key();
+            if (res.rfind("objects/", 0) != 0 || taken.count(res)) {
+                continue;
+            }
+            const size_t slash = res.find('/', 8);
+            if (slash == std::string::npos || !folders.count(res.substr(8, slash - 8))) {
+                continue;
+            }
+            const json& e = it.value();
+            std::string cls = e.value("class", "");
+            if (cls == "skip" || cls == "water" || e.contains("pal_alt")) {
+                continue;
+            }
+            std::string action = "unique";
+            if (overrides.contains(res)) {
+                action = overrides[res].get<std::string>();
+                if (action == "skip") {
+                    continue;
+                }
+                if (action != "unique") {
+                    cls = action; // a class override is as good as a confident classification
+                }
+            } else if (e.value("conf", 0.0) < minConf) {
+                cls = "unique";
+            }
+            Job j;
+            j.resource = res;
+            j.palette = e.value("pal", "");
+            j.seed = NameSeed(res);
+            j.tier = rest;
+            j.object = true;
+            j.mapClass = mapClassOf.count(cls) ? mapClassOf.at(cls) : "other";
+            if (action != "unique" || (matClasses.count(cls) && cmap.contains(cls) && !overrides.contains(res))) {
+                if (matClasses.count(cls) && cmap.contains(cls) && classes.contains(cmap[cls].get<std::string>())) {
+                    const json& c = classes[cmap[cls].get<std::string>()];
+                    j.gen = c.value("gen", "");
+                    j.measure = c.value("measure", "");
+                    j.cutoutOk = cutoutClasses.count(cls) > 0;
+                    json p = json::object();
+                    if (c.contains("p")) p.update(c["p"]);
+                    p.erase("native_mottle");
+                    Flatten(p, j.params, j.seed);
+                    j.face = j.params.Str("face", j.params.Str("set", "").c_str());
+                    j.hasRows = j.hasCols = false;
+                    if (!j.gen.empty()) {
+                        jobs.push_back(std::move(j));
+                        continue;
+                    }
+                    j = Job();
+                    j.resource = res;
+                    j.palette = e.value("pal", "");
+                    j.seed = NameSeed(res);
+                    j.tier = rest;
+                    j.object = true;
+                    j.mapClass = mapClassOf.count(cls) ? mapClassOf.at(cls) : "other";
+                }
+            }
+            j.unique = true; // upscaled
+            j.gen = "unique";
+            jobs.push_back(std::move(j));
+        }
+    }
     // group by size, then by the material they read, so the library surfaces in memory are reused back to back
     std::stable_sort(jobs.begin(), jobs.end(), [](const Job& a, const Job& b) {
         return a.tier != b.tier ? a.tier > b.tier : a.face < b.face;
@@ -579,6 +662,7 @@ std::string Signature(const Data& data) {
         const std::string u = std::string(CVarGetString("gNewDawn.Textures.UniqueScenes", "")) + "|" +
                               std::to_string(CVarGetInteger("gNewDawn.Textures.Unique", 1)) + "|" +
                               std::to_string(CVarGetInteger("gNewDawn.Textures.Unique3ds", 1)) + "|" +
+                              std::to_string(CVarGetInteger("gNewDawn.Textures.Objects", 1)) + "|" +
                               (NewDawnMm3d::DumpValid(NewDawnMm3d::DumpPath()) ? NewDawnMm3d::DumpPath() : std::string("-"));
         h = Fnv1a(u.data(), u.size(), h);
         NewDawnMm3d::SpanUpscaler span;
@@ -658,6 +742,30 @@ struct UniqueContext {
 };
 UniqueContext* gUnique = nullptr;
 
+// Normal and roughness maps of upscaled prop art (the class recipe of the ND-009 generator applied to the albedo's luminance) and the metadata
+// record the renderer checks. Returns false (no maps) when the size does not allow half-resolution maps.
+bool AddDerivedMaps(const Job& job, int W, int H, uint32_t kind, uint32_t flags, float hs, float vs, const std::vector<uint8_t>& rgba,
+                    NewDawn::ZipWriter& zip, Outcome& out) {
+    std::vector<uint8_t> normal, rough;
+    int mw = 0, mh = 0;
+    if (!NewDawnMaterials::BuildMapsFor(rgba.data(), W, H, job.mapClass, normal, rough, mw, mh)) {
+        return false;
+    }
+    const std::string entry = "alt/" + job.resource;
+    auto n = EncodeTexture(9, mw, mh, 0, 1.f, 1.f, normal.data(), normal.size());
+    zip.Add(entry + "_n", n.data(), n.size());
+    auto r = EncodeTexture(9, mw, mh, 0, 1.f, 1.f, rough.data(), rough.size());
+    zip.Add(entry + "_r", r.data(), r.size());
+    json meta = { { "resource", job.resource },        { "label", "object-upscale" },           { "role", "base" },
+                  { "source_pixels_fnv1a64", Hex16(Fnv1a(rgba.data(), rgba.size())) },
+                  { "source_size", { W, H } },         { "output_size", { mw, mh } },
+                  { "source_type", kind },             { "source_flags", flags },
+                  { "source_h_byte_scale", hs },       { "source_v_pixel_scale", vs } };
+    std::lock_guard<std::mutex> lock(out.mutex);
+    out.entries.push_back(std::move(meta));
+    return true;
+}
+
 void RunUnique(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip, Outcome& out) {
     if (!gUnique || !gUnique->spanOk) {
         ++out.uniqueSkipped;
@@ -700,6 +808,9 @@ void RunUnique(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& z
     const float hs = (float)(W * 4.0 / (o.w * BytesPerTexel(o.type))), vs = (float)H / o.h;
     auto albedo = EncodeTexture(kind, W, H, 1u, hs, vs, result.rgba.data(), result.rgba.size());
     zip.Add("alt/" + job.resource, albedo.data(), albedo.size());
+    if (job.object) {
+        AddDerivedMaps(job, W, H, kind, 1u, hs, vs, result.rgba, zip, out);
+    }
     (from3ds ? out.unique3ds : out.uniqueN64)++;
     ++out.done;
 }
@@ -715,8 +826,13 @@ void RunJob(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip,
         ++out.missing;
         return;
     }
-    if (o.cutout) {
-        ++out.cutouts;
+    const bool keepAlpha = o.cutout && job.object && job.cutoutOk;
+    if (o.cutout && !keepAlpha) {
+        if (job.object) { // a prop with a shape of its own (leaves, webs, sticks): upscaled, alpha preserved
+            RunUnique(job, lib, zip, out);
+        } else {
+            ++out.cutouts;
+        }
         return;
     }
     if (fallback) {
@@ -754,7 +870,22 @@ void RunJob(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip,
         ++out.unusable;
         return;
     }
-    const NewDawnSynth::Encoded e = NewDawnSynth::Encode(mat);
+    NewDawnSynth::Encoded e = NewDawnSynth::Encode(mat);
+    if (keepAlpha) { // the original's shape (bilinear upscale of its alpha): fences and grates stay see-through where they were
+        for (int y = 0; y < H; ++y) {
+            const float fy = std::clamp((y + .5f) * o.h / H - .5f, 0.f, (float)o.h - 1);
+            const int y0 = (int)fy, y1 = std::min(y0 + 1, (int)o.h - 1);
+            const float ty = fy - y0;
+            for (int x = 0; x < W; ++x) {
+                const float fx = std::clamp((x + .5f) * o.w / W - .5f, 0.f, (float)o.w - 1);
+                const int x0 = (int)fx, x1 = std::min(x0 + 1, (int)o.w - 1);
+                const float tx = fx - x0;
+                auto a = [&](int yy, int xx) { return (float)o.rgba[((size_t)yy * o.w + xx) * 4 + 3]; };
+                const float v = (a(y0, x0) * (1 - tx) + a(y0, x1) * tx) * (1 - ty) + (a(y1, x0) * (1 - tx) + a(y1, x1) * tx) * ty;
+                e.rgba[((size_t)y * W + x) * 4 + 3] = (uint8_t)std::lround(v);
+            }
+        }
+    }
     // the pack's header layout: expanded RGBA8 under the native type (CI textures: RGBA32), byte scales relative to native
     const uint32_t kind = (o.type == 3 || o.type == 4) ? 1 : o.type;
     const float hs = (float)(W * 4.0 / (o.w * BytesPerTexel(o.type))), vs = (float)H / o.h;
@@ -813,7 +944,7 @@ void Generate(bool boot) {
         gDone = 0;
         // a hero texture holds about 120 MB of float fields while it is built: bound the threads by cores and by 8
         const unsigned hw = std::max(1u, std::thread::hardware_concurrency());
-        const unsigned threads = std::clamp(boot ? hw : std::max(1u, hw / 2), 1u, boot ? 8u : 4u);
+        const unsigned threads = std::clamp(boot ? hw : std::max(1u, hw / 2), 1u, boot ? 12u : 4u);
         SPDLOG_INFO("NewDawn textures: {} textures on {} threads", jobs.size(), threads);
         std::vector<NewDawnSynth::Library::Entry> entries;
         const json manifest = json::parse(data.libraryManifest, nullptr, false);

@@ -242,10 +242,65 @@ bool AcceptCandidate(const Mm3d::Image& n, const Mm3d::Image& c) {
     return l1 / (kG * kG * 3) <= 36.0;
 }
 
-bool UpscaleAndGrade(const Mm3d::Image& source, const Mm3d::Image& original, bool fromMm3d, const Options& opt, Mm3d::Image& out) {
-    if (!opt.span || source.width < 4 || source.height < 4) {
+// The colour stored under transparent pixels (palette entries, black) would bleed into the edges of a cut-out when it is upscaled:
+// extend the opaque colours outward a few pixels first (the alpha itself is untouched).
+static void BleedTransparent(Mm3d::Image& im) {
+    const size_t n = (size_t)im.width * im.height;
+    std::vector<uint8_t> known(n);
+    size_t opaque = 0;
+    double mean[3] = {};
+    for (size_t i = 0; i < n; ++i) {
+        known[i] = im.rgba[i * 4 + 3] >= 128;
+        if (known[i]) {
+            ++opaque;
+            for (int c = 0; c < 3; ++c) mean[c] += im.rgba[i * 4 + c];
+        }
+    }
+    if (opaque == 0 || opaque == n) {
+        return;
+    }
+    for (int pass = 0; pass < 8; ++pass) {
+        std::vector<uint8_t> next = known;
+        std::vector<uint8_t> rgb = im.rgba;
+        bool any = false;
+        for (int y = 0; y < im.height; ++y) {
+            for (int x = 0; x < im.width; ++x) {
+                const size_t i = (size_t)y * im.width + x;
+                if (known[i]) continue;
+                int cnt = 0, sum[3] = {};
+                const int dx[4] = { -1, 1, 0, 0 }, dy[4] = { 0, 0, -1, 1 };
+                for (int k = 0; k < 4; ++k) {
+                    const int xx = x + dx[k], yy = y + dy[k];
+                    if (xx < 0 || yy < 0 || xx >= im.width || yy >= im.height) continue;
+                    const size_t j = (size_t)yy * im.width + xx;
+                    if (!known[j]) continue;
+                    ++cnt;
+                    for (int c = 0; c < 3; ++c) sum[c] += im.rgba[j * 4 + c];
+                }
+                if (cnt) {
+                    for (int c = 0; c < 3; ++c) rgb[i * 4 + c] = (uint8_t)(sum[c] / cnt);
+                    next[i] = 1;
+                    any = true;
+                }
+            }
+        }
+        im.rgba.swap(rgb);
+        known.swap(next);
+        if (!any) break;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        if (!known[i]) {
+            for (int c = 0; c < 3; ++c) im.rgba[i * 4 + c] = (uint8_t)(mean[c] / opaque);
+        }
+    }
+}
+
+bool UpscaleAndGrade(const Mm3d::Image& sourceIn, const Mm3d::Image& original, bool fromMm3d, const Options& opt, Mm3d::Image& out) {
+    if (!opt.span || sourceIn.width < 4 || sourceIn.height < 4) {
         return false;
     }
+    Mm3d::Image source = sourceIn;
+    BleedTransparent(source);
     const bool wrapX = Tiles(source, true), wrapY = Tiles(source, false);
     constexpr int kPad = 8;
     Mm3d::Image padded = Pad(source, kPad, wrapX, wrapY), big;
