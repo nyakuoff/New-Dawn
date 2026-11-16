@@ -192,6 +192,180 @@
    "seed": 79,
    "tier": "hero",
    "role": "detail"
+  },
+  "scenes/nonmq/Z2_YADOYA/Z2_YADOYATex_00D280": {
+   "class": "plaster",
+   "seed": 101,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "macro": 0.05
+   },
+   "palette": "scenes/nonmq/Z2_YADOYA/Z2_YADOYATLUT_00F080"
+  },
+  "scenes/nonmq/Z2_YADOYA/Z2_YADOYATex_00E480": {
+   "class": "planks",
+   "seed": 103,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "planks": 5
+   },
+   "palette": "scenes/nonmq/Z2_YADOYA/Z2_YADOYATLUT_00F280"
+  },
+  "misc/scene_texture_01/scene_texture_01_Tex_003680": {
+   "class": "dirt",
+   "seed": 107,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "set": "ground109"
+   },
+   "palette": "scenes/nonmq/Z2_SONCHONOIE/Z2_SONCHONOIETLUT_007300"
+  },
+  "scenes/nonmq/Z2_MITURIN/Z2_MITURIN_room_02Tex_005CC0": {
+   "class": "rock",
+   "seed": 111,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "set": "rock062",
+    "moss": 0.35,
+    "contrast": 1.0,
+    "hf": 1.0
+   },
+   "palette": "scenes/nonmq/Z2_MITURIN/Z2_MITURINTLUT_017190"
+  },
+  "scenes/nonmq/Z2_MITURIN/Z2_MITURINTex_016590": {
+   "class": "rock",
+   "seed": 113,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "set": "rock062",
+    "moss": 0.35,
+    "contrast": 1.0,
+    "hf": 1.0
+   },
+   "palette": "scenes/nonmq/Z2_MITURIN/Z2_MITURINTLUT_017190"
+  },
+  "scenes/nonmq/Z2_MITURIN/Z2_MITURINTex_015090": {
+   "class": "ashlar",
+   "seed": 117,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "rows": 2,
+    "cols": 2,
+    "col_jit": 0.15,
+    "moss": 0.45
+   },
+   "palette": "scenes/nonmq/Z2_MITURIN/Z2_MITURINTLUT_017190"
+  },
+  "scenes/nonmq/Z2_MITURIN/Z2_MITURINTex_016990": {
+   "class": "ashlar",
+   "seed": 119,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "rows": 4,
+    "cols": 2,
+    "moss": 0.4
+   },
+   "palette": "scenes/nonmq/Z2_MITURIN/Z2_MITURINTLUT_017190"
+  },
+  "scenes/nonmq/Z2_MITURIN/Z2_MITURINTex_015D90": {
+   "class": "rock",
+   "seed": 121,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "set": "moss002",
+    "contrast": 1.0
+   },
+   "palette": "scenes/nonmq/Z2_MITURIN/Z2_MITURINTLUT_017190"
+  },
+  "scenes/nonmq/Z2_TOWN/Z2_TOWNTex_01AFD0": {
+   "class": "brick",
+   "seed": 131,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "rows": 2,
+    "cols": 2,
+    "tone": [
+     0.1,
+     0.78
+    ],
+    "gap_tone": 0.95
+   }
+  },
+  "scenes/nonmq/Z2_TOWN/Z2_TOWNTex_01B0D0": {
+   "class": "brick",
+   "seed": 133,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "rows": 2,
+    "cols": 2,
+    "tone": [
+     0.1,
+     0.78
+    ],
+    "gap_tone": 0.95
+   }
+  },
+  "scenes/nonmq/Z2_TOWN/Z2_TOWNTex_01ADD0": {
+   "class": "brick",
+   "seed": 137,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "rows": 2,
+    "cols": 2,
+    "tone": [
+     0.1,
+     0.78
+    ],
+    "gap_tone": 0.95
+   }
+  },
+  "scenes/nonmq/Z2_TOWN/Z2_TOWNTex_01AED0": {
+   "class": "brick",
+   "seed": 139,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "rows": 2,
+    "cols": 2,
+    "tone": [
+     0.1,
+     0.78
+    ],
+    "gap_tone": 0.95
+   }
+  },
+  "scenes/nonmq/Z2_TOWN/Z2_TOWNTex_015810": {
+   "class": "dirt",
+   "seed": 141,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "set": "thatchedroof001a",
+    "contrast": 1.0
+   },
+   "palette": "scenes/nonmq/Z2_TOWN/Z2_TOWNTLUT_01E6B0"
+  },
+  "scenes/nonmq/Z2_TOWN/Z2_TOWNTex_0184D0": {
+   "class": "ashlar",
+   "seed": 143,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "rows": 4,
+    "cols": 3
+   },
+   "palette": "scenes/nonmq/Z2_TOWN/Z2_TOWNTLUT_01E710"
   }
  }
 }
