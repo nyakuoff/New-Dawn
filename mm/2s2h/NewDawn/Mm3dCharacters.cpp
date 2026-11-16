@@ -42,18 +42,19 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.3.2";
+constexpr const char* kConverterVersion = "1.6.2";
 
 struct Entry {
     const char* object;
     const char* skeleton;
     const char* archive; // zelda2_* actor archive in the dump
     const char* cmb; // GAR entry name
-    const char* skip; // comma separated material indices of props the N64 draws elsewhere
+    const char* skip; // comma separated: "3" a CMB material the N64 draws elsewhere, "d12" a draw (mesh) to leave out, "k15" an N64 limb whose display lists stay, "s5=0.66:0.85@12" a draw scaled about a bone (along its axis : across it)
     bool reviewed;
     float lightRef, saturation; // colour overrides for this model, 0 = the global defaults
     const char* rig;            // "bone:limb,..." when the 3DS rig differs from the N64 one (see ParseRig); "" = same hierarchy
     const char* face;           // eye and mouth states (see ParseFace); "" = the faces stay at their first frame
+    const char* tint;           // "material:hue degrees:saturation factor[:value factor[:from hue:to hue]],..." per CMB material (hair that reads hotter than the N64's)
 };
 const Entry kTable[] = {
 #include "Mm3dCharacterTable.inc"
@@ -119,20 +120,40 @@ uint64_t Crc64(const std::string& name) {
     return v;
 }
 
-std::set<int> ParseList(const char* s) {
-    std::set<int> out;
-    std::string cur;
-    for (const char* p = s;; ++p) {
-        if (*p == ',' || *p == 0) {
-            if (!cur.empty()) {
-                out.insert(std::atoi(cur.c_str()));
+struct DrawScale {
+    float along = 1, across = 1; // scale along the axis from the pivot to the draw's centre, and across it
+    int pivotBone = -1;          // the draw is scaled about this bone's origin in the model's bind pose
+};
+struct SkipSpec {
+    std::set<int> materials, draws, keepLimbs;
+    std::map<int, DrawScale> scales; // "s5=0.66:0.85@12": draw 5 shortened and narrowed about bone 12's origin (a hat bigger than the N64's)
+};
+SkipSpec ParseSkip(const char* s) {
+    SkipSpec out;
+    std::string all(s ? s : "");
+    size_t pos = 0;
+    while (pos < all.size()) {
+        size_t end = all.find(',', pos);
+        end = end == std::string::npos ? all.size() : end;
+        const std::string tok = all.substr(pos, end - pos);
+        pos = end + 1;
+        if (tok.empty()) {
+            continue;
+        }
+        if (tok[0] == 's') {
+            const size_t eq = tok.find('='), at = tok.find('@');
+            if (eq != std::string::npos && at != std::string::npos) {
+                const size_t colon = tok.find(':', eq);
+                const float along = (float)std::atof(tok.c_str() + eq + 1);
+                const float across = colon != std::string::npos && colon < at ? (float)std::atof(tok.c_str() + colon + 1) : along;
+                out.scales[std::atoi(tok.c_str() + 1)] = { along, across, std::atoi(tok.c_str() + at + 1) };
             }
-            cur.clear();
-            if (*p == 0) {
-                break;
-            }
+        } else if (tok[0] == 'd') {
+            out.draws.insert(std::atoi(tok.c_str() + 1));
+        } else if (tok[0] == 'k') {
+            out.keepLimbs.insert(std::atoi(tok.c_str() + 1));
         } else {
-            cur.push_back(*p);
+            out.materials.insert(std::atoi(tok.c_str()));
         }
     }
     return out;
@@ -140,25 +161,31 @@ std::set<int> ParseList(const char* s) {
 
 // "bone:limb,bone:limb": the pairs of a skeleton whose 3DS rig is not the N64 one. 3DS bones that are not listed follow
 // their nearest listed ancestor; N64 limbs that are not listed get an empty display list (docs/MM3D_CHARACTERS.md).
-std::map<int, int> ParseRig(const char* s) {
-    std::map<int, int> out;
-    int a = 0, b = 0;
-    bool second = false, any = false;
-    for (const char* p = s;; ++p) {
-        if (*p >= '0' && *p <= '9') {
-            (second ? b : a) = (second ? b : a) * 10 + (*p - '0');
-            any = true;
-        } else if (*p == ':') {
-            second = true;
-        } else {
-            if (any && second) {
-                out[a] = b;
-            }
-            a = b = 0;
-            second = any = false;
-            if (*p == 0) {
-                break;
-            }
+// "bone:limb>drive": the bone's frame is that of a pivot limb without a display list; its mesh is drawn under the limb
+// "drive", which sits at the same joint (Kafei's and Link's torso hangs off the upper-root pivot).
+struct RigSpec {
+    std::map<int, int> frameLimb;  // bone -> limb whose frame it is
+    std::map<int, int> driveLimb;  // bone -> limb whose matrix draws its mesh, when that is another limb
+};
+RigSpec ParseRig(const char* s) {
+    RigSpec out;
+    std::string all(s ? s : "");
+    size_t pos = 0;
+    while (pos < all.size()) {
+        size_t end = all.find(',', pos);
+        end = end == std::string::npos ? all.size() : end;
+        const std::string tok = all.substr(pos, end - pos);
+        pos = end + 1;
+        const size_t colon = tok.find(':');
+        if (colon == std::string::npos) {
+            continue;
+        }
+        const int bone = std::atoi(tok.c_str());
+        const size_t gt = tok.find('>');
+        const int limb = std::atoi(tok.c_str() + colon + 1);
+        out.frameLimb[bone] = limb;
+        if (gt != std::string::npos) {
+            out.driveLimb[bone] = std::atoi(tok.c_str() + gt + 1);
         }
     }
     return out;
@@ -557,6 +584,63 @@ ColourParams GetColourParams() {
     return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.55f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.15f) };
 }
 
+struct Tint {
+    float hue = 0, sat = 1, val = 1;
+    float from = 0, to = 360; // only pixels whose hue (before the shift) lies in [from, to]: the greens of a texture shared with gold and brown
+};
+std::map<int, Tint> ParseTint(const char* s) {
+    std::map<int, Tint> out;
+    std::string all(s ? s : "");
+    size_t pos = 0;
+    while (pos < all.size()) {
+        size_t end = all.find(',', pos);
+        end = end == std::string::npos ? all.size() : end;
+        const std::string tok = all.substr(pos, end - pos);
+        pos = end + 1;
+        std::vector<float> f;
+        for (size_t q = tok.find(':'); q != std::string::npos; q = tok.find(':', q + 1)) {
+            f.push_back((float)std::atof(tok.c_str() + q + 1));
+        }
+        if (f.size() >= 2) {
+            Tint t;
+            t.hue = f[0], t.sat = f[1];
+            t.val = f.size() > 2 ? f[2] : 1.0f;
+            t.from = f.size() > 3 ? f[3] : 0.0f;
+            t.to = f.size() > 4 ? f[4] : 360.0f;
+            out[std::atoi(tok.c_str())] = t;
+        }
+    }
+    return out;
+}
+// Rotates the hue of every pixel and scales its saturation and value (after the colour mapping).
+void ApplyTint(Mm3d::Image& img, const Tint& t) {
+    for (size_t i = 0; i + 3 < img.rgba.size(); i += 4) {
+        const float r = img.rgba[i] / 255.0f, g = img.rgba[i + 1] / 255.0f, b = img.rgba[i + 2] / 255.0f;
+        const float mx = std::max({ r, g, b }), mn = std::min({ r, g, b }), d = mx - mn;
+        float h = 0;
+        if (d > 1e-6f) {
+            h = mx == r ? std::fmod((g - b) / d, 6.0f) : (mx == g ? (b - r) / d + 2.0f : (r - g) / d + 4.0f);
+            h *= 60.0f;
+        }
+        if (h < t.from || h > t.to) {
+            continue;
+        }
+        h = std::fmod(h + t.hue + 720.0f, 360.0f);
+        const float sat = std::clamp((mx > 0 ? d / mx : 0.0f) * t.sat, 0.0f, 1.0f);
+        const float v = std::clamp(mx * t.val, 0.0f, 1.0f);
+        const float c = v * sat, x = c * (1.0f - std::fabs(std::fmod(h / 60.0f, 2.0f) - 1.0f)), m = v - c;
+        float o[3] = { 0, 0, 0 };
+        const int k = (int)(h / 60.0f) % 6;
+        const float tab[6][3] = { { c, x, 0 }, { x, c, 0 }, { 0, c, x }, { 0, x, c }, { x, 0, c }, { c, 0, x } };
+        for (int q = 0; q < 3; ++q) {
+            o[q] = tab[k][q] + m;
+        }
+        img.rgba[i] = (uint8_t)std::lround(std::clamp(o[0], 0.0f, 1.0f) * 255.0f);
+        img.rgba[i + 1] = (uint8_t)std::lround(std::clamp(o[1], 0.0f, 1.0f) * 255.0f);
+        img.rgba[i + 2] = (uint8_t)std::lround(std::clamp(o[2], 0.0f, 1.0f) * 255.0f);
+    }
+}
+
 void MapColour(Mm3d::Image& img, const Mm3d::Material& mat, const ColourParams& cp) {
     const float coeff = (0.6f * mat.diffuse[0] + 0.4f * mat.ambient[0]) / 255.0f;
     const float gain = coeff > 0.05f ? cp.lightRef / coeff : 1.0f;
@@ -644,8 +728,10 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
         for (size_t i = 0; i < model.bones.size(); ++i) {
             boneIndex[model.bones[i].id] = i;
         }
+        RigSpec rigSpec;
         if (rigged) {
-            boneToLimb = ParseRig(e.rig);
+            rigSpec = ParseRig(e.rig);
+            boneToLimb = rigSpec.frameLimb;
             for (const auto& kv : boneToLimb) {
                 if (!boneIndex.count(kv.first) || kv.second < 0 || kv.second >= (int)limbs.size()) {
                     res.error = "rig: bone " + std::to_string(kv.first) + " or limb " + std::to_string(kv.second) + " does not exist";
@@ -659,6 +745,9 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
         const std::map<int, int> slots = MatrixSlots(limbs);
         std::map<int, int> limbToBone;
         for (const auto& kv : boneToLimb) {
+            limbToBone[kv.second] = kv.first;
+        }
+        for (const auto& kv : rigSpec.driveLimb) { // the drive limb shares the frame of the bone
             limbToBone[kv.second] = kv.first;
         }
         if (rigged && limbToBone.count(0)) {
@@ -761,11 +850,36 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
             shift[kv.first] = s;
         }
 
-        const std::set<int> skip = ParseList(e.skip);
+        const SkipSpec skipSpec = ParseSkip(e.skip);
+        const std::set<int>& skip = skipSpec.materials;
         std::vector<std::vector<Tri>> perLimb(limbs.size());
-        for (const Mm3d::Draw& dr : model.draws) {
-            if (skip.count(dr.material)) {
+        for (size_t drawIndex = 0; drawIndex < model.draws.size(); ++drawIndex) {
+            const Mm3d::Draw& dr = model.draws[drawIndex];
+            if (skip.count(dr.material) || skipSpec.draws.count((int)drawIndex)) {
                 continue;
+            }
+            DrawScale scaleSpec;
+            float scaleC[3] = { 0, 0, 0 }, scaleU[3] = { 0, 1, 0 };
+            const auto scaleIt = skipSpec.scales.find((int)drawIndex);
+            if (scaleIt != skipSpec.scales.end() && boneIndex.count(scaleIt->second.pivotBone)) {
+                scaleSpec = scaleIt->second;
+                const Mm3d::Bone& pb = model.bones[boneIndex[scaleSpec.pivotBone]];
+                scaleC[0] = (float)pb.bind[3], scaleC[1] = (float)pb.bind[7], scaleC[2] = (float)pb.bind[11];
+                double mean[3] = { 0, 0, 0 };
+                for (const Mm3d::Vertex& v : dr.vertices) {
+                    for (int k = 0; k < 3; ++k) {
+                        mean[k] += v.pos[k] / (double)dr.vertices.size();
+                    }
+                }
+                double len = 0;
+                for (int k = 0; k < 3; ++k) {
+                    scaleU[k] = (float)(mean[k] - scaleC[k]);
+                    len += (double)scaleU[k] * scaleU[k];
+                }
+                len = std::sqrt(len);
+                for (int k = 0; k < 3; ++k) {
+                    scaleU[k] = len > 1e-6 ? (float)(scaleU[k] / len) : (k == 1 ? 1.0f : 0.0f);
+                }
             }
             for (size_t t = 0; t + 2 < dr.indices.size(); t += 3) {
                 std::map<int, float> acc;
@@ -781,7 +895,9 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                         if (it == boneToLimb.end()) {
                             continue;
                         }
-                        const int limb = NearestDrawnLimb(limbs, slots, it->second);
+                        const auto aliased = rigSpec.driveLimb.find(it->first);
+                        const int limb = aliased != rigSpec.driveLimb.end() ? aliased->second
+                                                                            : NearestDrawnLimb(limbs, slots, it->second);
                         if (limb < 0) {
                             continue;
                         }
@@ -807,8 +923,19 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                     const auto& s = shift[bone];
                     TriVert& o = tri.v[c];
                     o.drive = drive;
+                    float vp[3] = { v.pos[0], v.pos[1], v.pos[2] };
+                    if (scaleSpec.pivotBone >= 0) {
+                        float d[3], along = 0;
+                        for (int k = 0; k < 3; ++k) {
+                            d[k] = vp[k] - scaleC[k];
+                            along += d[k] * scaleU[k];
+                        }
+                        for (int k = 0; k < 3; ++k) {
+                            vp[k] = scaleC[k] + scaleSpec.along * along * scaleU[k] + scaleSpec.across * (d[k] - along * scaleU[k]);
+                        }
+                    }
                     for (int k = 0; k < 3; ++k) {
-                        o.p[k] = (float)(a.r[k * 3] * v.pos[0] + a.r[k * 3 + 1] * v.pos[1] + a.r[k * 3 + 2] * v.pos[2] + a.t[k] + s[k]);
+                        o.p[k] = (float)(a.r[k * 3] * vp[0] + a.r[k * 3 + 1] * vp[1] + a.r[k * 3 + 2] * vp[2] + a.t[k] + s[k]);
                         o.n[k] = (float)(a.r[k * 3] * v.normal[0] + a.r[k * 3 + 1] * v.normal[1] + a.r[k * 3 + 2] * v.normal[2]);
                     }
                     const float len = std::sqrt(o.n[0] * o.n[0] + o.n[1] * o.n[1] + o.n[2] * o.n[2]);
@@ -898,6 +1025,8 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
             }
         }
 
+        const std::map<int, Tint> tints = ParseTint(e.tint);
+
         // textures: one RGBA32 resource per CMB texture, named per skeleton
         const std::string base = std::string("mm3d/objects/") + e.object + "/mm3d_" + e.skeleton;
         std::map<int, std::string> texName;
@@ -924,6 +1053,18 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                     }
                 }
                 MapColour(img, m, colour);
+                for (const auto& tk : tints) { // a tint keyed by any material that uses this texture applies to it
+                    if (tk.first >= 0 && tk.first < (int)model.materials.size()) {
+                        const Mm3d::Material& tm = model.materials[tk.first];
+                        int tti = -1;
+                        for (int j = 0; j < 3 && tti < 0; ++j) {
+                            tti = tm.texture[j];
+                        }
+                        if (tti == ti) {
+                            ApplyTint(img, tk.second);
+                        }
+                    }
+                }
                 write(texName[(int)mi], TextureResource(img));
                 ++res.textures;
             }
@@ -931,7 +1072,7 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
 
         for (size_t li = 0; li < limbs.size(); ++li) {
             const Limb& limb = limbs[li];
-            if (limb.dl.empty()) {
+            if (limb.dl.empty() || skipSpec.keepLimbs.count((int)li)) { // kept limbs keep their N64 display lists
                 continue;
             }
             ++res.limbs;
@@ -1114,7 +1255,7 @@ std::string Signature(const std::string& dump) {
     }
     std::set<std::string> archives;
     for (const Entry& e : kTable) {
-        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig + e.face, h);
+        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig + e.face + e.tint, h);
         h = Fnv1a(&e.lightRef, sizeof(e.lightRef), h);
         h = Fnv1a(&e.saturation, sizeof(e.saturation), h);
         archives.insert(e.archive);

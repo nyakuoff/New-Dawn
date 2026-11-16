@@ -22,7 +22,11 @@ HOME = Path.home()
 OUT = Path(__file__).resolve().parents[3] / 'mm/2s2h/NewDawn/Mm3dCharacterTable.inc'
 
 # object/skeleton -> comma separated CMB material indices to leave out; filled in while reviewing each model.
+# Human Link: 3DS draws that are variants or equipment (hand poses 13-29, bow 30-33, shield 34, stick 35, second face 37, second
+# hair 39, shadow 41, hookshot and everything after 44), duplicates and unknown blobs (1, 2, 7).
+_LINK_DRAWS = [1, 2, 7, 35, 37, 39, 41] + list(range(13, 35)) + list(range(44, 95))
 SKIP = {
+    ('object_link_child', 'gLinkHumanSkel'): ','.join(['d%d' % d for d in _LINK_DRAWS] + ['k15', 'k18', 'k19', 's5=0.66:0.85@12']),
     ('object_tru', 'gKoumeSkel'): '5,6',            # the potion bottle (the N64 draws gKoumeBottleDL itself); her broom is a limb
     ('object_sdn', 'gSoldierSkel'): '2,3',
     ('object_an1', 'gAnju1Skel'): '0,1',
@@ -49,6 +53,10 @@ CMB = {
 # Skeletons whose 3DS rig is not the N64 one: (archive, CMB, "bone:limb,...") from the proportions and the joint offsets of both
 # (docs/MM3D_CHARACTERS.md, rig reduction). Unlisted 3DS bones follow their nearest listed ancestor; unlisted N64 limbs draw nothing.
 RIG = {
+    # Human Link (child archive): the same 21-limb layout and the same 3DS rig as Kafei's (its bones 23 to 25 only carry the
+    # shadow and the deku stick). Hands, sheath and equipment keep their N64 display lists for now (SKIP k15,k18,k19).
+    ('object_link_child', 'gLinkHumanSkel'): ('zelda2_link_child_new', 'child/model/link_child.cmb',
+        '1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19'),
     # Bombers (cs): the 3DS right arm has a wrist and a hand bone where the N64 has a pivot limb with two co-located parts
     ('object_cs', 'gBomberSkel'): ('zelda2_cs', 'model/bombers.cmb',
         '0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,10:8,11:9,12:10,13:11,14:12,15:15,16:14,8:18,9:17'),
@@ -61,11 +69,16 @@ RIG = {
         '0:0,1:10,2:11,3:12,4:13,5:14,6:15,7:16,8:17,11:1,12:8,14:9,16:2,17:3,18:4,20:5,21:6,22:7'),
     # Kafei (test3): the 3DS hips and chest are single bones, the N64 has pivot limbs (root, lower and upper root) above them
     ('object_test3', 'gKafeiSkel'): ('zelda2_kerfay', 'model/kafai.cmb',
-        '1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19'),
+        '1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19'),
 }
 # Eye and mouth states (docs/MM3D_CHARACTERS.md, faces): "E|M : segment the N64 head display list reads : the 3DS CMAB : N64 state
 # texture = 3DS frame, ...", parts joined by "|". The frames were matched to the N64 states by eye, in montages of both.
 FACE = {
+    # Human Link: the 3DS frames follow the N64 enum (open, half, closed, right, left, up, down, wincing; closed, half, open, smile).
+    ('object_link_child', 'gLinkHumanSkel'): 'E:8:child/misc/link_child_eye.cmab:gLinkHumanEyesOpenTex=0,gLinkHumanEyesHalfTex=1,'
+        'gLinkHumanEyesClosedTex=2,gLinkHumanEyesRightTex=3,gLinkHumanEyesLeftTex=4,gLinkHumanEyesUpTex=5,gLinkHumanEyesDownTex=6,'
+        'gLinkHumanEyesWincingTex=7|M:9:child/misc/link_child_mouth.cmab:gLinkHumanMouthClosedTex=0,gLinkHumanMouthHalfTex=1,'
+        'gLinkHumanMouthOpenTex=2,gLinkHumanMouthSmileTex=3',
     ('object_an1', 'gAnju1Skel'): 'E:8:misc/ange_eye.cmab:gAnju1EyeOpenTex=0,gAnju1EyeHalfTex=1,gAnju1EyeClosedTex=2,'
         'gAnju1EyeComfortTex=3,gAnju1EyeSadTex=4,gAnju1EyeRelievedClosedTex=5'
         '|M:9:misc/ange_mouth.cmab:gAnju1MouthClosedTex=0,gAnju1MouthHappyTex=1,gAnju1MouthOpenTex=2',
@@ -86,6 +99,13 @@ FACE = {
     ('object_test3', 'gKafeiSkel'): 'E:8:misc/kafai_eye.cmab:gKafeiEyesOpenTex=0,gKafeiEyesDownTex=1,gKafeiEyesHalfTex=1,'
         'gKafeiEyesClosedTex=2,gKafeiEyesLeftTex=3,gKafeiEyesUpTex=4,gKafeiEyesRightTex=5,gKafeiEyesWincingTex=6'
         '|M:9:misc/kafai_mouth.cmab:gKafeiMouthClosedTex=0,gKafeiMouthHalfTex=1,gKafeiMouthOpenTex=2,gKafeiMouthSmileTex=3',
+}
+# Per-material hue and saturation (after the colour mapping), "material:hue degrees:saturation factor". The 3DS hair reads hotter than
+# the N64's (hue towards orange-red); the CMB material of the hair texture is looked up in docs/MM3D_CHARACTERS.md.
+TINT = {
+    # hair: ginger towards the N64 blond; tunic and hat greens (material 1, hue 60 to 180 only, the buckle and boots share the texture):
+    # a deeper, less saturated forest green (the N64 tunic measures value 0.32 in Clock Town against 0.50 for the 3DS one)
+    ('object_link_child', 'gLinkHumanSkel'): '11:20:0.8,1:-8:0.85:0.68:60:180',
 }
 # Per-model colour overrides (light reference, saturation); 0 keeps the global defaults (gNewDawn.MM3D.LightRef / .Saturation).
 # Set where a model's own palette is already saturated (checked 1:1 against the N64 model with the 4K pack).
@@ -206,12 +226,12 @@ def main():
         rows.append((obj, skel, arch, cm, len(parent), len(m['indices']) // 3, rig))
     lines = ['// Generated by tools/newdawn/mm3d/chartable.py: N64 Flex skeleton, 3DS actor archive and CMB with the same limb',
              '// hierarchy, props to leave out (material indices) and whether the model has been reviewed in game.',
-             '// {object, skeleton, archive (zelda2_*), cmb, skip materials, reviewed, light reference, saturation, rig pairs, face states}']
+             '// {object, skeleton, archive (zelda2_*), cmb, skip materials, reviewed, light reference, saturation, rig pairs, face states, tint}']
     for obj, skel, arch, cm, limbs, tris, rig in rows:
         lr, sat = COLOUR.get((obj, skel), (0, 0))
-        lines.append('{ "%s", "%s", "%s", "%s", "%s", %s, %.2ff, %.2ff, "%s", "%s" },  // %d limbs, %d triangles' % (
+        lines.append('{ "%s", "%s", "%s", "%s", "%s", %s, %.2ff, %.2ff, "%s", "%s", "%s" },  // %d limbs, %d triangles' % (
             obj, skel, arch, cm, SKIP.get((obj, skel), ''), 'true' if (obj, skel) in REVIEWED else 'false', lr, sat, rig,
-            FACE.get((obj, skel), ''), limbs, tris))
+            FACE.get((obj, skel), ''), TINT.get((obj, skel), ''), limbs, tris))
     text = '\n'.join(lines) + '\n'
     if a.check:
         print(text)

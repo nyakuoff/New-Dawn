@@ -196,6 +196,31 @@ not framed: the one scan scene with him (South Clock Town) is the intro cutscene
 in the experimental option. The five Bombers share one 3DS model (one hat), so with the option on they look alike, where the
 N64 gives each their own hat colour.
 
+### Link, human form (milestone 2)
+`object_link_child/gLinkHumanSkel` against `zelda2_link_child_new/child/model/link_child.cmb` (26 bones, 95 draws, 42 materials).
+It is a row with a rig recipe (`RIG`), the same recipe as Kafei's: the 3DS and N64 limbs share one layout, the torso hangs
+off the upper-root pivot (`9:9>20`: the bone's frame is the pivot's, its mesh is drawn under the torso limb). In the table the
+row sits behind "Include unreviewed 3DS models" until masks and the other forms are checked.
+- **What is converted:** body, tunic, hat, head with hair, face and eyes. **What stays N64:** the hand display lists (limbs 15
+  and 18, which the Player override swaps per held item: sword, shield, bow, ocarina, hookshot, bottle) and the sheath
+  (limb 19); the 3DS CMB carries the equipment too (draws 13-34 and 44-94: ~20 hand poses, bow, shield, sword models), which
+  is left out for now with `d<n>` entries in the row's skip list. Every hold point therefore stays the N64's: the sword, shield
+  and bow follow the hand limbs exactly as before.
+- **Hat:** the 3DS hat is 2636 units long and 1195 wide against the N64's 1702 and 901 (head 1.2x the N64's), so it read
+  as oversized. `s5=0.66:0.85@12` shortens draw 5 to 0.66 along its axis and narrows it to 0.85 about the hat bone's origin
+  (the base keeps covering the hair). Same-frame crops: `showcase/.../review/link_human_hat_green_before_after.png`.
+- **Green:** the tunic and hat greens measured value 0.50 (Clock Town) and 0.57 (Termina Field) against the N64's 0.29 and 0.44,
+  saturation 0.99 (r and b clipped to 0: neon). The row's tint, `1:-8:0.85:0.68:60:180`, shifts hue by -8 degrees, scales
+  saturation by 0.85 and value by 0.68 on greens only (hue 60-180, the buckle and boots share the texture): now 0.32 and 0.46,
+  hue 109 (N64 111). The hair gets its own tint (`11:20:0.8`, ginger towards the N64's blond).
+- **Faces:** the 3DS eye and mouth frames follow the N64 states (`FACE`); checked that eyes close (blink) and open in a run.
+- **Checked in game** (same scripted input, N64 vs 3DS, 0 GL errors): run, run to a halt, sword swing, shield up, bow aim
+  (first-person view: the bow is the N64 bow display list in the right hand, identical in both), stand at idle.
+  Not checked: mask attachments (an `equippedMask` poke did not take effect), the other forms, the hookshot, bottle and ocarina,
+  swimming, climbing, and cutscene poses.
+- Rig quirks found: the hat bone's rest rotation (2.16 rad) differs from the N64 hat limb's, so the hat hangs steeper than the
+  N64's; per-limb rotation registration over several animation frames did not give a clearly better frame for any limb.
+
 ### Limits
 - Eye and mouth states exist only for the models listed under Faces. Props baked into a CMB are listed per skeleton (guard bottle, Anju's
   moon mask, the bomb shopkeeper's bomb); other models were not scanned for props beyond the validation set.
