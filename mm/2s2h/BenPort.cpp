@@ -61,6 +61,7 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/Enhancements/GfxPatcher/PlayerCustomFlipbooks.h"
 #include "2s2h/Enhancements/ModMenu/ModMenu.h"
 #include "2s2h/NewDawn/RuntimeMaterials.h"
+#include "2s2h/NewDawn/Mm3dCharacters.h"
 #include "2s2h/DeveloperTools/DebugConsole.h"
 #include "2s2h/Rando/Rando.h"
 #include "2s2h/Rando/Spoiler/Spoiler.h"
@@ -977,14 +978,25 @@ bool VerifyArchiveVersion(ArchiveVersion version) {
 // New Dawn: build the material maps and recolour from the loaded HD textures (first launch, or when the recipes or
 // the mod set changed). A themed progress popup runs over the same GUI-only loop as the ROM extraction; the later
 // launches only compare a signature. See docs/RUNTIME_MATERIALS.md.
-static void RunMaterialsBoot() {
-    if (!NewDawnMaterials::BootNeedsGeneration()) {
+struct BootJob {
+    const char* popup;
+    const char* heading;
+    const char* subheading;
+    bool (*needsGeneration)();
+    void (*start)(bool);
+    bool (*running)();
+    void (*finish)();
+    void (*progress)(uint32_t& done, uint32_t& total);
+};
+
+static void RunBootJob(const BootJob& job) {
+    if (!job.needsGeneration()) {
         return;
     }
     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(OTRGlobals::Instance->context->GetWindow());
     auto gui = wnd->GetGui();
-    NewDawnMaterials::StartGeneration(true);
-    while (NewDawnMaterials::IsRunning()) {
+    job.start(true);
+    while (job.running()) {
         if (!WindowIsRunning()) {
             exit(0);
         }
@@ -996,25 +1008,25 @@ static void RunMaterialsBoot() {
         gui->StartDraw();
         benFast3dWindow->StartFrame();
         benFast3dWindow->RunGuiOnly();
-        if (!ImGui::IsPopupOpen("Preparing New Dawn")) {
-            ImGui::OpenPopup("Preparing New Dawn");
+        if (!ImGui::IsPopupOpen(job.popup)) {
+            ImGui::OpenPopup(job.popup);
         }
         const auto color = UIWidgets::ColorValues.at(THEME_COLOR);
         ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, UIWidgets::ColorValues.at(UIWidgets::Colors::DarkGray));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 0.6f));
         ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(color.x, color.y, color.z, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-        if (ImGui::BeginPopupModal("Preparing New Dawn", nullptr,
+        if (ImGui::BeginPopupModal(job.popup, nullptr,
                                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize |
                                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
                                        ImGuiWindowFlags_NoSavedSettings)) {
-            const auto progress = NewDawnMaterials::GetProgress();
-            const float fraction = progress.total ? (float)progress.done / (float)progress.total : 0.0f;
-            ImGui::Text("Building material maps and colour corrections from your HD textures.");
-            ImGui::TextDisabled("This runs once; the result is cached and reused on later launches.");
+            uint32_t done = 0, total = 0;
+            job.progress(done, total);
+            const float fraction = total ? (float)done / (float)total : 0.0f;
+            ImGui::Text("%s", job.heading);
+            ImGui::TextDisabled("%s", job.subheading);
             const std::string overlay =
-                progress.total ? fmt::format("{:.0f}%  ({} / {})", fraction * 100.0f, progress.done, progress.total)
-                               : "Starting up";
+                total ? fmt::format("{:.0f}%  ({} / {})", fraction * 100.0f, done, total) : "Starting up";
             ImGui::ProgressBar(fraction, ImVec2(600.0f, 40.0f), overlay.c_str());
             ImGui::EndPopup();
         }
@@ -1023,7 +1035,30 @@ static void RunMaterialsBoot() {
         gui->EndDraw();
         benFast3dWindow->EndFrame();
     }
-    NewDawnMaterials::FinishBoot();
+    job.finish();
+}
+
+static void RunMaterialsBoot() {
+    RunBootJob({ "Preparing New Dawn", "Building material maps and colour corrections from your HD textures.",
+                 "This runs once; the result is cached and reused on later launches.", NewDawnMaterials::BootNeedsGeneration,
+                 NewDawnMaterials::StartGeneration, NewDawnMaterials::IsRunning, NewDawnMaterials::FinishBoot,
+                 [](uint32_t& done, uint32_t& total) {
+                     const auto progress = NewDawnMaterials::GetProgress();
+                     done = progress.done;
+                     total = progress.total;
+                 } });
+}
+
+// The player's own 3DS character models, converted once from their RomFS (docs/MM3D_CHARACTERS.md).
+static void RunMm3dBoot() {
+    RunBootJob({ "Preparing 3DS characters", "Converting the 3DS character models from your Majora's Mask 3D RomFS.",
+                 "This runs once; the result is cached and reused on later launches.", NewDawnMm3d::BootNeedsGeneration,
+                 NewDawnMm3d::StartGeneration, NewDawnMm3d::IsRunning, NewDawnMm3d::FinishBoot,
+                 [](uint32_t& done, uint32_t& total) {
+                     const auto progress = NewDawnMm3d::GetProgress();
+                     done = progress.done;
+                     total = progress.total;
+                 } });
 }
 
 extern "C" void InitOTR(int argc, char* argv[]) {
@@ -1043,6 +1078,7 @@ extern "C" void InitOTR(int argc, char* argv[]) {
     LoadGuiTextures();
     ModMenu_LoadArchives();
     RunMaterialsBoot();
+    RunMm3dBoot();
     BenGui::SetupGuiElements();
     ShipInit::InitAll();
     Rando::Init();
@@ -1325,6 +1361,8 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
             audio.cv_from_thread.wait(Lock);
         }
     }
+
+    NewDawnMm3d::ApplyToggle();
 
     bool curAltAssets = CVarGetInteger("gEnhancements.Mods.AlternateAssets", 0);
     if (prevAltAssets != curAltAssets) {
