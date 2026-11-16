@@ -328,11 +328,12 @@ teal clothes and green hair).
 - **Fierce Deity face:** static (the N64 has one eye and one mouth texture); not framed closely.
 - **The Bombers' hats:** the five Bombers share one 3DS model (one hat colour), the N64 gives each its own.
 - **Kafei, the receptionist and the other wired face states** in game; the Poe balloon and the Dinolfos in the colour gate.
-- **Colour in game against the maintainer's reference image:** the gate checks the 3DS render under neutral light. In Termina
-  Field noon the converted tunic reads (37, 134, 1) against the reference image's (50, 108, 33) and the N64 original's
-  (44, 97, 7): the scene's warm, bright light pushes the blue channel to 0 for any saturated green. The reference image's
-  tunic is less saturated than the 3DS texture itself (saturation 0.70 against the texture's 0.91, red and blue lifted), which
-  no multiplicative lighting reproduces; it may be a video frame or another lighting setup. Skin and hair agree with it.
+- **Colour in game against the maintainer's reference image:** the gate checks the 3DS render under neutral light; in game the
+  scene's warm light and the display grade clipped the tunic (and yellowed the skin) on N64 and 3DS characters alike. That is
+  fixed in the renderer, not in the conversion: the modern character lighting pass (`docs/CHARACTER_LIGHTING.md`, "Modern
+  character lighting") takes 3DS Link's noon tunic from (42, 130, 1) with 93% of its pixels at 0 blue to (58, 118, 13) with 28%,
+  and the skin to (218, 175, 100), against the reference image's (50, 108, 33) and (190, 158, 112). The tunic stays more
+  saturated than the reference image's because the 3DS texture is.
 
 ### Limits
 - Eye and mouth states exist only for the models listed under Faces. Props baked into a CMB are listed per skeleton (guard bottle, Anju's
