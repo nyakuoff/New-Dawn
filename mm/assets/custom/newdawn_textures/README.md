@@ -11,8 +11,8 @@ All files are UTF-8 JSON, one top-level object, `"version": 1`. Keys are **resou
 `misc/scene_texture_06/scene_texture_06_Tex_001C60`). Palette resources (`...TLUT_xxxxxx`) never appear as texture keys;
 they appear only as `pal` values.
 
-> **Status of this file.** The schema is fixed; the data files are filled in by the classification run. A file listed
-> under "Files" that does not exist yet is still being generated. Fields marked *(optional)* may be absent.
+> Version 1, generated 2026-11-16 from the maintainer's `mm.o2r` (50,496 entries) and *Majora's Mask 3D* RomFS dump. Fields marked
+> *(optional)* may be absent. Counts and caveats are in `docs/TEXTURE_CLASSIFICATION.md`.
 
 ## Files
 
@@ -21,7 +21,7 @@ they appear only as `pal` values.
 | `classification.json` | one entry per world/character texture: material class, confidence, review state |
 | `scale.json` | UV density and world size per texture |
 | `layers.json` | per two-texture draw: which texture plays which role |
-| `mm3d_match.json` | for `unique` textures: the matching *Majora's Mask 3D* texture name, with a confidence |
+| `mm3d_match.json` | for `unique` scene textures: the matching *Majora's Mask 3D* texture name, with scores |
 | `scene_stats.json` | per scene: share of world surface that is replaceable / unique / skip |
 
 ## Classes
@@ -66,8 +66,7 @@ they appear only as `pal` values.
       "class": "brick",
       "conf": 0.93,
       "rv": 1,
-      "pal": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTLUT_022620",
-      "cells": [3, 4]
+      "pal": "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTLUT_022620"
     }
   }
 }
@@ -80,11 +79,9 @@ they appear only as `pal` values.
 - `rv`: `1` if a human-level visual review (contact sheet) covered the entry, `0` if the label is automatic only.
 - `pal` *(optional)*: for palette (CI4/CI8) textures, the TLUT resource used by the largest share of the surface that
   draws the texture. Other palettes may exist (`pal_alt`, a list, optional).
-- `cells` *(optional)*: `[columns, rows]` of repeating cells inside **one tile** of the texture (bricks per tile
-  horizontally and vertically, cobbles, planks, roof-tile courses) from period detection. Only present for the
-  structured classes when the detection was clear; absent means "not measured", not "one cell".
-- `sub` *(optional)*: free-text sub-type when the class alone is too coarse (`ashlar`, `running_bond`, `vertical`, `paved`).
-- `why` *(optional, short)*: the strongest evidence (`clamp`, `eye-name`, `cutout-green`, `override`).
+- `pal_alt` *(optional)*: further TLUTs the texture is drawn with (a texture can be drawn with several palettes).
+- Not provided: cell counts per tile (rows and columns of bricks, planks, cobbles). The autocorrelation estimate did not agree with the
+  hand-set counts of the stylelib spike often enough to ship; the generator should measure them itself on the original pixels.
 
 ## `scale.json`
 
@@ -117,97 +114,100 @@ they appear only as `pal` values.
 
 ## `layers.json`
 
-Draws that combine two textures (RDP tile 0 and tile 1 both read by the colour combiner).
+Draws that read **two different textures** (RDP tile 0 `a` and tile 1 `b` both used by the colour combiner). Draws that read one
+texture, or the same texture twice, are not listed (use `classification.json` and `scale.json`). 809 pairs.
 
 ```json
 {
   "version": 1,
-  "roles": ["base", "detail", "decal", "lod_dup"],
-  "patterns": {
-    "modulate":   "TEXEL0 * TEXEL1: both multiply the surface colour",
-    "lerp_alpha": "TEXEL0 blended toward TEXEL1 by an alpha (a decal / overlay over a base)",
-    "lerp_lod":   "TEXEL0 blended toward TEXEL1 by LOD fraction (mip emulation; usually the same image twice)",
-    "other":      "anything else (see `cc`)"
-  },
+  "roles": ["base", "detail", "decal", "alt", "lod_dup"],
+  "patterns": {"modulate": "...", "lerp_prim": "...", "lerp_lod": "...", "lerp_alpha": "...", "other": "..."},
   "pairs": [
     {
       "a": "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01EE50",
-      "b": "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_02A050",
+      "b": "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01E650",
       "pattern": "modulate",
       "roles": ["base", "detail"],
-      "tpu_a": [0.31, 0.31],
-      "tpu_b": [0.62, 0.62],
+      "tpu_a": [0.1194, 0.0889],
+      "tpu_b": [0.2388, 0.7112],
       "scenes": ["scenes/nonmq/Z2_00KEIKOKU"],
-      "area": 1234567.0,
+      "area": 12000800,
       "alpha": "opa",
-      "cc": ["(TEXEL1-0)*TEXEL0+0", "(COMBINED-0)*SHADE+0"]
+      "cc": ["(TEXEL1-0)*TEXEL0+0", "(COMBINED-0)*SHADE+0", "(0-0)*0+TEXEL0", "..."]
     }
   ]
 }
 ```
 
-- `a` is the texture in RDP **tile 0**, `b` in **tile 1** (both resource paths). `roles` = `[role of a, role of b]`.
-- `base` carries the colour and decides the class; `detail` is a tiling overlay (courses, grime, mottling) that is
-  multiplied on; `decal` is a unique alpha overlay; `lod_dup` means `a == b` or the pair is only a mip blend: treat the draw as the single texture `a`.
-- If one of the two textures is `unique` or `skip` (a lightmap, say), the pair says so through the roles
-  (`detail` of a skip texture means "ignore it").
-- `tpu_a`, `tpu_b`: texels per world unit as in `scale.json`, **per tile** (tile 1 usually has its own shift).
-- `alpha`: `opa`, `cutout` or `xlu` render mode of the draw. `cc`: the colour-combiner cycles for debugging.
-- `area`: surface area summed over the scenes that draw the pair.
-
-Draws that read a single texture are not listed (use `classification.json` and `scale.json`).
+- `roles` = `[role of a, role of b]`:
+  - `base`: carries the surface colour; its class decides the material.
+  - `detail`: a tiling overlay multiplied on (courses, grime, mottling). Replace the pair by the replacement of the `base` and treat
+    `detail` as a modulation (or drop it when the replacement carries its own).
+  - `decal`: a `unique`/alpha overlay over a base; do not replace, upscale.
+  - `alt`: the second variant of two alternates blended by the primitive LOD fraction (`lerp_prim`, the most common pair: 294 of 809);
+    both are the same surface, replace both with the same material.
+  - `lod_dup`: the pair is a mip blend of one image; use `a` alone.
+- Role assignment is heuristic for `modulate`/`other` (the more saturated, smoother texture is `base`, the greyer, higher-contrast one
+  `detail`; a `unique` texture is `decal`, a `skip` texture `detail`). Pairs drawn from the same scene state are exact (taken from the display
+  lists); roles are a judgement. `cc` holds the four combiner equations (colour cycle 0, alpha cycle 0, colour cycle 1, alpha cycle 1).
+- `tpu_a`, `tpu_b`: texels per world unit per tile, including the tile's own shift (tile 1 usually has a different scale).
+- `alpha`: `opa`, `cutout` or `xlu` render mode of the draw. `area`: surface area summed over the scenes that draw the pair.
 
 ## `mm3d_match.json`
 
-Only for `unique` textures. **Names and numbers only; nothing from the RomFS is stored.**
+Only for `unique` **scene** textures (`scenes/...`). Characters and actors are not matched. **Names and numbers only; nothing from the
+RomFS is stored.** The 3DS rooms are redrawn (different layout and detail, atlased textures), so pixels do not match; the correspondence is
+found by **geometry**: the same wall occupies the same place in both games (same coordinate system and scale), so each N64 triangle drawn
+with the unique texture is paired with the 3DS triangle at that position (normal within 37 degrees, within 16 units) and votes for the 3DS
+texture that triangle uses.
 
 ```json
 {
   "version": 1,
+  "coverage": {"unique_scene_textures": 1484, "with_candidate": 1159, "confident": 874, "by_count": {"candidate": 0.781, "confident": 0.589}, "...": "..."},
   "textures": {
-    "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_01FD80": {
-      "scene": "z2_clocktower",
-      "mm3d": "room_00/tex_0012",
-      "score": 0.91,
-      "margin": 0.18,
-      "rot": 0,
-      "flip": false
+    "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_01FB80": {
+      "scene": "z2_clocktower", "mm3d": "clsouth_tower_0", "score": 1.0, "margin": 1.0, "share": 1.0, "coverage": 1.0
     }
-  },
-  "coverage": { "...": "summary numbers, see scene_stats.json" }
+  }
 }
 ```
 
-- `scene`: the MM3D scene name (lower-case segment name from `tools/newdawn/mm3d/scene-table.json`).
-- `mm3d`: an identifier the *local* tool can resolve in the player's own RomFS: `<room or object archive>/<texture index or name>`.
-  It means nothing without the player's dump.
-- `score`: 0 to 1 perceptual similarity after resizing. `margin`: `score` minus the second-best candidate in the same scene.
-  **Use a match only when `score >= 0.75` and `margin >= 0.05`.** Lower-confidence matches are listed with
-  `"weak": true` and must not be used without review.
-- `rot` (0, 90, 180, 270) and `flip` (the 3DS image is mirrored vertically) describe the transform that made them match.
-- A `unique` texture with no entry has no 3DS counterpart that could be found: upscale the N64 original.
+- `scene`: MM3D scene name (`tools/newdawn/mm3d/scene-table.json`). `mm3d`: the texture's **name** in that scene's room meshes (the 16-character
+  name from the CMB texture table). It means nothing without the player's dump; the local tool resolves it there. 3DS textures are
+  **atlases**: one name covers many tiles, so the correspondence is texture-level (the UV rectangle is not recorded).
+- `share`: area share of the winning 3DS texture among the triangles that found any counterpart. `coverage`: fraction of the N64
+  texture's surface that found a counterpart. `score = share * min(1, coverage / 0.5)`. `margin = share - runner-up share`.
+- **Use an entry when it has no `weak` flag**: `share >= 0.6`, `coverage >= 0.3` and `margin >= 0.2`. `weak: true` entries
+  (`share >= 0.4`, `coverage >= 0.1`) are only hints: a big N64 wall often corresponds to several 3DS textures, and the vote splits.
+- A unique texture with no entry has no usable 3DS counterpart: upscale the N64 original. `coverage` at the top holds the overall figures.
 
 ## `scene_stats.json`
 
-Per scene folder (`scenes/nonmq/<SCENE>`, `objects/<OBJECT>`):
+Per scene folder (`scenes/nonmq/<SCENE>`, 100 scenes):
 
 ```json
 {
   "version": 1,
   "scenes": {
     "scenes/nonmq/Z2_CLOCKTOWER": {
-      "name": "south_clock_town",
-      "area": {"replaceable": 0.52, "unique": 0.41, "skip": 0.07},
-      "screen": {"replaceable": 0.55, "unique": 0.40, "skip": 0.05, "measured": true},
-      "n_tex": 90, "n_replaceable": 48, "n_unique": 30, "n_skip": 12
+      "name": "South Clock Town",
+      "area": {"replaceable": 0.59, "unique": 0.4, "skip": 0.0},
+      "xlu_area_fraction": 0.03,
+      "n_tex": 87, "n_replaceable": 31, "n_unique": 47, "n_skip": 9,
+      "screen": {"replaceable": 0.32, "unique": 0.64, "skip": 0.03, "measured": true, "capture": "south_clock_town", "views": 6}
     }
   }
 }
 ```
 
-- `area`: share of the **world surface area** (static, from the display lists) by class group; available for every scene.
-- `screen`: share of **on-screen pixels** measured in game (six yaw angles, 1080p, see the method README);
-  only for the scenes that were measured (`measured: true`). The two agree on the scenes that have both (correlation in the method README).
+- `area`: share of the scene's **opaque and cut-out surface area** (static, from the display lists, a draw counts once, by its `base`
+  texture) by group: `replaceable` = a material class with `conf >= 0.6`; `unique`; `skip`. Translucent draws are excluded and reported as
+  `xlu_area_fraction` (share of the scene's total area). Available for every scene.
+- `screen` *(10 scenes only)*: share of **on-screen world+object pixels** measured in game with a texture-ID buffer (six yaw angles, 1080p,
+  New Dawn off; the texture spike). Includes actors and the shared `misc/scene_texture_*` textures. The two measures differ because area is
+  not visibility: use `screen` where it exists.
+- `n_*`: texture counts of the scene folder (shared `misc/` and `objects/` textures are not counted here).
 
 ## Reading the tables from C++
 

@@ -79,7 +79,7 @@ class Archive:
             n = n[:w * h].reshape(h, w)
             if fmt == 3:
                 if pal is not None and len(pal) >= 16:
-                    a = pal[n % len(pal)]
+                    a = pal[n.astype(np.intp) % len(pal)]
                 else:
                     g = n * 17
                     a = np.dstack([g, g, g, np.full_like(g, 255)])
@@ -95,7 +95,7 @@ class Archive:
             g = np.frombuffer(raw, np.uint8).reshape(h, w)
             if fmt == 4:
                 if pal is not None:
-                    a = pal[g % len(pal)]
+                    a = pal[g.astype(np.intp) % len(pal)]
                 else:
                     a = np.dstack([g, g, g, np.full_like(g, 255)])
                     grey = True

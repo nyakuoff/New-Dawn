@@ -68,6 +68,11 @@ class State:
         return n
 
 
+def shift_factor(sh):
+    """RDP tile coordinate shift: 0 none, 1..10 shift right (divide by 2^n), 11..15 shift left (multiply by 2^(16-n))."""
+    return 1.0 if sh == 0 else (2.0 ** -sh if sh <= 10 else 2.0 ** (16 - sh))
+
+
 def alpha_mode(oml):
     zmode = (oml >> 10) & 3
     cvg_x_alpha = (oml >> 12) & 1
@@ -87,6 +92,7 @@ class Walker:
         self.draws = collections.defaultdict(lambda: dict(area=0.0, tris=0, du=[], dv=[], wt=[]))
         self.called = set()
         self._fmt = {}
+        self.sink = None   # optional callback(owner, tex0, tex1_or_None, vertices(3,3), area, uv(3,2)) for every triangle
         self.budget = 0
 
     def run(self, root, owner):
@@ -213,7 +219,11 @@ class Walker:
         uses1 = 'TEXEL1' in use or 'TEXEL1_A' in use
         key = (self.owner, t0, tl0, t1 if uses1 else None, tl1 if uses1 else None, st.cc, alpha_mode(st.oml),
                (st.geom >> 18) & 1, st.tiles[st.tex_tile]['cmS'], st.tiles[st.tex_tile]['cmT'],
-               st.tiles[st.tex_tile]['maskS'], st.tiles[st.tex_tile]['maskT'])
+               st.tiles[st.tex_tile]['maskS'], st.tiles[st.tex_tile]['maskT'],
+               st.tiles[st.tex_tile]['shS'], st.tiles[st.tex_tile]['shT'],
+               st.tiles[(st.tex_tile + 1) & 7]['shS'], st.tiles[(st.tex_tile + 1) & 7]['shT'])
+        if self.sink is not None:
+            self.sink(self.owner, t0, t1 if uses1 else None, p, cr, area, v)
         d = self.draws[key]
         d['area'] += area
         d['tris'] += 1
@@ -268,9 +278,9 @@ def main():
             print(i, len(roots), len(W.draws), file=sys.stderr)
     out = []
     for k, d in W.draws.items():
-        owner, t0, tl0, t1, tl1, cc, am, texgen, cmS, cmT, mS, mT = k
+        owner, t0, tl0, t1, tl1, cc, am, texgen, cmS, cmT, mS, mT, sS0, sT0, sS1, sT1 = k
         row = dict(owner=owner, t0=t0, tl0=tl0, t1=t1, tl1=tl1, cc=[list(x) for x in cc], am=am, texgen=texgen,
-                   wrap=[cmS, cmT, mS, mT], area=round(d['area'], 1), tris=d['tris'])
+                   wrap=[cmS, cmT, mS, mT], sh=[sS0, sT0, sS1, sT1], area=round(d['area'], 1), tris=d['tris'])
         if d['wt']:
             w = np.array(d['wt']); du = np.array(d['du']); dv = np.array(d['dv'])
             o = np.argsort(du); c = np.cumsum(w[o]); row['du'] = round(float(du[o][np.searchsorted(c, c[-1] / 2)]), 4)
