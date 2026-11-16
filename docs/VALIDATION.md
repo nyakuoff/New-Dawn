@@ -72,3 +72,6 @@ on both sides and compare the same frame.
 - Small isolated art/utility change: focused tests and self-review.
 - Renderer, model loader, shader pipeline, or shared asset change: focused tests **plus independent review** and multiple representative visual checks.
 - Changes reaching gameplay, collision, animation control, save formats, or timing: stop and redesign as visual-only, or obtain explicit user approval to change scope.
+
+## 3DS character models
+A model may be set `reviewed` in `tools/newdawn/mm3d/chartable.py` only when `tools/newdawn/mm3d/refgate.py` passes for its row (3DS-faithful reference render against the converted model: silhouette IoU and per-texture delta E), and it has been compared with the N64 model in the same frame in game. See `docs/MM3D_CHARACTERS.md`, "Reference gate".
