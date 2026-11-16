@@ -1,0 +1,33 @@
+"""Zero-shot prompt table: class -> phrases.  Dev-time only; the only thing that reaches the committed tables is the label."""
+CLASSES = ['brick', 'cobble', 'flagstone', 'wood_planks', 'wood_beam', 'plaster', 'roof_tiles', 'thatch', 'dirt', 'sand',
+           'mud', 'rock', 'grass', 'moss', 'metal', 'fabric', 'rope', 'water', 'ice_snow', 'foliage', 'unique', 'skip']
+PROMPTS = {
+    'brick': ['red brick wall', 'brickwork with mortar lines', 'stacked bricks', 'a wall made of bricks'],
+    'cobble': ['cobblestone pavement', 'rounded stones paving', 'irregular stone cobbles', 'a cobblestone street'],
+    'flagstone': ['large stone slabs floor', 'stone paving slabs', 'ashlar stone blocks wall', 'cut stone blocks',
+                  'a stone tile floor', 'castle stone wall'],
+    'wood_planks': ['wooden planks', 'wooden boards with gaps', 'wood plank floor', 'a wooden door', 'a wooden crate'],
+    'wood_beam': ['a wooden beam with grain', 'tree bark', 'a log', 'rough timber'],
+    'plaster': ['plaster wall', 'stucco wall', 'a plain painted wall', 'smooth concrete', 'a clay wall'],
+    'roof_tiles': ['roof tiles', 'roof shingles', 'terracotta roof tiles', 'slate roof'],
+    'thatch': ['thatched straw roof', 'straw', 'hay', 'dry reeds'],
+    'dirt': ['dirt ground', 'packed soil', 'a gravel path', 'brown earth'],
+    'sand': ['sand dunes with ripples', 'desert sand', 'beach sand', 'sandy ground'],
+    'mud': ['wet mud', 'swamp mud', 'muddy ground', 'dark sludge'],
+    'rock': ['rough rock cliff', 'a natural rocky stone surface', 'grey boulder', 'a mountain rock face'],
+    'grass': ['grass lawn', 'green grass field from above', 'short grass ground'],
+    'moss': ['moss on stone', 'a mossy overgrown wall', 'lichen', 'green moss'],
+    'metal': ['a metal plate', 'rusty iron', 'a metal grating', 'steel with rivets', 'a chain link fence'],
+    'fabric': ['woven fabric', 'cloth', 'leather', 'a carpet', 'canvas', 'a curtain'],
+    'rope': ['a rope', 'twisted cord', 'woven rope'],
+    'water': ['water surface', 'ocean waves', 'blue water ripples', 'a river'],
+    'ice_snow': ['snow', 'ice', 'frost', 'white snow ground', 'frozen ice crystals'],
+    'foliage': ['green leaves', 'leaves on a transparent background', 'bush foliage', 'flowers', 'a vine with leaves',
+                'palm leaves'],
+    'unique': ['a painting with figures', 'an emblem', 'a carved face', 'a sign with letters', 'a decorative mural',
+               'an eye', 'a mouth', 'a human face', 'a logo', 'colourful painted ornament', 'a symbol', 'an icon',
+               'a character skin texture', 'a hand-painted picture'],
+    'skip': ['a smooth gradient', 'a glowing light effect', 'smoke', 'a sky with clouds', 'a solid colour', 'a fire flame',
+             'a spark particle', 'a blurry shadow blob', 'random noise', 'a lens flare'],
+}
+TEMPLATES = ['a texture of {}', 'a low resolution video game texture of {}', 'a close-up photo of {}']
