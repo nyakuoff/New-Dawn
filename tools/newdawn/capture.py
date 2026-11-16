@@ -28,9 +28,9 @@ POINTS = {}
 INTRO_CVARS = {"gEnhancements.Cutscenes.SkipIntroSequence": 1, "gEnhancements.Cutscenes.SkipFirstCycle": 1}
 
 
-def point(name, entrance, room, pos, rot, src, intro=False):
+def point(name, entrance, room, pos, rot, src, intro=False, cvars=None):
     warp = dict(entranceId=entrance, roomNum=room, pos=dict(zip("xyz", pos)), rotY=rot, bootToPoint=True)
-    POINTS[name] = warp, src, INTRO_CVARS if intro else {}
+    POINTS[name] = warp, src, {**(INTRO_CVARS if intro else {}), **(cvars or {})}
 
 
 # fmt: off
@@ -54,6 +54,7 @@ point('ikana_graveyard', 0x8000, 0, (-45, -49, 864), 23040, 'Z2_BOTI spawn 0 (en
 point('stone_tower', 0xaa00, 0, (0, -3000, 2810), 23040, 'Z2_F40 spawn 0 (entrance 0xaa00)')
 point('snowhead_temple', 0x3c00, 0, (0, 0, 1650), 23109, 'Z2_HAKUGIN spawn 0, 345 units inside exit (entrance 0x3c00)')
 point('stone_tower_inverted', 0x2a00, 0, (0, -210, 810), 23082, 'Z2_INISIE_R spawn 0 (entrance 0x2a00)')
+point('north_clock_town', 0xd600, 0, (-473, 191, -2439), 0, 'Z2_BACKTOWN spawn 0 (entrance 0xd600); the three Clock Town entrance cutscenes marked as seen', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
 # POINTS-TABLE-END
 # fmt: on
 

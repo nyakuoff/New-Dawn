@@ -66,6 +66,13 @@ void Warp(WarpPoint& warpPoint) {
         if (CVarGetInteger("gNewDawn.Debug.BootWoodfallCleared", 0)) {
             SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE);
         }
+        // Capture/debug only: the three Clock Town entrance cutscenes (east, west, north) already played, so booting straight into
+        // North, East or West Clock Town shows the town and not the first-arrival cutscene.
+        if (CVarGetInteger("gNewDawn.Debug.BootClockTownVisited", 0)) {
+            SET_WEEKEVENTREG(WEEKEVENTREG_ENTERED_EAST_CLOCK_TOWN);
+            SET_WEEKEVENTREG(WEEKEVENTREG_ENTERED_WEST_CLOCK_TOWN);
+            SET_WEEKEVENTREG(WEEKEVENTREG_ENTERED_NORTH_CLOCK_TOWN);
+        }
 
         // Need to unset flag values that are outside of `.save`
         // Normally would happened in the MapSelect_LoadGame, but is skipped because of the dummy file num below

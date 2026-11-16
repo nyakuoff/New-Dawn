@@ -674,6 +674,25 @@ endif()
 find_package(ZLIB REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
 
+# New Dawn remastered textures (docs/TEXTURE_PIPELINE.md): the cache version is the hash of the generator's own sources, so a cached
+# archive can never outlive a change of its logic. The hash is part of the configure step (the files are configure dependencies, so
+# editing one re-runs CMake) and only RuntimeTextures.cpp is recompiled with it.
+set(NEWDAWN_TEXTURE_LOGIC_FILES
+    2s2h/NewDawn/RuntimeTextures.cpp 2s2h/NewDawn/RuntimeTextures.h 2s2h/NewDawn/TextureSynth.cpp 2s2h/NewDawn/TextureSynth.h
+    2s2h/NewDawn/UniqueArt.cpp 2s2h/NewDawn/UniqueArt.h 2s2h/NewDawn/SpanUpscale.cpp 2s2h/NewDawn/SpanUpscale.h
+    2s2h/NewDawn/Mm3dFormats.cpp 2s2h/NewDawn/Mm3dFormats.h 2s2h/NewDawn/ZipWriter.h)
+set(_nd_logic "")
+foreach(_f ${NEWDAWN_TEXTURE_LOGIC_FILES})
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/${_f}" _content)
+    string(REPLACE "\r\n" "\n" _content "${_content}") # the same hash on every checkout style
+    string(SHA256 _file_hash "${_content}")
+    string(APPEND _nd_logic "${_f}:${_file_hash};")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${_f}")
+endforeach()
+string(SHA256 NEWDAWN_TEXTURE_LOGIC_HASH "${_nd_logic}")
+string(SUBSTRING "${NEWDAWN_TEXTURE_LOGIC_HASH}" 0 16 NEWDAWN_TEXTURE_LOGIC_HASH)
+set_source_files_properties(2s2h/NewDawn/RuntimeTextures.cpp PROPERTIES COMPILE_DEFINITIONS "NEWDAWN_TEXTURE_LOGIC_HASH=\"${NEWDAWN_TEXTURE_LOGIC_HASH}\"")
+
 if(CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch")
 
 nx_generate_nacp(2s2h.nacp
