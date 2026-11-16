@@ -607,28 +607,55 @@ std::shared_ptr<const Surface> Library::Get(const std::string& id, int px) {
 }
 
 std::string Library::Resolve(const std::string& selector, uint32_t seed, const std::string& region) const {
-    const bool byRole = selector.rfind("role:", 0) == 0, byClass = selector.rfind("class:", 0) == 0;
-    if (!byRole && !byClass) {
+    if (selector.rfind("role:", 0) != 0 && selector.rfind("class:", 0) != 0) {
         return selector;
     }
-    const std::string key = selector.substr(selector.find(':') + 1);
-    std::vector<const Entry*> any, local;
-    for (const auto& e : mEntries) {
-        const bool match = byClass ? e.cls == key : std::find(e.roles.begin(), e.roles.end(), key) != e.roles.end();
-        if (match) {
-            (e.region == "any" ? any : local).push_back(&e);
+    std::vector<std::string> regionList; // "interiors,clock_town": the first region with a match wins
+    for (size_t at = 0; at <= region.size();) {
+        const size_t comma = region.find(',', at);
+        const std::string r = region.substr(at, comma == std::string::npos ? std::string::npos : comma - at);
+        if (!r.empty()) regionList.push_back(r);
+        at = comma == std::string::npos ? region.size() + 1 : comma + 1;
+    }
+    std::vector<std::vector<const Entry*>> local(regionList.size());
+    std::vector<const Entry*> any, other;
+    size_t from = 0;
+    while (from <= selector.size()) {
+        const size_t bar = selector.find('|', from);
+        const std::string one = selector.substr(from, bar == std::string::npos ? std::string::npos : bar - from);
+        from = bar == std::string::npos ? selector.size() + 1 : bar + 1;
+        const bool byRole = one.rfind("role:", 0) == 0;
+        const std::string key = one.substr(one.find(':') + 1);
+        for (const auto& e : mEntries) {
+            const bool match = byRole ? std::find(e.roles.begin(), e.roles.end(), key) != e.roles.end() : e.cls == key;
+            if (!match) {
+                continue;
+            }
+            bool placed = false;
+            for (size_t i = 0; i < regionList.size() && !placed; ++i) {
+                if (std::find(e.regions.begin(), e.regions.end(), regionList[i]) != e.regions.end()) {
+                    local[i].push_back(&e);
+                    placed = true;
+                }
+            }
+            if (!placed) {
+                const bool isAny = e.regions.empty() || std::find(e.regions.begin(), e.regions.end(), "any") != e.regions.end();
+                (isAny ? any : other).push_back(&e);
+            }
         }
     }
     auto byId = [](const Entry* a, const Entry* b) { return a->id < b->id; };
-    std::sort(any.begin(), any.end(), byId);
-    std::sort(local.begin(), local.end(), byId);
-    std::vector<const Entry*> pool;
-    for (const auto* e : local) {
-        if (!region.empty() && e->region == region) pool.push_back(e);
+    std::vector<std::vector<const Entry*>*> order;
+    for (auto& l : local) order.push_back(&l);
+    order.push_back(&any);
+    order.push_back(&other);
+    for (auto* v : order) {
+        std::sort(v->begin(), v->end(), byId);
+        if (!v->empty()) {
+            return (*v)[seed % v->size()]->id;
+        }
     }
-    if (pool.empty()) pool = any;
-    if (pool.empty()) pool = local;
-    return pool.empty() ? selector.substr(selector.find(':') + 1) : pool[seed % pool.size()]->id;
+    return "";
 }
 
 std::vector<std::string> Library::Missing() {
@@ -784,7 +811,7 @@ MossLayer MakeMoss(int W, int H, uint64_t seed, float amount, const Surface& ms,
 }
 
 // ------------------------------------------------------------------ masonry (brick, ashlar, cobble)
-Mat Masonry(Library& lib, const Palette& pal, const Params& p, int W, int H, uint64_t seed) {
+Mat Masonry(Library& lib, const Palette& pal, const Params& p, int W, int H, uint64_t seed, const std::string& region) {
     const float s = W / 1024.f;
     const bool brick = p.Str("layout", "brick") == "brick";
     const int rows = (int)p.Get("rows", 4), cols = (int)p.Get("cols", 3), nCob = (int)p.Get("n", 7);
@@ -841,8 +868,14 @@ Mat Masonry(Library& lib, const Palette& pal, const Params& p, int W, int H, uin
         m[i] = Aa(inner[i], 1.3f * s);
     }
     // CC0 surfaces: per-cell random window of the face set, the mortar set tiled
-    auto F = lib.Get(lib.Resolve(p.Str("face", "rock050"), (uint32_t)seed), W);
-    auto G = lib.Get(lib.Resolve(p.Str("gap_set", "concrete034"), (uint32_t)seed + 1), W);
+    const std::string faceId = lib.Resolve(p.Str("face", "rock050"), (uint32_t)seed, region), gapId = lib.Resolve(p.Str("gap_set", "concrete034"), (uint32_t)seed + 1, region);
+    if (faceId.empty() || gapId.empty()) {
+        Mat bad;
+        bad.valid = false;
+        return bad;
+    }
+    auto F = lib.Get(faceId, W);
+    auto G = lib.Get(gapId, W);
     const int S = W;
     std::vector<float> off0(ncell), off1(ncell), rc(ncell), rt1(ncell);
     for (int c = 0; c < ncell; ++c) {
@@ -933,7 +966,7 @@ Mat Masonry(Library& lib, const Palette& pal, const Params& p, int W, int H, uin
         roughF[i] = std::clamp(Mix(gr[i] * .3f + .72f, fr[i] * .5f + .5f, m[i]) - te * te * te * .15f * m[i] + grime * .06f * stk[i], .25f, 1.f);
     }
     if (moss > 0) {
-        auto MS = lib.Get(lib.Resolve(p.Str("moss_set", "moss002"), (uint32_t)seed), W);
+        auto MS = lib.Get(lib.Resolve(p.Str("moss_set", "moss002"), (uint32_t)seed, region), W);
         Field cav(N), shade(N);
         for (size_t i = 0; i < N; ++i) {
             cav[i] = Smooth(std::exp(-std::max(inner[i], 0.f) / (bv * 1.6f)) + stk[i] * .5f, .3f, 1.f);
@@ -1045,7 +1078,7 @@ Field TileTo(const Field& a, int sw, int sh, int W, int H, int k, int c) {
     return o;
 }
 
-Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint64_t seed) {
+Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint64_t seed, const std::string& region) {
     const float s = W / 1024.f;
     const int k = std::max(1, (int)p.Get("k", 1)), rot = (int)p.Get("rot", 0), planks = (int)p.Get("planks", 0);
     const float contrast = (float)p.Get("contrast", .8), tr0 = (float)p.Get("trange0", .08), tr1 = (float)p.Get("trange1", .92);
@@ -1055,7 +1088,13 @@ Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint
     const float rough0 = (float)p.Get("rough0", .55), rough1 = (float)p.Get("rough1", 1.0), toneShift = (float)p.Get("tone_shift", 0.);
     const float macro = (float)p.Get("macro", 0.), macroSize = (float)p.Get("macro_size", 110.);
     const size_t N = (size_t)W * H;
-    auto Sf = lib.Get(lib.Resolve(p.Str("set", "rock030"), (uint32_t)seed), std::max(16, std::max(W, H) / k));
+    const std::string setId = lib.Resolve(p.Str("set", "rock030"), (uint32_t)seed, region);
+    if (setId.empty()) {
+        Mat bad;
+        bad.valid = false;
+        return bad;
+    }
+    auto Sf = lib.Get(setId, std::max(16, std::max(W, H) / k));
     const int px = Sf->px;
     int r0 = 0, r1 = px;
     if (planks) {
@@ -1138,7 +1177,7 @@ Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint
         out.rough[i] = std::clamp(rg[i] * (rough1 - rough0) + rough0 - wear * .08f * Smooth(-cav[i], .8f, 2.5f), .2f, 1.f);
     }
     if (moss > 0) {
-        auto MS = lib.Get(lib.Resolve(p.Str("moss_set", "moss002"), (uint32_t)seed), W);
+        auto MS = lib.Get(lib.Resolve(p.Str("moss_set", "moss002"), (uint32_t)seed, region), W);
         Field mcav(N);
         for (size_t i = 0; i < N; ++i) {
             mcav[i] = Smooth(cav[i], .2f, 2.0f);
@@ -1164,18 +1203,18 @@ Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint
 
 } // namespace
 
-bool Generate(const std::string& gen, Library& lib, const Palette& pal, const Params& p, int w, int h, uint32_t seed, Mat& out) {
+bool Generate(const std::string& gen, Library& lib, const Palette& pal, const Params& p, int w, int h, uint32_t seed, const std::string& region, Mat& out) {
     if (w < 16 || h < 16 || w > 4096 || h > 4096) {
         return false;
     }
     if (gen == "masonry") {
-        out = Masonry(lib, pal, p, w, h, seed);
+        out = Masonry(lib, pal, p, w, h, seed, region);
     } else if (gen == "direct") {
-        out = Direct(lib, pal, p, w, h, seed);
+        out = Direct(lib, pal, p, w, h, seed, region);
     } else {
         return false;
     }
-    return true;
+    return out.valid;
 }
 
 namespace {

@@ -49,12 +49,12 @@ class Library {
   public:
     // One manifest entry (assets/newdawn/materials/manifest.json): the library grows by adding entries, not code.
     struct Entry {
-        std::string id, cls, region = "any";
-        std::vector<std::string> roles;
+        std::string id, cls;
+        std::vector<std::string> roles, regions; // regions: scene groups the set suits ("any" = all)
     };
     explicit Library(std::string dir, std::vector<Entry> entries = {}) : mDir(std::move(dir)), mEntries(std::move(entries)) {}
-    // "role:face" / "class:rock" pick one material of the manifest by seed (a region match first, then "any"); a plain id
-    // is returned as it is.
+    // "role:face" / "class:rock" (several with "|": "class:dirt|class:mud") pick one material of the manifest by seed: sets tagged for
+    // `region` first, then "any", then any other; a plain id is returned as it is. Empty when nothing matches.
     std::string Resolve(const std::string& selector, uint32_t seed, const std::string& region = "") const;
     // Never returns null: a missing material is replaced by a neutral grey surface (and reported once via Missing()).
     std::shared_ptr<const Surface> Get(const std::string& id, int px);
@@ -72,6 +72,7 @@ class Library {
 // The generated material. alb: 3*w*h (0..1); height in px of this tile; normal: xy of the unit normal (2*w*h) or empty
 // (derive from height).
 struct Mat {
+    bool valid = true; // false: a material selector found nothing (the texture is left native)
     int w = 0, h = 0;
     Field alb, height, rough, normal;
     float relief = .3f, nstrength = .8f;
@@ -86,7 +87,7 @@ struct Layout {
 Layout MeasureLayout(const std::vector<float>& luminance, int w, int h);
 
 // gen: "masonry" (brick, ashlar, cobble layouts) or "direct" (one CC0 set tiled onto the tile). Returns false on bad input.
-bool Generate(const std::string& gen, Library& lib, const Palette& pal, const Params& p, int w, int h, uint32_t seed, Mat& out);
+bool Generate(const std::string& gen, Library& lib, const Palette& pal, const Params& p, int w, int h, uint32_t seed, const std::string& region, Mat& out);
 
 // Encodes the albedo as RGBA8 and the companion maps (materials.py convention: _n = normal xy, _r = roughness + relief)
 // at half resolution of the albedo.
