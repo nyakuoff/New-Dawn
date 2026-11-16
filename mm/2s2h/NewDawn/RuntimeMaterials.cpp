@@ -916,4 +916,48 @@ void Regenerate() {
     StartGeneration(false);
 }
 
+bool BuildMapsFor(const uint8_t* rgba, int w, int h, const std::string& materialClass, std::vector<uint8_t>& normal,
+                  std::vector<uint8_t>& rough, int& mapWidth, int& mapHeight) {
+    static std::mutex mutex;
+    static json classes, base;
+    static bool loaded = false, ok = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (!loaded) {
+            loaded = true;
+            auto file = Archives()->LoadFile(std::string(kDataDir) + "materials.json");
+            if (file && file->Buffer) {
+                const json m = json::parse(file->Buffer->begin(), file->Buffer->end(), nullptr, false);
+                if (m.is_object()) {
+                    base = { { "height_scale", 0.025 }, { "normal_strength", 1.0 }, { "invert", false },
+                             { "roughness_range", { 0.65, 0.95 } }, { "relief", 0.0 } };
+                    if (m.contains("defaults")) {
+                        base.update(m["defaults"]);
+                    }
+                    classes = m.value("classes", json::object());
+                    ok = true;
+                }
+            }
+        }
+    }
+    if (!ok || w < 8 || h < 8 || (w & 1) || (h & 1)) {
+        return false;
+    }
+    json r = base;
+    if (classes.contains(materialClass)) {
+        r.update(classes[materialClass]);
+    } else if (classes.contains("other")) {
+        r.update(classes["other"]);
+    }
+    MatRecipe recipe;
+    if (!ToMatRecipe(r, recipe)) {
+        return false;
+    }
+    mapWidth = w / 2;
+    mapHeight = h / 2;
+    const auto half = HalfRgba(rgba, w, h);
+    GenerateMaps(half.data(), mapWidth, mapHeight, recipe, normal, rough);
+    return true;
+}
+
 } // namespace NewDawnMaterials

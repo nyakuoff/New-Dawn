@@ -136,6 +136,10 @@ the original's colour statistics (fully for 3DS sources, a third for N64 sources
 | `gNewDawn.Textures.Unique` / `UniqueScenes` | 1 / (recipes) | upscale unique art; `all`, a comma list of scene folders, or empty for the recipes' three scenes |
 | `gNewDawn.Materials.Unlit` / `UnlitStrength` | 1 / 0.6 | material relief on unlit interiors and dungeons |
 | `gNewDawn.Materials.TwoLayer` | 1 | both layers' maps on multiplied two-texture draws |
+| `gNewDawn.Textures.Objects` | 1 | milestone 4: props of `objects/` (258 folders without a skeleton): materials replaced, painted art upscaled |
+| `gNewDawn.Textures.Unique3ds` | 1 | 3DS source for unique art: 0 never, 1 the approved pairs (`recipes.json: unique.mm3d_verified`, `mm3d_regions_verified`), 2 also every registration the correlation rates above `mm3d_region_auto_rank` (experimental) |
+| `gNewDawn.MM3D.RomFS` | (empty) | the player's own *Majora's Mask 3D* RomFS; without it every unique texture is upscaled from the N64 original |
+| `gNewDawn.Debug.BootDefaultSpawn` | 0 | capture/debug only: boot into the scene's own spawn (respawnFlag 0) instead of the warp point's position |
 | `gNewDawn.Textures.LogDraws` | 0 | log distinct texture pairs per draw |
 
 ## Extending
@@ -263,3 +267,61 @@ shows the popup for about a minute, an interrupted first launch repeats it.
 * North Clock Town: the leaf-patterned back wall (a herringbone vine texture) stays pattern-heavy at 1:1; its source is one of the unique-art textures upscaled from the N64 original.
 * Smooth unlit normals change little on flat walls; they matter on curved rock. The weld is built from the triangles drawn so far, so the first frame of a scene uses flat normals for corners whose neighbours have not been drawn yet.
 * The 3DS sources (13 verified pairs) are in rooms none of the matched views shows except the Inn's.
+
+## Milestone 4
+
+**Props.** `objects/` folders without a skeleton resource (258 of 464: chests, pots, crates, barrels, signs, doors, bridges, ladders, torches, carts, trees and stumps; characters and actors with skeletons stay out of scope for the 3DS track)
+are generated like scenery (`mm/assets/custom/newdawn_textures/objects.json`, names only). The classifier's labels are trusted for props: textures of a *material class* (wood planks and beams, rock, flagstone, cobble, brick, dirt, sand, thatch, metal,
+plaster, ice and snow) are replaced by art-directed CC0 materials at the `rest` tier, with cut-outs (fences, grates, thatch edges) keeping the original alpha resampled onto the generated albedo; everything else that is not an effect (composites: crate sides, chest
+ornaments, signs, painted doors, emblems) is upscaled 4x like unique art, with normal and roughness/relief maps derived from the upscaled albedo (`RuntimeMaterials::BuildMapsFor`, the ND-009 map generator) so props are shaded, not only sharpened. Per-texture overrides
+(`objects.json:overrides`) keep painted crate sides, the chandelier pot and palm bark in the upscaled set and turn the tree body and stump into beam wood. Transparent borders are bled with the neighbouring colour before upscaling, so a cut-out gets no dark fringe.
+BindMaterialMaps now binds maps for `alt/objects/` and the shared `alt/misc/scene_texture` paths. Boot generation uses up to 12 threads (it blocks the game anyway); the in-game regeneration still uses up to 4.
+
+**3DS region registration** (`tools/newdawn/texclassify/region3ds.py`). The 3DS rooms are redrawn atlases; comparing pixels never worked, and a whole-texture vote (`mm3d_match.json`) cannot say *where* on the atlas a wall is. `match` locates every 3DS triangle on the N64
+triangle that contains its centroid (same coordinates and scale), reads the N64 texel coordinates at the three 3DS vertices from the N64 triangle (the vertex texture coordinates, with the tile's mirror/clamp flags: the first version ignored mirroring and fit adjacent tiles
+to different maps), solves an exact affine map N64 texel to 3DS UV per triangle, and takes the area-weighted dominant map of the winning 3DS texture. The crop of that map (`r`) and the whole 3DS texture in its best of four flips (`w`) are resampled to the N64 grid and scored
+against the original (colour distance, luminance correlation at 8, 16 and 32 px, gradient-magnitude correlation). Over the 1,338 scene textures that can be matched, 873 get a registration (568 best as a region, 305 as the whole texture); 10 of the 13 pairs verified in
+milestone 3 are among them, with the highest ranks of the table where the art survived the redraw (0.72, 0.71, 0.49). **The metric is a ranking, not a verdict**: redrawn art correlates poorly even when it is right (3 of the 13 verified pairs rank 0.08), and the
+geometry only says what the 3DS shows *at that place* (a mural can be redrawn with another composition). So `match` + `sheet` build review sheets (3 panels: N64 original, registered region, whole 3DS texture; IDs R0001...; a `decisions.txt` with one line per candidate
+to mark `r`, `w` or `n`), and `apply` writes the approved lines into `recipes.json: unique.mm3d_regions_verified`. The default stays strict (`Unique3ds=1`: approved pairs only). 126 candidates are on the sheets (rank >= 0.15, share >= 0.5, coverage >= 0.3, the 3DS crop denser than
+the N64 texture); 13 clear matches are pre-approved (Mayor's residence wall, lottery sign disc, a Woodfall log end, castle checker, Termina Field spiral tiles, three panels with vines, a stained window, the alley doors, the swamp shooting gallery landscape, the Tougites curtain, a bookshelf); the F40/F41 murals
+(the 3DS mural is a different composition with the text lost) and the Sonchonoie wallpaper (the redrawn roses are faint) were looked at and left undecided. `mm3d_regions.json` carries the sheet candidates (130 entries, 62 KB, names and numbers only).
+Runtime: `UniqueArt::SampleRegion` samples the 3DS atlas through the affine map (bilinear, wrap, v bottom-up) at 2x to 4x the N64 size, and the result goes through the same upscaler and grading as a whole 3DS texture (colour statistics follow the original). A reviewed pair skips the coarse content rule; an unreviewed pair (mode 2) keeps it.
+
+**North Clock Town vine wall.** The herringbone was not on the vine texture: it came from three grey cloud and speckle textures that the review had classed as `ice_snow` (they modulate the town's sand and plaster surfaces), generated from the snow set whose wind-blown ridges
+repeat as a feather pattern. Outside the snow regions (`interiors`, `swamp_woodfall`, `clock_town`, `great_bay`, `ikana_tower`, `termina_field`) the `a_snow` class now takes a soft plaster set with the original's own mottle (`recipes.json: region_params`); the snow regions keep their ice.
+Before/after: `north_clock_town_vine_wall_before_after.png` (the capture camera differs, the wall is the same).
+
+**Resumable first launch.** The staging archive grows one finished texture at a time (`ZipWriter::AddBatch` appends a texture's entries as one unit and flushes), and `journal.jsonl` records after each texture: its job index, the archive position, its central-directory records, its counters and its material metadata.
+A launch that finds a staging directory whose journal header matches (signature, generator version, job count and an order-sensitive key over the job list) reopens the archive at the last complete record (a torn last line or a partial entry is dropped), restores the counters and generates only the missing textures; any mismatch starts over.
+Progress and the popup continue from the restored count. Tested by killing the game at 23 s into a generation: 925 of 2,405 textures survived, the resumed run took 22.8 s, and its archive has exactly the same entry names and CRCs as an uninterrupted run. The cost of journalling is below the noise (59.5 s for the 3,041-texture run, the same as before).
+
+## Milestone 4 measurements (RX 7800 XT, 1080p, Ultra look, 2026-11-16)
+
+Everything in `~/dev/ghm-mods/showcase/texture-pipeline-4/`: 15 prop-heavy views (day and dusk) as native | remastered sheets with 1:1 crops, `changed_pixels.json`, `props_original_vs_result.png` (chests, crates, barrels, pots, doors, signs, tree: original next to the generated texture), `gpu_overlay_crops.png`,
+`north_clock_town_vine_wall_before_after.png`, `3ds_sourced_vs_n64_*.png` (original | N64-upscaled | 3DS-sourced for the 13 milestone-3 pairs and the 13 new approvals) and `3ds-review/` (7 review sheets, `decisions.txt` to fill in, `decisions_prereview.txt`).
+
+| item | result |
+|---|---|
+| **First run** (scenery + unique art of every scene + props) | 3,041 textures (1,043 materials + 1,998 upscaled; 42 skipped for transparency), **62.8 s** on 12 boot threads, **1,257 MB** cache (milestone 3: 2,299 textures, 1.12 GB). With the 3DS dump set (`gNewDawn.MM3D.RomFS`): 26 textures from the 3DS (the 13 milestone-3 pairs and the 13 approved regions), 60.7 s, 1,277 MB |
+| **Interrupted first run** | killed at 23 s: 925 of 2,405 textures kept (journal and archive); the next launch resumed and finished in 22.8 s; archive entries (4,045) identical in name and CRC to an uninterrupted run |
+| **GPU ms** (overlay, native to remastered; noise about +-0.5 ms) | Stock Pot Inn 3.15 to 3.37, West Clock Town 4.70 to 5.19, Laundry Pool 3.77 to 4.09, Swamp Tourist Centre 3.02 to 3.15 |
+| **GL errors** | 0 in the 30 matrix captures, the 8 overlay captures and the identity runs |
+| Pixels changed vs native (RGB sum above 30) | day: Laundry Pool 71 % and 45 %, South Clock Town 35 %, Swamp Tourist Centre 33 %, West Clock Town 32 %, Romani house 26 %, Romani barn 24 %, Pirate fortress interior 16 %, Treasure Chest Shop 14 %, Stock Pot Inn 9 %, Woodfall Temple 4 %; dusk: Laundry Pool 66 %, Swamp Tourist Centre 43 %, Romani barn 21 %, West Clock Town 20 % |
+| Popup frames | 0 of 30 (one colour above 60 % of the pixels) |
+| **3DS matching** | 873 registrations over 1,338 matchable scene textures (568 best as a region, 305 as the whole texture); 126 review candidates, 13 approved, 113 undecided |
+| **Off identity** | frozen Stock Pot Inn (unlit; identity cvar list), play build `e2c2305e1` (current main, its own warmed cache) with `Remastered=0` against this build with `Remastered=0`: mean abs difference 0.024 and 0.003 levels, no pixel above 6 levels (main against main 0.050, ours against ours 0.028); with the toggle on the same frame differs by 2.87 levels over 42 % of the pixels |
+
+**What the views show and do not show.** The capture points land in rooms and streets; the prop-heavy ones (Laundry Pool, Clock Town market, Romani house and barn, the swamp tourist centre, the pirate fortress corridor, the chest shop) show props only at the edge of the frame: crates and barrels in the market and the barn, a plank trough, chest-shop doors.
+**No treasure chest appears in any captured view**; chests (`object_box`), crates, barrels, pots, doors and signs are judged on `props_original_vs_result.png`. A dungeon chest room was not captured (no capture point reaches one).
+
+**Not done / limits**
+* The prop sheets judge the textures, not the objects in play: crates, pots and chests sit at the edge of every captured frame.
+* The tree trunk (`object_tree` body) reads as a soft brown bark after the replacement; it is plainer than the original's painted strokes.
+* 3DS region approvals are a person's job: the metric is a ranking (see above), and 13 of 126 are approved. The F40/F41 murals and the redrawn wallpaper show what the 3DS has at that place, not the same art.
+* The 3DS-sourced textures are verified on the extracted textures only; no in-game capture of the rooms that use them (the mayor's residence, the shooting gallery, the Tougites shop, Termina Field's spiral tiles...).
+* Sharded archives (parallel resume) were not needed: one archive resumes with a journal.
+
+
+**Identity run lesson (again).** The first identity attempt compared against frames of the "Preparing remastered textures" popup: the play build's cache was cold after its 10:17 rebuild, and the frozen fixture cannot attach while the popup blocks the boot (the runner reports `fixture never attached`).
+A long-wait capture of the play build warms its cache; after that its frozen runs attach. Warm both builds' caches before an identity run.

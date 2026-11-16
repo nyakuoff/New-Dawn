@@ -113,6 +113,10 @@ void Warp(WarpPoint& warpPoint) {
     gSaveContext.respawn[RESPAWN_MODE_DOWN].playerParams = PLAYER_PARAMS(0xFF, PLAYER_START_MODE_D);
     gSaveContext.nextTransitionType = TRANS_TYPE_FADE_BLACK_FAST;
     gSaveContext.respawnFlag = -8;
+    // Capture/debug only: ignore the saved position and use the spawn the entrance names (scenes whose start positions are not known).
+    if (CVarGetInteger("gNewDawn.Debug.BootDefaultSpawn", 0)) {
+        gSaveContext.respawnFlag = 0;
+    }
 }
 
 // Warp to a scene entrance with a quick fade. Only touches the transition state; no respawn/save/time changes.

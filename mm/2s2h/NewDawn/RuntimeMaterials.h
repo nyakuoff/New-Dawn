@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace NewDawnMaterials {
 
@@ -37,5 +38,12 @@ Progress GetProgress();
 std::string StatusText();
 // Settings button: drop the stamp and regenerate in the background; applied on the next launch.
 void Regenerate();
+
+
+// Normal and roughness/relief maps for an albedo made elsewhere (the remastered props, ND-016): the recipe of the named class of
+// materials.json ("stone", "wood", "plaster", "metal", "other", ...) applied to the albedo's luminance, at half its resolution
+// (even sizes only). rgba: w*h*4. False when the data is unavailable or the size is odd or below 8.
+bool BuildMapsFor(const uint8_t* rgba, int w, int h, const std::string& materialClass, std::vector<uint8_t>& normal,
+                  std::vector<uint8_t>& rough, int& mapWidth, int& mapHeight);
 
 } // namespace NewDawnMaterials

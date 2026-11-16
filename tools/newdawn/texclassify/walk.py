@@ -223,6 +223,9 @@ class Walker:
                st.tiles[st.tex_tile]['shS'], st.tiles[st.tex_tile]['shT'],
                st.tiles[(st.tex_tile + 1) & 7]['shS'], st.tiles[(st.tex_tile + 1) & 7]['shT'])
         if self.sink is not None:
+            # (s, t) of the three vertices in texels of the bound tile, for sinks that register textures onto other geometry
+            self.uv = np.array([[float(x['s']) / 32.0 * st.tex_s / 65536.0, float(x['t']) / 32.0 * st.tex_t / 65536.0] for x in v])
+            self.cm = (st.tiles[st.tex_tile]['cmS'], st.tiles[st.tex_tile]['cmT'])    # wrap flags: bit 0 mirror, bit 1 clamp
             self.sink(self.owner, t0, t1 if uses1 else None, p, cr, area, v)
         d = self.draws[key]
         d['area'] += area
