@@ -2,6 +2,8 @@
 // writes the cache archive and mounts it. Mirrors RuntimeMaterials.cpp (cache, signature, staging, boot popup).
 #include "RuntimeTextures.h"
 #include "TextureSynth.h"
+#include "UniqueArt.h"
+#include "Mm3dCharacters.h"
 #include "ZipWriter.h"
 
 #include <algorithm>
@@ -35,7 +37,7 @@ namespace NewDawnTextures {
 namespace {
 
 // Bump when the synthesis or the encoding changes; the data files and the library manifest are hashed into the signature.
-constexpr const char* kVersion = "1.0.0-cpp";
+constexpr const char* kVersion = "1.2.0-cpp";
 constexpr const char* kDataDir = "newdawn_textures/"; // inside 2ship.o2r (mm/assets/custom/newdawn_textures)
 constexpr const char* kArchiveName = "newdawn-textures.o2r";
 constexpr uint32_t kTextureType = 0x4F544558; // "OTEX"
@@ -66,6 +68,9 @@ fs::path Staging() {
 }
 std::shared_ptr<Ship::ArchiveManager> Archives() {
     return Ship::Context::GetRawInstance()->GetResourceManager()->GetArchiveManager();
+}
+std::string SpanPath() {
+    return (fs::path(CVarGetString("gNewDawn.Assets.Path", "assets/newdawn")) / "mm3d" / "span_v4_4x.bin").string();
 }
 fs::path LibraryDir() {
     return fs::path(CVarGetString("gNewDawn.Assets.Path", "assets/newdawn")) / "materials";
@@ -279,12 +284,15 @@ struct Job {
     std::string face;
     bool stoch = false;
     std::string role = "base";
+    std::string region;  // scene region priority list ("interiors,clock_town") for manifest selectors
     std::string measure; // "layout" (brick, ashlar), "planks": count the rows and columns on the original's pixels
     bool hasRows = false, hasCols = false;
+    bool unique = false;              // painted art: upscaled, not replaced (UniqueArt.h)
+    std::string mm3dScene, mm3dTex;   // confident 3DS counterpart from mm3d_match.json
 };
 
 struct Data {
-    json recipes, textures, classification, scale, layers; // classification, scale, layers: optional
+    json recipes, textures, classification, scale, layers, mm3d; // classification, scale, layers, mm3d: optional
     std::string libraryManifest;
     uint64_t hash = 0;
 };
@@ -311,7 +319,7 @@ bool LoadData(Data& data, std::string& error) {
     };
     if (!load("recipes.json", data.recipes) || !load("textures.json", data.textures) ||
         !load("classification.json", data.classification, true) || !load("scale.json", data.scale, true) ||
-        !load("layers.json", data.layers, true)) {
+        !load("layers.json", data.layers, true) || !load("mm3d_match.json", data.mm3d, true)) {
         return false;
     }
     std::ifstream in(LibraryDir() / "manifest.json", std::ios::binary);
@@ -383,6 +391,15 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
         }
     }
 
+    const json sceneRegions = data.recipes.value("scene_regions", json::object());
+    auto regionOf = [&](const std::string& resource) -> std::string { // scenes/nonmq/<SCENE>/...
+        if (resource.rfind("scenes/", 0) != 0) return "";
+        const size_t a = resource.find('/', 7);
+        const size_t b = a == std::string::npos ? a : resource.find('/', a + 1);
+        if (b == std::string::npos) return "";
+        const std::string scene = resource.substr(a + 1, b - a - 1);
+        return sceneRegions.contains(scene) ? sceneRegions[scene].get<std::string>() : "";
+    };
     auto addJob = [&](const std::string& resource, const json& entry, const std::string& cls, const std::string& pal, int tier) {
         if (!classes.contains(cls)) {
             return;
@@ -392,6 +409,7 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
         j.palette = pal;
         j.seed = entry.value("seed", NameSeed(resource));
         j.tier = tier;
+        j.region = regionOf(resource);
         const json& c = classes[cls];
         j.gen = entry.value("gen", c.value("gen", ""));
         j.stoch = entry.contains("stoch") ? entry.value("stoch", false) : c.value("stoch", false);
@@ -404,6 +422,13 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
         }
         if (entry.contains("p")) {
             p.update(entry["p"]);
+        }
+        // physical scale: repeat the CC0 set so one of its tiles covers about world_m metres of the surface
+        if (c.contains("world_m") && !(p.contains("k")) && data.scale.contains("textures") && data.scale["textures"].contains(resource) &&
+            data.scale["textures"][resource].contains("tile_m")) {
+            const auto& tm = data.scale["textures"][resource]["tile_m"];
+            const double span = std::max(tm[0].get<double>(), tm[1].get<double>());
+            p["k"] = std::clamp((int)std::lround(span / c["world_m"].get<double>()), 1, data.recipes.value("max_repeat", 8));
         }
         j.hasRows = p.contains("rows") && entry.contains("p") && entry["p"].contains("rows");
         j.hasCols = p.contains("cols") && entry.contains("p") && entry["p"].contains("cols");
@@ -449,6 +474,59 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
             addJob(cands[i].resource, json::object(), cands[i].cls, cands[i].pal, i < heroCount ? hero : rest);
         }
     }
+    // Unique art (ND-016): everything scene-side the classification did not call a replaceable material, in the chosen scenes.
+    std::string uniqueScenes = CVarGetString("gNewDawn.Textures.UniqueScenes", "");
+    if (uniqueScenes.empty() && data.recipes.contains("unique")) {
+        for (const auto& sc : data.recipes["unique"].value("scenes", json::array())) {
+            uniqueScenes += (uniqueScenes.empty() ? "" : ",") + sc.get<std::string>();
+        }
+    }
+    const bool allScenes = uniqueScenes == "all";
+    if (CVarGetInteger("gNewDawn.Textures.Unique", 1) != 0 && data.classification.contains("textures") && !uniqueScenes.empty()) {
+        const double minConf = data.recipes.value("min_conf", 0.6);
+        const json& cmap = data.recipes.value("class_map", json::object());
+        std::unordered_set<std::string> alreadyJob;
+        for (const auto& j : jobs) {
+            alreadyJob.insert(j.resource);
+        }
+        for (auto it = data.classification["textures"].begin(); it != data.classification["textures"].end(); ++it) {
+            const json& e = it.value();
+            const std::string cls = e.value("class", "");
+            if (alreadyJob.count(it.key()) || cls == "skip" || cls == "water" || cls == "foliage" ||
+                (cmap.contains(cls) && e.value("conf", 0.0) >= minConf) || e.contains("pal_alt") ||
+                (it.key().rfind("scenes/", 0) != 0 && it.key().rfind("misc/scene_texture", 0) != 0)) {
+                continue;
+            }
+            if (!allScenes) {
+                bool in = false;
+                for (size_t at = 0; at <= uniqueScenes.size() && !in;) {
+                    const size_t comma = uniqueScenes.find(',', at);
+                    const std::string name = uniqueScenes.substr(at, comma == std::string::npos ? std::string::npos : comma - at);
+                    in = !name.empty() && it.key().find("/" + name + "/") != std::string::npos;
+                    at = comma == std::string::npos ? uniqueScenes.size() + 1 : comma + 1;
+                }
+                if (!in) {
+                    continue;
+                }
+            }
+            Job j;
+            j.resource = it.key();
+            j.palette = e.value("pal", "");
+            j.seed = NameSeed(it.key());
+            j.tier = rest;
+            j.region = regionOf(it.key());
+            j.unique = true;
+            j.gen = "unique";
+            if (data.mm3d.contains("textures") && data.mm3d["textures"].contains(it.key())) {
+                const json& m = data.mm3d["textures"][it.key()];
+                if (!m.value("weak", false)) {
+                    j.mm3dScene = m.value("scene", "");
+                    j.mm3dTex = m.value("mm3d", "");
+                }
+            }
+            jobs.push_back(std::move(j));
+        }
+    }
     // group by size, then by the material they read, so the library surfaces in memory are reused back to back
     std::stable_sort(jobs.begin(), jobs.end(), [](const Job& a, const Job& b) {
         return a.tier != b.tier ? a.tier > b.tier : a.face < b.face;
@@ -466,6 +544,15 @@ std::string Signature(const Data& data) {
     h = Fnv1a(&data.hash, sizeof(data.hash), h);
     const int sizes[2] = { CVarGetInteger("gNewDawn.Textures.HeroSize", 0), CVarGetInteger("gNewDawn.Textures.RestSize", 0) };
     h = Fnv1a(sizes, sizeof(sizes), h);
+    {   // unique art: which scenes, whether the 3DS dump is there (and where), and the upscaler's weights
+        const std::string u = std::string(CVarGetString("gNewDawn.Textures.UniqueScenes", "")) + "|" +
+                              std::to_string(CVarGetInteger("gNewDawn.Textures.Unique", 1)) + "|" +
+                              (NewDawnMm3d::DumpValid(NewDawnMm3d::DumpPath()) ? NewDawnMm3d::DumpPath() : std::string("-"));
+        h = Fnv1a(u.data(), u.size(), h);
+        NewDawnMm3d::SpanUpscaler span;
+        const uint64_t fp = span.Load(SpanPath()) ? span.Fingerprint() : 0;
+        h = Fnv1a(&fp, sizeof(fp), h);
+    }
     const auto archives = Archives()->GetArchives(); // keep the snapshot alive for the whole loop
     for (const auto& a : *archives) { // the ROM archive: a new extraction regenerates
         const fs::path p(a->GetPath());
@@ -527,12 +614,69 @@ void Mount(const json& stamp) {
 
 // ------------------------------------------------------------------ the generator
 struct Outcome {
-    std::atomic<uint32_t> done{ 0 }, missing{ 0 }, cutouts{ 0 }, unusable{ 0 }, fallbackPalette{ 0 };
+    std::atomic<uint32_t> done{ 0 }, missing{ 0 }, cutouts{ 0 }, unusable{ 0 }, fallbackPalette{ 0 }, uniqueN64{ 0 }, unique3ds{ 0 }, uniqueSkipped{ 0 };
     std::mutex mutex;
     std::vector<json> entries;
 };
 
+struct UniqueContext {
+    NewDawnMm3d::SpanUpscaler span;
+    bool spanOk = false;
+    std::unique_ptr<NewDawnUnique::Mm3dScenes> scenes;
+};
+UniqueContext* gUnique = nullptr;
+
+void RunUnique(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip, Outcome& out) {
+    if (!gUnique || !gUnique->spanOk) {
+        ++out.uniqueSkipped;
+        return;
+    }
+    Original o;
+    bool fallback = false;
+    if (!Decode(job.resource, job.palette, o, fallback) || o.type == 5 || o.type == 6 || o.w < 4 || o.h < 4 || fallback) {
+        ++out.uniqueSkipped; // intensity textures double as alpha in the engine: the opaque replacement would change them
+        return;
+    }
+    Mm3d::Image original;
+    original.width = (int)o.w;
+    original.height = (int)o.h;
+    original.rgba = o.rgba;
+    const Mm3d::Image* candidate = nullptr;
+    bool from3ds = false;
+    if (gUnique->scenes && !job.mm3dTex.empty()) {
+        candidate = gUnique->scenes->Find(job.mm3dScene, job.mm3dTex);
+        from3ds = candidate && NewDawnUnique::AcceptCandidate(original, *candidate);
+    }
+    NewDawnUnique::Options opt;
+    opt.span = &gUnique->span;
+    std::shared_ptr<const NewDawnSynth::Surface> grain;
+    const std::string grainId = lib.Resolve("class:plaster", job.seed, job.region);
+    if (!grainId.empty()) {
+        grain = lib.Get(grainId, 512);
+        opt.grain = grain.get();
+    }
+    if (from3ds) {
+        SPDLOG_INFO("NewDawn unique art: {} <- 3DS texture {}/{} ({}x{})", job.resource, job.mm3dScene, job.mm3dTex, candidate->width, candidate->height);
+    }
+    Mm3d::Image result;
+    if (!NewDawnUnique::UpscaleAndGrade(from3ds ? *candidate : original, original, from3ds, opt, result)) {
+        ++out.uniqueSkipped;
+        return;
+    }
+    const int W = result.width, H = result.height;
+    const uint32_t kind = (o.type == 3 || o.type == 4) ? 1 : o.type;
+    const float hs = (float)(W * 4.0 / (o.w * BytesPerTexel(o.type))), vs = (float)H / o.h;
+    auto albedo = EncodeTexture(kind, W, H, 1u, hs, vs, result.rgba.data(), result.rgba.size());
+    zip.Add("alt/" + job.resource, albedo.data(), albedo.size());
+    (from3ds ? out.unique3ds : out.uniqueN64)++;
+    ++out.done;
+}
+
 void RunJob(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip, Outcome& out) {
+    if (job.unique) {
+        RunUnique(job, lib, zip, out);
+        return;
+    }
     Original o;
     bool fallback = false;
     if (!Decode(job.resource, job.palette, o, fallback)) {
@@ -565,7 +709,7 @@ void RunJob(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip,
     const double k = (double)job.tier / std::max(o.w, o.h);
     const int W = std::max(64, (int)std::lround(o.w * k) & ~1), H = std::max(64, (int)std::lround(o.h * k) & ~1);
     NewDawnSynth::Mat mat;
-    if (!NewDawnSynth::Generate(job.gen, lib, pal, params, W, H, job.seed, mat)) {
+    if (!NewDawnSynth::Generate(job.gen, lib, pal, params, W, H, job.seed, job.region, mat)) {
         ++out.unusable;
         return;
     }
@@ -637,7 +781,11 @@ void Generate(bool boot) {
                 NewDawnSynth::Library::Entry e;
                 e.id = m.value("id", "");
                 e.cls = m.value("class", "");
-                e.region = m.value("region", "any");
+                if (m.contains("regions")) {
+                    for (const auto& r : m["regions"]) e.regions.push_back(r.get<std::string>());
+                } else {
+                    e.regions.push_back(m.value("region", "any"));
+                }
                 for (const auto& r : m.value("roles", json::array())) {
                     e.roles.push_back(r.get<std::string>());
                 }
@@ -645,6 +793,19 @@ void Generate(bool boot) {
             }
         }
         NewDawnSynth::Library lib(LibraryDir().generic_string(), std::move(entries));
+        UniqueContext uniqueCtx;
+        const bool anyUnique = std::any_of(jobs.begin(), jobs.end(), [](const Job& j) { return j.unique; });
+        if (anyUnique) {
+            uniqueCtx.spanOk = uniqueCtx.span.Load(SpanPath());
+            if (!uniqueCtx.spanOk) {
+                SPDLOG_WARN("NewDawn textures: the SPAN weights ({}) are missing, unique art stays native", SpanPath());
+            }
+            const std::string romfs = NewDawnMm3d::DumpPath();
+            if (NewDawnMm3d::DumpValid(romfs)) {
+                uniqueCtx.scenes = std::make_unique<NewDawnUnique::Mm3dScenes>(romfs);
+            }
+        }
+        gUnique = &uniqueCtx;
         Outcome out;
         std::atomic<size_t> next{ 0 };
         std::vector<std::thread> pool;
@@ -664,6 +825,7 @@ void Generate(bool boot) {
         for (auto& t : pool) {
             t.join();
         }
+        gUnique = nullptr;
         for (const auto& m : lib.Missing()) {
             SPDLOG_WARN("NewDawn textures: base material '{}' is not in the library", m);
         }
@@ -688,8 +850,11 @@ void Generate(bool boot) {
         WriteStamp(Staging(), { { "version", kVersion }, { "signature", signature }, { "state", count ? "ok" : "nosource" },
                                 { "textures", count }, { "skipped", skipped }, { "missing_originals", out.missing.load() },
                                 { "cutouts", out.cutouts.load() }, { "unusable", out.unusable.load() },
+                                { "unique_n64", out.uniqueN64.load() }, { "unique_3ds", out.unique3ds.load() }, { "unique_skipped", out.uniqueSkipped.load() },
                                 { "fallback_palette", out.fallbackPalette.load() }, { "archive_bytes", bytes },
                                 { "seconds", seconds } });
+        SPDLOG_INFO("NewDawn textures: unique art {} upscaled from the N64 original, {} from the 3DS texture, {} left native", out.uniqueN64.load(),
+                    out.unique3ds.load(), out.uniqueSkipped.load());
         SPDLOG_INFO("NewDawn textures: {} textures ({} skipped: {} missing, {} with transparency, {} unusable; {} without a palette), "
                     "{:.1f} MB, {:.1f}s",
                     count, skipped, out.missing.load(), out.cutouts.load(), out.unusable.load(), out.fallbackPalette.load(), bytes / 1e6,

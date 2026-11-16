@@ -1,40 +1,164 @@
 {
- "_comment": "Selection for the shipped base library (ND-016). Data-driven: add an entry (or a per-region variant: same class, a different region tag) and rerun build_library.py. All sets are ambientCG, CC0 1.0. class = material class used by the recipes; roles say what the generator may use the set for.",
+ "_comment": "Hand picks from ambientCG: the sets that hand-tuned entries (textures.json) and recipe defaults name by id. Everything else comes from the curated shortlist (--catalog). Add an entry here only for a set a recipe must name directly.",
  "materials": [
-  {"id": "rock050", "asset": "Rock050", "class": "stone",   "roles": ["face", "rock"], "region": "any"},
-  {"id": "rock060", "asset": "Rock060", "class": "stone",   "roles": ["face", "rock"], "region": "any"},
-  {"id": "rock030", "asset": "Rock030", "class": "rock",    "roles": ["rock"], "region": "any"},
-  {"id": "rock031", "asset": "Rock031", "class": "rock",    "roles": ["rock"], "region": "any"},
-  {"id": "rock061", "asset": "Rock061", "class": "rock",    "roles": ["rock", "strata"], "region": "any"},
-  {"id": "rock051", "asset": "Rock051", "class": "rock",    "roles": ["rock", "strata"], "region": "any"},
-  {"id": "rock058", "asset": "Rock058", "class": "stone",   "roles": ["face", "rock"], "region": "any"},
-  {"id": "rock062", "asset": "Rock062", "class": "stone",   "roles": ["face", "rock"], "region": "any"},
-  {"id": "rocks011", "asset": "Rocks011", "class": "rock",  "roles": ["rock", "strata"], "region": "any"},
-  {"id": "concrete034", "asset": "Concrete034", "class": "mortar", "roles": ["mortar", "face"], "region": "any"},
-  {"id": "ground085", "asset": "Ground085", "class": "mortar", "roles": ["mortar"], "region": "any"},
-  {"id": "gravel040", "asset": "Gravel040", "class": "mortar", "roles": ["mortar", "ground"], "region": "any"},
-  {"id": "plaster006", "asset": "Plaster006", "class": "plaster", "roles": ["plaster"], "region": "any"},
-  {"id": "plaster002", "asset": "Plaster002", "class": "plaster", "roles": ["plaster"], "region": "any"},
-  {"id": "paintedplaster016", "asset": "PaintedPlaster016", "class": "plaster", "roles": ["plaster"], "region": "any"},
-  {"id": "planks033b", "asset": "Planks033B", "class": "wood", "roles": ["planks"], "region": "any"},
-  {"id": "planks037a", "asset": "Planks037A", "class": "wood", "roles": ["planks"], "region": "any"},
-  {"id": "woodfloor041", "asset": "WoodFloor041", "class": "wood", "roles": ["planks"], "region": "any"},
-  {"id": "bark012", "asset": "Bark012", "class": "wood", "roles": ["bark"], "region": "any"},
-  {"id": "roofingtiles012a", "asset": "RoofingTiles012A", "class": "roof", "roles": ["tiles"], "region": "any"},
-  {"id": "roofingtiles003", "asset": "RoofingTiles003", "class": "roof", "roles": ["tiles"], "region": "any"},
-  {"id": "thatchedroof001a", "asset": "ThatchedRoof001A", "class": "thatch", "roles": ["thatch"], "region": "any"},
-  {"id": "ground079s", "asset": "Ground079S", "class": "dirt", "roles": ["ground"], "region": "any"},
-  {"id": "ground048", "asset": "Ground048", "class": "dirt", "roles": ["ground"], "region": "any"},
-  {"id": "ground109", "asset": "Ground109", "class": "dirt", "roles": ["ground"], "region": "any"},
-  {"id": "ground054", "asset": "Ground054", "class": "sand", "roles": ["ground"], "region": "any"},
-  {"id": "ground097", "asset": "Ground097", "class": "sand", "roles": ["ground", "ripples"], "region": "any"},
-  {"id": "grass004", "asset": "Grass004", "class": "grass", "roles": ["ground"], "region": "any"},
-  {"id": "grass002", "asset": "Grass002", "class": "grass", "roles": ["ground"], "region": "any"},
-  {"id": "moss002", "asset": "Moss002", "class": "moss", "roles": ["moss"], "region": "any"},
-  {"id": "metal055a", "asset": "Metal055A", "class": "metal", "roles": ["metal"], "region": "any"},
-  {"id": "rust007", "asset": "Rust007", "class": "metal", "roles": ["metal", "rust"], "region": "any"},
-  {"id": "fabric066", "asset": "Fabric066", "class": "fabric", "roles": ["fabric"], "region": "any"},
-  {"id": "snow007a", "asset": "Snow007A", "class": "snow", "roles": ["snow"], "region": "any"},
-  {"id": "ice001", "asset": "Ice001", "class": "ice", "roles": ["ice"], "region": "any"}
+  {
+   "id": "rock050",
+   "asset": "Rock050",
+   "class": "stone",
+   "roles": [
+    "face",
+    "rock"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "rock060",
+   "asset": "Rock060",
+   "class": "stone",
+   "roles": [
+    "face",
+    "rock"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "rock030",
+   "asset": "Rock030",
+   "class": "rock",
+   "roles": [
+    "rock"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "rock061",
+   "asset": "Rock061",
+   "class": "rock",
+   "roles": [
+    "rock",
+    "strata"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "rock062",
+   "asset": "Rock062",
+   "class": "stone",
+   "roles": [
+    "face",
+    "rock"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "concrete034",
+   "asset": "Concrete034",
+   "class": "mortar",
+   "roles": [
+    "mortar",
+    "face"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "ground085",
+   "asset": "Ground085",
+   "class": "mortar",
+   "roles": [
+    "mortar"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "plaster006",
+   "asset": "Plaster006",
+   "class": "plaster",
+   "roles": [
+    "plaster"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "planks033b",
+   "asset": "Planks033B",
+   "class": "wood",
+   "roles": [
+    "planks"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "thatchedroof001a",
+   "asset": "ThatchedRoof001A",
+   "class": "thatch",
+   "roles": [
+    "thatch"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "ground079s",
+   "asset": "Ground079S",
+   "class": "dirt",
+   "roles": [
+    "ground"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "ground048",
+   "asset": "Ground048",
+   "class": "dirt",
+   "roles": [
+    "ground"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "ground109",
+   "asset": "Ground109",
+   "class": "dirt",
+   "roles": [
+    "ground"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "ground097",
+   "asset": "Ground097",
+   "class": "sand",
+   "roles": [
+    "ground",
+    "ripples"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "grass004",
+   "asset": "Grass004",
+   "class": "grass",
+   "roles": [
+    "ground"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "grass002",
+   "asset": "Grass002",
+   "class": "grass",
+   "roles": [
+    "ground"
+   ],
+   "region": "any"
+  },
+  {
+   "id": "moss002",
+   "asset": "Moss002",
+   "class": "moss",
+   "roles": [
+    "moss"
+   ],
+   "region": "any"
+  }
  ]
 }

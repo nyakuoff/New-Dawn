@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     NewDawnSynth::Library L(lib);
     NewDawnSynth::Mat m;
     auto t0 = std::chrono::steady_clock::now();
-    if (!NewDawnSynth::Generate(gen, L, pal, p, w, h, seed, m)) { fprintf(stderr, "generate failed\n"); return 1; }
+    if (!NewDawnSynth::Generate(gen, L, pal, p, w, h, seed, p.Str("region", ""), m)) { fprintf(stderr, "generate failed\n"); return 1; }
     auto e = NewDawnSynth::Encode(m);
     double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     fprintf(stderr, "%dx%d %s %.2fs (incl. library load)\n", w, h, gen.c_str(), s);
