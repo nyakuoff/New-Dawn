@@ -42,7 +42,7 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.6.2";
+constexpr const char* kConverterVersion = "1.7.1";
 
 struct Entry {
     const char* object;
@@ -125,7 +125,8 @@ struct DrawScale {
     int pivotBone = -1;          // the draw is scaled about this bone's origin in the model's bind pose
 };
 struct SkipSpec {
-    std::set<int> materials, draws, keepLimbs;
+    std::set<int> materials, draws, keepLimbs, unlit; // "u5": CMB material 5 is drawn without lighting (glowing eyes)
+    std::map<int, float> offsets; // "o22=300": draw 22 pushed 300 units along its vertex normals (eye planes that sit inside the 3DS face)
     std::map<int, DrawScale> scales; // "s5=0.66:0.85@12": draw 5 shortened and narrowed about bone 12's origin (a hat bigger than the N64's)
 };
 SkipSpec ParseSkip(const char* s) {
@@ -147,6 +148,13 @@ SkipSpec ParseSkip(const char* s) {
                 const float along = (float)std::atof(tok.c_str() + eq + 1);
                 const float across = colon != std::string::npos && colon < at ? (float)std::atof(tok.c_str() + colon + 1) : along;
                 out.scales[std::atoi(tok.c_str() + 1)] = { along, across, std::atoi(tok.c_str() + at + 1) };
+            }
+        } else if (tok[0] == 'u') {
+            out.unlit.insert(std::atoi(tok.c_str() + 1));
+        } else if (tok[0] == 'o') {
+            const size_t eq = tok.find('=');
+            if (eq != std::string::npos) {
+                out.offsets[std::atoi(tok.c_str() + 1)] = (float)std::atof(tok.c_str() + eq + 1);
             }
         } else if (tok[0] == 'd') {
             out.draws.insert(std::atoi(tok.c_str() + 1));
@@ -881,6 +889,8 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                     scaleU[k] = len > 1e-6 ? (float)(scaleU[k] / len) : (k == 1 ? 1.0f : 0.0f);
                 }
             }
+            const auto offsetIt = skipSpec.offsets.find((int)drawIndex);
+            const float pushOut = offsetIt != skipSpec.offsets.end() ? offsetIt->second : 0.0f;
             for (size_t t = 0; t + 2 < dr.indices.size(); t += 3) {
                 std::map<int, float> acc;
                 int vdom[3];
@@ -923,7 +933,8 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                     const auto& s = shift[bone];
                     TriVert& o = tri.v[c];
                     o.drive = drive;
-                    float vp[3] = { v.pos[0], v.pos[1], v.pos[2] };
+                    float vp[3] = { v.pos[0] + v.normal[0] * pushOut, v.pos[1] + v.normal[1] * pushOut,
+                                    v.pos[2] + v.normal[2] * pushOut };
                     if (scaleSpec.pivotBone >= 0) {
                         float d[3], along = 0;
                         for (int k = 0; k < 3; ++k) {
@@ -1116,7 +1127,8 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                 const Mm3d::Material& mat = model.materials[m];
                 const int dw = texDeclared[m][0], dh = texDeclared[m][1];
                 const uint32_t cull = mat.cull == 1 ? 0x400 : (mat.cull == 2 ? 0x200 : 0);
-                dl.W(0xD9000000, (0x00230405u & ~0x400u) | cull);
+                const bool unlit = skipSpec.unlit.count(m) != 0;
+                dl.W(0xD9000000, ((unlit ? 0x00210405u : 0x00230405u) & ~0x400u) | cull); // unlit: no G_LIGHTING, white vertex colours
                 dl.W(0xE200001C, mat.alpha == Mm3d::Material::Opaque ? 0xC8112078u
                                  : mat.alpha == Mm3d::Material::Cutout ? 0xC81049D8u : 0xC8113078u);
                 dl.Tex(faceSeg.count(m) ? 0 : Crc64(texName[m]), faceSeg.count(m) ? faceSeg[m] : -1, dw, dh, mat.wrapS[0],
@@ -1201,7 +1213,7 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                         std::memcpy(&o[8], &s, 2);
                         std::memcpy(&o[10], &tt, 2);
                         for (int k = 0; k < 3; ++k) {
-                            o[12 + k] = (uint8_t)(int8_t)std::clamp((int)std::lround(v.n[k] * 127), -128, 127);
+                            o[12 + k] = unlit ? 255 : (uint8_t)(int8_t)std::clamp((int)std::lround(v.n[k] * 127), -128, 127);
                         }
                         o[15] = 255;
                     }

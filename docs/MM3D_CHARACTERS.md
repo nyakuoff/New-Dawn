@@ -221,6 +221,20 @@ row sits behind "Include unreviewed 3DS models" until masks and the other forms 
 - Rig quirks found: the hat bone's rest rotation (2.16 rad) differs from the N64 hat limb's, so the hat hangs steeper than the
   N64's; per-limb rotation registration over several animation frames did not give a clearly better frame for any limb.
 
+### Link, Deku form
+`object_link_nuts/gLinkDekuSkel` against `zelda2_link_nuts_new/nuts/model/link_deknuts.cmb` (24 bones, 25 draws): the same 21-limb
+layout and the same rig recipe as human Link. Skipped: the hand and fist meshes (the N64 hand display lists are kept, limbs
+15 and 18, as for every hold point), the bottle and cork, a stray triangle and the 3DS Deku shell (`link_nuts_shiel`, a hood
+that sits around the head). The hat is 0.75 of its 3DS size (the N64 hat measures 3339 x 1859 x 1519, the 3DS 4495 x 2454 x 2043).
+- **Eyes:** the 3DS eye planes sit inside the face mesh (the face is an opaque shell). Draw 22 is pushed 300 units along its
+  normals (`o22=300`) and material 5 is drawn unlit (`u5`: the PICA material has no fragment lighting, so its glow is the
+  texture alone; without it the eyes came out brown). New skip tokens: `o<draw>=<units>` and `u<material>`.
+- **Greens:** hat and tunic use the human Link tint with the hue window starting at 85 (the hair is yellow-olive, hue 60).
+- Checked in game (`gNewDawn`'s private fixture sets `playerForm` in the save: a Deku at spawn, run toward the camera,
+  same input in both builds): the pose, hat and limbs follow the N64 animation; the face is the 3DS one (wood face with a
+  tube mouth, orange eyes) against the N64's dark face with a black mouth.
+- Not checked: pipes, flower, bubble, spin, hopping on water, the Deku Link cutscene transformations.
+
 ### Limits
 - Eye and mouth states exist only for the models listed under Faces. Props baked into a CMB are listed per skeleton (guard bottle, Anju's
   moon mask, the bomb shopkeeper's bomb); other models were not scanned for props beyond the validation set.

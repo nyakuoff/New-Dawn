@@ -26,6 +26,8 @@ OUT = Path(__file__).resolve().parents[3] / 'mm/2s2h/NewDawn/Mm3dCharacterTable.
 # hair 39, shadow 41, hookshot and everything after 44), duplicates and unknown blobs (1, 2, 7).
 _LINK_DRAWS = [1, 2, 7, 35, 37, 39, 41] + list(range(13, 35)) + list(range(44, 95))
 SKIP = {
+    # Deku Link: hands (16-19) and the bottle and cork (12, 23, 24) stay N64, d10 is a stray triangle, d20 the shell (link_nuts_shiel).
+    ('object_link_nuts', 'gLinkDekuSkel'): 'd10,d12,d16,d17,d18,d19,d20,d23,d24,k15,k18,k19,o22=300,u5,s13=0.75@12,s14=0.75@12',
     ('object_link_child', 'gLinkHumanSkel'): ','.join(['d%d' % d for d in _LINK_DRAWS] + ['k15', 'k18', 'k19', 's5=0.66:0.85@12']),
     ('object_tru', 'gKoumeSkel'): '5,6',            # the potion bottle (the N64 draws gKoumeBottleDL itself); her broom is a limb
     ('object_sdn', 'gSoldierSkel'): '2,3',
@@ -53,6 +55,9 @@ CMB = {
 # Skeletons whose 3DS rig is not the N64 one: (archive, CMB, "bone:limb,...") from the proportions and the joint offsets of both
 # (docs/MM3D_CHARACTERS.md, rig reduction). Unlisted 3DS bones follow their nearest listed ancestor; unlisted N64 limbs draw nothing.
 RIG = {
+    # Deku Link (nuts archive): the same layout again (the 3DS offsets differ, the recipe does not).
+    ('object_link_nuts', 'gLinkDekuSkel'): ('zelda2_link_nuts_new', 'nuts/model/link_deknuts.cmb',
+        '1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19'),
     # Human Link (child archive): the same 21-limb layout and the same 3DS rig as Kafei's (its bones 23 to 25 only carry the
     # shadow and the deku stick). Hands, sheath and equipment keep their N64 display lists for now (SKIP k15,k18,k19).
     ('object_link_child', 'gLinkHumanSkel'): ('zelda2_link_child_new', 'child/model/link_child.cmb',
@@ -106,6 +111,7 @@ TINT = {
     # hair: ginger towards the N64 blond; tunic and hat greens (material 1, hue 60 to 180 only, the buckle and boots share the texture):
     # a deeper, less saturated forest green (the N64 tunic measures value 0.32 in Clock Town against 0.50 for the 3DS one)
     ('object_link_child', 'gLinkHumanSkel'): '11:20:0.8,1:-8:0.85:0.68:60:180',
+    ('object_link_nuts', 'gLinkDekuSkel'): '1:-8:0.85:0.68:85:180,6:-8:0.85:0.68:85:180',   # the hat and tunic greens, as for human Link (the hair is yellow-olive, hue 60)
 }
 # Per-model colour overrides (light reference, saturation); 0 keeps the global defaults (gNewDawn.MM3D.LightRef / .Saturation).
 # Set where a model's own palette is already saturated (checked 1:1 against the N64 model with the 4K pack).
