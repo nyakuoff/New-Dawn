@@ -33,8 +33,8 @@ SKIP = {
     # Goron Link: the hand and fist meshes (10-14), the cork (8) and the bottle (15, 16) stay N64.
     ('object_link_goron', 'gLinkGoronSkel'): 'd8,d10,d11,d12,d13,d14,d15,d16,k15,k18,k19',
     # Deku Link: hands (16-19) and the bottle and cork (12, 23, 24) stay N64, d10 is a stray triangle, d20 the shell (link_nuts_shiel).
-    ('object_link_nuts', 'gLinkDekuSkel'): 'd10,d12,d16,d17,d18,d19,d20,d23,d24,k15,k18,k19,o22=300,u5,s13=0.75@12,s14=0.75@12',
-    ('object_link_child', 'gLinkHumanSkel'): ','.join(['d%d' % d for d in _LINK_DRAWS] + ['k15', 'k18', 'k19', 's5=0.66:0.85@12']),
+    ('object_link_nuts', 'gLinkDekuSkel'): 'd10,d12,d16,d17,d18,d19,d20,d23,d24,k15,k18,k19,o22=300',
+    ('object_link_child', 'gLinkHumanSkel'): ','.join(['d%d' % d for d in _LINK_DRAWS] + ['k15', 'k18', 'k19']),
     ('object_tru', 'gKoumeSkel'): '5,6',            # the potion bottle (the N64 draws gKoumeBottleDL itself); her broom is a limb
     ('object_sdn', 'gSoldierSkel'): '2,3',
     ('object_an1', 'gAnju1Skel'): '0,1',
@@ -131,17 +131,15 @@ FACE = {
 # Per-material hue and saturation (after the colour mapping), "material:hue degrees:saturation factor". The 3DS hair reads hotter than
 # the N64's (hue towards orange-red); the CMB material of the hair texture is looked up in docs/MM3D_CHARACTERS.md.
 TINT = {
-    # hair: ginger towards the N64 blond; tunic and hat greens (material 1, hue 60 to 180 only, the buckle and boots share the texture):
-    # a deeper, less saturated forest green (the N64 tunic measures value 0.32 in Clock Town against 0.50 for the 3DS one)
-    ('object_link_child', 'gLinkHumanSkel'): '11:20:0.8,1:-8:0.85:0.68:60:180',
-    ('object_link_nuts', 'gLinkDekuSkel'): '1:-8:0.85:0.68:85:180,6:-8:0.85:0.68:85:180',   # the hat and tunic greens, as for human Link (the hair is yellow-olive, hue 60)
+    # Empty on purpose: the reference gate (docs/MM3D_CHARACTERS.md) showed every earlier tint compensated for a conversion
+    # error, not for the 3DS source. Add one only with a gate result that needs it.
 }
 # Per-model colour overrides (light reference, saturation); 0 keeps the global defaults (gNewDawn.MM3D.LightRef / .Saturation).
 # Set where a model's own palette is already saturated (checked 1:1 against the N64 model with the 4K pack).
 COLOUR = {
-    ('object_link_goron', 'gLinkGoronSkel'): (0.5, 1.0),   # the 3DS Goron's gold skin and orange gauntlets read hot at the defaults
-    ('object_sdn', 'gSoldierSkel'): (0.5, 1.0),         # yellow skin and orange trim were garish at 1.35
-    ('object_bg', 'object_bg_Skel_011B60'): (0.55, 1.05),  # the face turned orange
+    # Empty on purpose. The per-model overrides that were here (guard, receptionist, Goron) compensated for global defaults that were
+    # too hot; with the reference gate's defaults (light reference 0.45, saturation 1.0) every model is within a few delta E of the
+    # 3DS render. Add one only with a gate result that needs it.
 }
 # object/skeleton pairs that have been looked at in game (colour, props, joints) and may be switched on.
 REVIEWED = {
