@@ -213,16 +213,6 @@
    },
    "palette": "scenes/nonmq/Z2_YADOYA/Z2_YADOYATLUT_00F280"
   },
-  "misc/scene_texture_01/scene_texture_01_Tex_003680": {
-   "class": "dirt",
-   "seed": 107,
-   "tier": "hero",
-   "role": "base",
-   "p": {
-    "set": "ground109"
-   },
-   "palette": "scenes/nonmq/Z2_SONCHONOIE/Z2_SONCHONOIETLUT_007300"
-  },
   "scenes/nonmq/Z2_MITURIN/Z2_MITURIN_room_02Tex_005CC0": {
    "class": "rock",
    "seed": 111,

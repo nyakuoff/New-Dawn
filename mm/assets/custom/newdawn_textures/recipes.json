@@ -1,9 +1,10 @@
 {
  "version": 1,
- "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry. Material ids refer to assets/newdawn/materials/manifest.json. Names and numbers only. stoch: isotropic materials are sampled stochastically by the shader (no visible repetition); never layouts (brick, planks, cobble).",
+ "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is.",
  "tiers": {
   "hero": 1024,
   "rest": 512,
+  "hero_count": 450,
   "min": 256
  },
  "classes": {
@@ -115,6 +116,225 @@
     "contrast": 1.0,
     "hf": 1.0
    }
+  },
+  "a_brick": {
+   "gen": "masonry",
+   "measure": "layout",
+   "p": {
+    "layout": "brick",
+    "rows": 4,
+    "cols": 3,
+    "stagger": 0.5,
+    "face": "role:face",
+    "gap_set": "role:mortar",
+    "gap_tone": 0.95,
+    "tone": [
+     0.1,
+     0.7
+    ],
+    "nstrength": 1.0,
+    "face_gain": 0.08
+   }
+  },
+  "a_ashlar": {
+   "gen": "masonry",
+   "measure": "layout",
+   "p": {
+    "layout": "brick",
+    "rows": 4,
+    "cols": 3,
+    "stagger": -1,
+    "col_jit": 0.28,
+    "row_jit": 0.1,
+    "gap": 0.09,
+    "radius": 0.2,
+    "bevel": 0.1,
+    "face": "role:face",
+    "gap_set": "role:mortar",
+    "gap_tone": 0.04,
+    "tone": [
+     0.28,
+     0.95
+    ],
+    "nstrength": 1.2
+   }
+  },
+  "a_cobble": {
+   "gen": "masonry",
+   "p": {
+    "layout": "cobble",
+    "n": 7,
+    "gap": 0.1,
+    "bevel": 0.08,
+    "face": "role:face",
+    "gap_set": "role:mortar",
+    "gap_tone": 0.04,
+    "tone": [
+     0.35,
+     0.97
+    ],
+    "nstrength": 1.2
+   }
+  },
+  "a_planks": {
+   "gen": "direct",
+   "measure": "planks",
+   "stoch": false,
+   "p": {
+    "set": "role:planks",
+    "planks": 5,
+    "contrast": 1.0,
+    "hf": 1.0
+   }
+  },
+  "a_beam": {
+   "gen": "direct",
+   "p": {
+    "set": "role:bark",
+    "contrast": 1.0,
+    "hf": 1.0
+   }
+  },
+  "a_plaster": {
+   "gen": "direct",
+   "stoch": true,
+   "p": {
+    "set": "class:plaster",
+    "macro": 0.06
+   }
+  },
+  "a_roof": {
+   "gen": "direct",
+   "p": {
+    "set": "role:tiles",
+    "contrast": 1.0
+   }
+  },
+  "a_thatch": {
+   "gen": "direct",
+   "p": {
+    "set": "role:thatch",
+    "contrast": 1.0,
+    "hf": 1.0
+   }
+  },
+  "a_dirt": {
+   "gen": "direct",
+   "stoch": true,
+   "p": {
+    "set": "class:dirt",
+    "macro": 0.1,
+    "contrast": 1.1
+   }
+  },
+  "a_sand": {
+   "gen": "direct",
+   "p": {
+    "set": "class:sand",
+    "contrast": 1.0,
+    "hf": 1.0
+   }
+  },
+  "a_mud": {
+   "gen": "direct",
+   "stoch": true,
+   "p": {
+    "set": [
+     "ground048",
+     "ground109"
+    ],
+    "macro": 0.12,
+    "contrast": 1.0
+   }
+  },
+  "a_rock": {
+   "gen": "direct",
+   "stoch": true,
+   "p": {
+    "set": "role:rock",
+    "contrast": 1.15,
+    "hf": 1.0
+   }
+  },
+  "a_grass": {
+   "gen": "direct",
+   "stoch": true,
+   "p": {
+    "set": "class:grass",
+    "contrast": 1.0,
+    "macro": 0.2,
+    "macro_size": 100
+   }
+  },
+  "a_moss": {
+   "gen": "direct",
+   "stoch": true,
+   "p": {
+    "set": "role:moss",
+    "contrast": 1.0
+   }
+  },
+  "a_metal": {
+   "gen": "direct",
+   "p": {
+    "set": "class:metal",
+    "contrast": 0.9,
+    "rough0": 0.35,
+    "rough1": 0.85,
+    "chroma": 0.1
+   }
+  },
+  "a_fabric": {
+   "gen": "direct",
+   "p": {
+    "set": "class:fabric",
+    "contrast": 1.0,
+    "hf": 1.0,
+    "chroma": 0.1
+   }
+  },
+  "a_rope": {
+   "gen": "direct",
+   "p": {
+    "set": "class:fabric",
+    "k": 2,
+    "contrast": 1.0,
+    "hf": 1.0,
+    "chroma": 0.1
+   }
+  },
+  "a_snow": {
+   "gen": "direct",
+   "stoch": true,
+   "p": {
+    "set": "class:snow",
+    "contrast": 0.8
+   }
   }
+ },
+ "scopes": [
+  "scenes/",
+  "misc/scene_texture"
+ ],
+ "min_conf": 0.6,
+ "class_map": {
+  "brick": "a_brick",
+  "cobble": "a_cobble",
+  "flagstone": "a_ashlar",
+  "wood_planks": "a_planks",
+  "wood_beam": "a_beam",
+  "plaster": "a_plaster",
+  "roof_tiles": "a_roof",
+  "thatch": "a_thatch",
+  "dirt": "a_dirt",
+  "sand": "a_sand",
+  "mud": "a_mud",
+  "rock": "a_rock",
+  "grass": "a_grass",
+  "moss": "a_moss",
+  "metal": "a_metal",
+  "fabric": "a_fabric",
+  "rope": "a_rope",
+  "ice_snow": "a_snow"
  }
 }

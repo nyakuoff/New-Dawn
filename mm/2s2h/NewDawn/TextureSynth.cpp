@@ -590,7 +590,45 @@ std::shared_ptr<const Surface> Library::Get(const std::string& id, int px) {
         s = NeutralSurface(px);
     }
     mCache[key] = s;
+    // Bounded memory: drop surfaces that no job is using (10 floats per texel, 40 MB at 1024 px) until under budget.
+    size_t bytes = 0;
+    for (const auto& kv : mCache) {
+        bytes += (size_t)kv.second->px * kv.second->px * 40;
+    }
+    for (auto it = mCache.begin(); bytes > kBudgetBytes && it != mCache.end();) {
+        if (it->second.use_count() == 1 && it->second != s) {
+            bytes -= (size_t)it->second->px * it->second->px * 40;
+            it = mCache.erase(it);
+        } else {
+            ++it;
+        }
+    }
     return s;
+}
+
+std::string Library::Resolve(const std::string& selector, uint32_t seed, const std::string& region) const {
+    const bool byRole = selector.rfind("role:", 0) == 0, byClass = selector.rfind("class:", 0) == 0;
+    if (!byRole && !byClass) {
+        return selector;
+    }
+    const std::string key = selector.substr(selector.find(':') + 1);
+    std::vector<const Entry*> any, local;
+    for (const auto& e : mEntries) {
+        const bool match = byClass ? e.cls == key : std::find(e.roles.begin(), e.roles.end(), key) != e.roles.end();
+        if (match) {
+            (e.region == "any" ? any : local).push_back(&e);
+        }
+    }
+    auto byId = [](const Entry* a, const Entry* b) { return a->id < b->id; };
+    std::sort(any.begin(), any.end(), byId);
+    std::sort(local.begin(), local.end(), byId);
+    std::vector<const Entry*> pool;
+    for (const auto* e : local) {
+        if (!region.empty() && e->region == region) pool.push_back(e);
+    }
+    if (pool.empty()) pool = any;
+    if (pool.empty()) pool = local;
+    return pool.empty() ? selector.substr(selector.find(':') + 1) : pool[seed % pool.size()]->id;
 }
 
 std::vector<std::string> Library::Missing() {
@@ -803,8 +841,8 @@ Mat Masonry(Library& lib, const Palette& pal, const Params& p, int W, int H, uin
         m[i] = Aa(inner[i], 1.3f * s);
     }
     // CC0 surfaces: per-cell random window of the face set, the mortar set tiled
-    auto F = lib.Get(p.Str("face", "rock050"), W);
-    auto G = lib.Get(p.Str("gap_set", "concrete034"), W);
+    auto F = lib.Get(lib.Resolve(p.Str("face", "rock050"), (uint32_t)seed), W);
+    auto G = lib.Get(lib.Resolve(p.Str("gap_set", "concrete034"), (uint32_t)seed + 1), W);
     const int S = W;
     std::vector<float> off0(ncell), off1(ncell), rc(ncell), rt1(ncell);
     for (int c = 0; c < ncell; ++c) {
@@ -895,7 +933,7 @@ Mat Masonry(Library& lib, const Palette& pal, const Params& p, int W, int H, uin
         roughF[i] = std::clamp(Mix(gr[i] * .3f + .72f, fr[i] * .5f + .5f, m[i]) - te * te * te * .15f * m[i] + grime * .06f * stk[i], .25f, 1.f);
     }
     if (moss > 0) {
-        auto MS = lib.Get(p.Str("moss_set", "moss002"), W);
+        auto MS = lib.Get(lib.Resolve(p.Str("moss_set", "moss002"), (uint32_t)seed), W);
         Field cav(N), shade(N);
         for (size_t i = 0; i < N; ++i) {
             cav[i] = Smooth(std::exp(-std::max(inner[i], 0.f) / (bv * 1.6f)) + stk[i] * .5f, .3f, 1.f);
@@ -1017,7 +1055,7 @@ Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint
     const float rough0 = (float)p.Get("rough0", .55), rough1 = (float)p.Get("rough1", 1.0), toneShift = (float)p.Get("tone_shift", 0.);
     const float macro = (float)p.Get("macro", 0.), macroSize = (float)p.Get("macro_size", 110.);
     const size_t N = (size_t)W * H;
-    auto Sf = lib.Get(p.Str("set", "rock030"), std::max(16, std::max(W, H) / k));
+    auto Sf = lib.Get(lib.Resolve(p.Str("set", "rock030"), (uint32_t)seed), std::max(16, std::max(W, H) / k));
     const int px = Sf->px;
     int r0 = 0, r1 = px;
     if (planks) {
@@ -1100,7 +1138,7 @@ Mat Direct(Library& lib, const Palette& pal, const Params& p, int W, int H, uint
         out.rough[i] = std::clamp(rg[i] * (rough1 - rough0) + rough0 - wear * .08f * Smooth(-cav[i], .8f, 2.5f), .2f, 1.f);
     }
     if (moss > 0) {
-        auto MS = lib.Get(p.Str("moss_set", "moss002"), W);
+        auto MS = lib.Get(lib.Resolve(p.Str("moss_set", "moss002"), (uint32_t)seed), W);
         Field mcav(N);
         for (size_t i = 0; i < N; ++i) {
             mcav[i] = Smooth(cav[i], .2f, 2.0f);
@@ -1138,6 +1176,62 @@ bool Generate(const std::string& gen, Library& lib, const Palette& pal, const Pa
         return false;
     }
     return true;
+}
+
+namespace {
+float CircAc(const std::vector<float>& p, double lag) {
+    const int n = (int)p.size();
+    double mean = 0;
+    for (float v : p) mean += v;
+    mean /= n;
+    const int i0 = (int)std::floor(lag);
+    const double f = lag - i0;
+    double num = 0, den = 1e-9;
+    for (int i = 0; i < n; ++i) {
+        const double a = p[i] - mean, b = (1 - f) * (p[(i + i0) % n] - mean) + f * (p[(i + i0 + 1) % n] - mean);
+        num += a * b;
+        den += a * a;
+    }
+    return (float)(num / den);
+}
+// Number of repeats in a periodic profile: the largest R (smallest period) whose autocorrelation is within 85% of the best.
+int CountRepeats(const std::vector<float>& p, float& score) {
+    const int n = (int)p.size();
+    std::vector<std::pair<int, float>> s;
+    float best = 0;
+    for (int R = 2; R <= 16 && n / (double)R >= 3; ++R) {
+        const float v = CircAc(p, n / (double)R);
+        s.push_back({ R, v });
+        best = std::max(best, v);
+    }
+    score = std::max(best, 0.f);
+    int pick = 1;
+    for (const auto& [R, v] : s) {
+        if (v >= .85f * best && v > .15f) pick = R;
+    }
+    return pick;
+}
+} // namespace
+
+Layout MeasureLayout(const std::vector<float>& Y, int w, int h) {
+    Layout L;
+    std::vector<float> er(h, 0.f);
+    for (int y = 0; y < h; ++y) {
+        double a = 0;
+        for (int x = 0; x < w; ++x) a += std::fabs(Y[(size_t)y * w + x] - Y[(size_t)((y + h - 1) % h) * w + x]);
+        er[y] = (float)(a / w);
+    }
+    L.rows = CountRepeats(er, L.rowScore);
+    // columns inside the first course only: staggered joints of the other courses would double the frequency
+    const int y1 = std::max(3, h / L.rows - 1);
+    std::vector<float> ec(w, 0.f);
+    for (int x = 0; x < w; ++x) {
+        double a = 0;
+        for (int y = 1; y < std::min(y1, h); ++y) a += std::fabs(Y[(size_t)y * w + x] - Y[(size_t)y * w + (x + w - 1) % w]);
+        ec[x] = (float)(a / std::max(1, std::min(y1, h) - 1));
+    }
+    L.cols = CountRepeats(ec, L.colScore);
+    return L;
 }
 
 Encoded Encode(const Mat& m) {

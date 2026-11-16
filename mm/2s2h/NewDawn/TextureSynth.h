@@ -47,13 +47,23 @@ struct Surface {
 // Loads <dir>/<id>.{albedo,normal,rough,height}.jpg lazily, thread safe, one Surface per (id, px).
 class Library {
   public:
-    explicit Library(std::string dir) : mDir(std::move(dir)) {}
+    // One manifest entry (assets/newdawn/materials/manifest.json): the library grows by adding entries, not code.
+    struct Entry {
+        std::string id, cls, region = "any";
+        std::vector<std::string> roles;
+    };
+    explicit Library(std::string dir, std::vector<Entry> entries = {}) : mDir(std::move(dir)), mEntries(std::move(entries)) {}
+    // "role:face" / "class:rock" pick one material of the manifest by seed (a region match first, then "any"); a plain id
+    // is returned as it is.
+    std::string Resolve(const std::string& selector, uint32_t seed, const std::string& region = "") const;
     // Never returns null: a missing material is replaced by a neutral grey surface (and reported once via Missing()).
     std::shared_ptr<const Surface> Get(const std::string& id, int px);
     std::vector<std::string> Missing();
 
   private:
+    static constexpr size_t kBudgetBytes = 768ull << 20;
     std::string mDir;
+    std::vector<Entry> mEntries;
     std::mutex mMutex;
     std::unordered_map<std::string, std::shared_ptr<const Surface>> mCache;
     std::vector<std::string> mMissing;
@@ -66,6 +76,14 @@ struct Mat {
     Field alb, height, rough, normal;
     float relief = .3f, nstrength = .8f;
 };
+
+// Periodicity of an original texture (luminance, w*h): rows and columns of bricks or boards by circular autocorrelation of
+// the edge profiles. The scores are 0..1; callers use the counts only above a score of about .5 (rows) and .25 (columns).
+struct Layout {
+    int rows = 1, cols = 1;
+    float rowScore = 0, colScore = 0;
+};
+Layout MeasureLayout(const std::vector<float>& luminance, int w, int h);
 
 // gen: "masonry" (brick, ashlar, cobble layouts) or "direct" (one CC0 set tiled onto the tile). Returns false on bad input.
 bool Generate(const std::string& gen, Library& lib, const Palette& pal, const Params& p, int w, int h, uint32_t seed, Mat& out);

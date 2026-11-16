@@ -14,6 +14,7 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -278,19 +279,25 @@ struct Job {
     std::string face;
     bool stoch = false;
     std::string role = "base";
+    std::string measure; // "layout" (brick, ashlar), "planks": count the rows and columns on the original's pixels
+    bool hasRows = false, hasCols = false;
 };
 
 struct Data {
-    json recipes, textures;
+    json recipes, textures, classification, scale, layers; // classification, scale, layers: optional
     std::string libraryManifest;
     uint64_t hash = 0;
 };
 
 bool LoadData(Data& data, std::string& error) {
     data.hash = 14695981039346656037ULL;
-    auto load = [&](const char* name, json& dest) {
+    auto load = [&](const char* name, json& dest, bool optional = false) {
         auto file = Archives()->LoadFile(std::string(kDataDir) + name);
         if (!file || !file->Buffer) {
+            if (optional) {
+                dest = json::object();
+                return true;
+            }
             error = std::string("missing ") + kDataDir + name + " in 2ship.o2r (regenerate 2ship.o2r)";
             return false;
         }
@@ -302,7 +309,9 @@ bool LoadData(Data& data, std::string& error) {
         }
         return true;
     };
-    if (!load("recipes.json", data.recipes) || !load("textures.json", data.textures)) {
+    if (!load("recipes.json", data.recipes) || !load("textures.json", data.textures) ||
+        !load("classification.json", data.classification, true) || !load("scale.json", data.scale, true) ||
+        !load("layers.json", data.layers, true)) {
         return false;
     }
     std::ifstream in(LibraryDir() / "manifest.json", std::ios::binary);
@@ -315,9 +324,11 @@ bool LoadData(Data& data, std::string& error) {
     return true;
 }
 
-void Flatten(const json& src, NewDawnSynth::Params& out) { // arrays of two numbers (tone, trange, rough) become key0/key1
+void Flatten(const json& src, NewDawnSynth::Params& out, uint32_t seed) { // arrays of two numbers (tone, trange, rough) become key0/key1
     for (auto it = src.begin(); it != src.end(); ++it) {
-        if (it->is_number()) {
+        if (it->is_array() && !it->empty() && (*it)[0].is_string()) { // a list of material ids: one per texture, by seed
+            out.str[it.key()] = (*it)[seed % it->size()].get<std::string>();
+        } else if (it->is_number()) {
             out.num[it.key()] = it->get<double>();
         } else if (it->is_boolean()) {
             out.num[it.key()] = it->get<bool>() ? 1 : 0;
@@ -330,42 +341,113 @@ void Flatten(const json& src, NewDawnSynth::Params& out) { // arrays of two numb
     }
 }
 
+uint32_t NameSeed(const std::string& s) {
+    return (uint32_t)(Fnv1a(s.data(), s.size()) & 0x7fffffffu);
+}
+
+bool InScope(const json& scopes, const std::string& resource) {
+    for (const auto& sc : scopes) {
+        if (resource.rfind(sc.get<std::string>(), 0) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Hand-tuned entries (textures.json) first, then every other replaceable texture of the classification
+// (class and confidence from classification.json, UV area from scale.json for the tier, roles from layers.json).
 void BuildJobs(const Data& data, std::vector<Job>& jobs) {
     const json& classes = data.recipes.value("classes", json::object());
     const json& tiers = data.recipes.value("tiers", json::object());
     const int hero = std::clamp(CVarGetInteger("gNewDawn.Textures.HeroSize", tiers.value("hero", 1024)), 128, 2048);
     const int rest = std::clamp(CVarGetInteger("gNewDawn.Textures.RestSize", tiers.value("rest", 512)), 64, hero);
-    for (auto it = data.textures["textures"].begin(); it != data.textures["textures"].end(); ++it) {
-        const json& e = it.value();
-        Job j;
-        j.resource = it.key();
-        j.palette = e.value("palette", "");
-        j.seed = e.value("seed", 1);
-        j.tier = e.value("tier", "hero") == "hero" ? hero : rest;
-        std::string gen = e.value("gen", "");
-        bool stoch = e.value("stoch", false);
-        json p = json::object();
-        const std::string cls = e.value("class", "");
-        if (classes.contains(cls)) {
-            const json& c = classes[cls];
-            gen = gen.empty() ? c.value("gen", "") : gen;
-            stoch = e.contains("stoch") ? stoch : c.value("stoch", false);
-            if (c.contains("p")) {
-                p.update(c["p"]);
+    const size_t heroCount = (size_t)std::max(0, CVarGetInteger("gNewDawn.Textures.HeroCount", tiers.value("hero_count", 450)));
+
+    std::unordered_map<std::string, std::string> roles; // detail only if it is a detail in every pair it is part of
+    if (data.layers.contains("pairs")) {
+        std::unordered_map<std::string, bool> isBase;
+        for (const auto& pr : data.layers["pairs"]) {
+            const auto& ro = pr["roles"];
+            const std::string rs[2] = { ro[0].get<std::string>(), ro[1].get<std::string>() };
+            const std::string names[2] = { pr["a"].get<std::string>(), pr["b"].get<std::string>() };
+            for (int i = 0; i < 2; ++i) {
+                if (rs[i] == "detail") {
+                    roles.emplace(names[i], "detail");
+                } else if (rs[i] == "base" || rs[i] == "alt") {
+                    isBase[names[i]] = true;
+                }
             }
         }
-        if (e.contains("p")) {
-            p.update(e["p"]);
+        for (const auto& [n, _] : isBase) {
+            roles.erase(n);
         }
-        if (gen.empty()) {
-            continue;
+    }
+
+    auto addJob = [&](const std::string& resource, const json& entry, const std::string& cls, const std::string& pal, int tier) {
+        if (!classes.contains(cls)) {
+            return;
         }
-        j.gen = gen;
-        j.stoch = stoch;
-        j.role = e.value("role", "base");
-        Flatten(p, j.params);
+        Job j;
+        j.resource = resource;
+        j.palette = pal;
+        j.seed = entry.value("seed", NameSeed(resource));
+        j.tier = tier;
+        const json& c = classes[cls];
+        j.gen = entry.value("gen", c.value("gen", ""));
+        j.stoch = entry.contains("stoch") ? entry.value("stoch", false) : c.value("stoch", false);
+        j.measure = c.value("measure", "");
+        auto r = roles.find(resource);
+        j.role = entry.value("role", r != roles.end() ? r->second : "base");
+        json p = json::object();
+        if (c.contains("p")) {
+            p.update(c["p"]);
+        }
+        if (entry.contains("p")) {
+            p.update(entry["p"]);
+        }
+        j.hasRows = p.contains("rows") && entry.contains("p") && entry["p"].contains("rows");
+        j.hasCols = p.contains("cols") && entry.contains("p") && entry["p"].contains("cols");
+        if (j.gen.empty()) {
+            return;
+        }
+        Flatten(p, j.params, j.seed);
         j.face = j.params.Str("face", j.params.Str("set", "").c_str());
         jobs.push_back(std::move(j));
+    };
+
+    std::unordered_set<std::string> explicitSet;
+    for (auto it = data.textures["textures"].begin(); it != data.textures["textures"].end(); ++it) {
+        const json& e = it.value();
+        explicitSet.insert(it.key());
+        addJob(it.key(), e, e.value("class", ""), e.value("palette", ""), e.value("tier", "hero") == "hero" ? hero : rest);
+    }
+
+    if (data.classification.contains("textures") && data.recipes.contains("class_map")) {
+        const json& cmap = data.recipes["class_map"];
+        const json& scopes = data.recipes.value("scopes", json::array());
+        const double minConf = data.recipes.value("min_conf", 0.6);
+        struct Cand {
+            std::string resource, cls, pal;
+            double area;
+        };
+        std::vector<Cand> cands;
+        for (auto it = data.classification["textures"].begin(); it != data.classification["textures"].end(); ++it) {
+            const json& e = it.value();
+            if (explicitSet.count(it.key()) || e.value("conf", 0.0) < minConf || !cmap.contains(e.value("class", "")) ||
+                !InScope(scopes, it.key())) {
+                continue;
+            }
+            double area = 0;
+            if (data.scale.contains("textures") && data.scale["textures"].contains(it.key())) {
+                area = data.scale["textures"][it.key()].value("area", 0.0);
+            }
+            cands.push_back({ it.key(), cmap[e["class"].get<std::string>()].get<std::string>(), e.value("pal", ""), area });
+        }
+        // the tier follows the surface area the texture covers in the game: the biggest get the large size
+        std::stable_sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.area > b.area; });
+        for (size_t i = 0; i < cands.size(); ++i) {
+            addJob(cands[i].resource, json::object(), cands[i].cls, cands[i].pal, i < heroCount ? hero : rest);
+        }
     }
     // group by size, then by the material they read, so the library surfaces in memory are reused back to back
     std::stable_sort(jobs.begin(), jobs.end(), [](const Job& a, const Job& b) {
@@ -465,11 +547,25 @@ void RunJob(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip,
         ++out.fallbackPalette;
     }
     const NewDawnSynth::Palette pal = NewDawnSynth::Palette::FromRgba(o.rgba.data(), (size_t)o.w * o.h);
+    NewDawnSynth::Params params = job.params;
+    if (!job.measure.empty()) { // counts of courses and boards, measured on the player's own pixels (hand-set values win)
+        std::vector<float> Y((size_t)o.w * o.h);
+        for (size_t i = 0; i < Y.size(); ++i) {
+            Y[i] = (o.rgba[i * 4] * .299f + o.rgba[i * 4 + 1] * .587f + o.rgba[i * 4 + 2] * .114f) / 255.f;
+        }
+        const NewDawnSynth::Layout L = NewDawnSynth::MeasureLayout(Y, (int)o.w, (int)o.h);
+        if (job.measure == "layout") {
+            if (!job.hasRows && L.rowScore >= .5f) params.num["rows"] = L.rows;
+            if (!job.hasCols && L.colScore >= .25f) params.num["cols"] = L.cols;
+        } else if (job.measure == "planks" && L.rowScore >= .2f && L.rows >= 2) {
+            params.num["planks"] = L.rows; // horizontal boards: the rows of the original
+        }
+    }
     // long side = tier size, original aspect (all N64 sizes are powers of two)
     const double k = (double)job.tier / std::max(o.w, o.h);
     const int W = std::max(64, (int)std::lround(o.w * k) & ~1), H = std::max(64, (int)std::lround(o.h * k) & ~1);
     NewDawnSynth::Mat mat;
-    if (!NewDawnSynth::Generate(job.gen, lib, pal, job.params, W, H, job.seed, mat)) {
+    if (!NewDawnSynth::Generate(job.gen, lib, pal, params, W, H, job.seed, mat)) {
         ++out.unusable;
         return;
     }
@@ -534,7 +630,21 @@ void Generate(bool boot) {
         const unsigned hw = std::max(1u, std::thread::hardware_concurrency());
         const unsigned threads = std::clamp(boot ? hw : std::max(1u, hw / 2), 1u, boot ? 8u : 4u);
         SPDLOG_INFO("NewDawn textures: {} textures on {} threads", jobs.size(), threads);
-        NewDawnSynth::Library lib((LibraryDir()).generic_string());
+        std::vector<NewDawnSynth::Library::Entry> entries;
+        const json manifest = json::parse(data.libraryManifest, nullptr, false);
+        if (manifest.is_object() && manifest.contains("materials")) {
+            for (const auto& m : manifest["materials"]) {
+                NewDawnSynth::Library::Entry e;
+                e.id = m.value("id", "");
+                e.cls = m.value("class", "");
+                e.region = m.value("region", "any");
+                for (const auto& r : m.value("roles", json::array())) {
+                    e.roles.push_back(r.get<std::string>());
+                }
+                entries.push_back(std::move(e));
+            }
+        }
+        NewDawnSynth::Library lib(LibraryDir().generic_string(), std::move(entries));
         Outcome out;
         std::atomic<size_t> next{ 0 };
         std::vector<std::thread> pool;
