@@ -211,6 +211,21 @@ Caveats of this metric: it includes actor and camera drift between two runs (the
 * The first unlit version rendered black room geometry: the vertex template used `@elseif`, which produced no `main`. Found by logging the program's link error.
 * The first 3DS acceptance rule (aspect, 2x to 4x, mean colour) let two wrong textures through (a banner whose emblem sits on another flag, and a cut-out post that became an opaque wood rectangle). Fixed by requiring an opaque original and a coarse 8x8 colour layout test; of the 15 candidates now exactly the 3 correct ones pass. The rule is tuned on those 15 and could overfit; it is deliberately conservative.
 * Moss class: the moss set alone looked like fur on vertical rock; the class is now rock with moss growth. Grass base: mud sets with ripples looked scalloped, and photo colour leaked through the chroma term (olive swamp ground); now fine grass and dirt sets with low chroma. The swamp ground is soft by design and blander than the native mottling.
-* Recipe or algorithm changes must bump `kVersion` (a cached archive was reused once after a rule change).
+* Recipe or algorithm changes used to need a manual `kVersion` bump (a cached archive was reused once after a rule change); since milestone 3 the version is a hash of the generator's sources.
 * Frames of `Southern Swamp` and `Woodfall Temple` were recaptured after the grass/moss/chroma changes; the other scenes' frames predate them (only the grass, mud and moss classes changed; their textures are hidden or minor there).
 * The 3DS-sourced textures (3, all in the Stock Pot Inn: the hexagon floor and the floral wallpaper) were checked as extracted pairs (`unique_3ds_sources.png`); they are not in any captured view.
+
+## Milestone 3
+
+**Cache safety.** `mm/CMakeLists.txt` hashes the generator's sources (`RuntimeTextures`, `TextureSynth`, `UniqueArt`, `SpanUpscale`, `Mm3dFormats`, `ZipWriter`, line endings normalised) at configure time; the files are
+configure dependencies, so editing one re-runs CMake, and only `RuntimeTextures.cpp` is recompiled with `NEWDAWN_TEXTURE_LOGIC_HASH`. The stamp's `version` is `logic-<hash>`; the data files (`recipes.json`, tables), the library manifest, the SPAN
+weights, the `mm.o2r` archive, the tier cvars and the unique-art settings were already part of the signature. A stale cache cannot be reused after any change of logic or data.
+
+**Unique art everywhere.** `recipes.json:unique.scenes` is `"all"`: 1,427 textures of 100 scenes are upscaled (64 left native: several palettes, intensity textures, undecodable), 52.8 s and 1.1 GB for the whole generation on 8 threads.
+**The 3DS acceptance rule failed a fresh sample.** Run over all 780 confident matches with a decodable pair it accepts 40 pairs from 17 scenes (the 3 Inn pairs plus 37 fresh ones). By eye: 13 clearly the same art, 14 clearly wrong (atlas pieces, a flat or noisy 3DS
+texture over structured art, flowers turned into plain tile, a symbol turned into a plate), 13 the same kind of surface but not the same art. No pixel measure separated them (colour distance, 8x8 layout, normalised correlation at 16 px and at full size, high-pass correlation,
+contrast ratio, black or transparent area: the 3DS textures are redrawn, so even correct pairs correlate near zero). So the rule cannot be validated automatically, and a 3DS texture is now used only for the **13 hand-verified pairs** listed in `recipes.json:unique.mm3d_verified`
+(and only when the rule also accepts them). `gNewDawn.Textures.Unique3ds`: 0 off, 1 verified pairs (default), 2 every rule-accepted pair (experimental; about half of those are wrong).
+
+**North Clock Town capture.** The point `north_clock_town` (entrance 0xd600, spawn 0 of Z2_BACKTOWN) boots with `gNewDawn.Debug.BootClockTownVisited=1` (capture/debug only, `WarpPoint.cpp`), which sets the three Clock Town entrance-cutscene flags the intro-skip enhancement also sets.
+The earlier attempt reloaded the scene in a loop (first-arrival cutscene, and a spawn position of (0,0,0), outside the mesh).

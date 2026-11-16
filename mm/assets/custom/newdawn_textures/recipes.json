@@ -90,7 +90,10 @@
     "set": "ground079s",
     "macro": 0.1,
     "contrast": 1.1,
-    "native_mottle": 0.5
+    "native_mottle": 0.5,
+    "relief": 11,
+    "nstrength": 1.0,
+    "hf": 0.8
    },
    "stoch": true
   },
@@ -98,8 +101,9 @@
    "gen": "direct",
    "p": {
     "set": "rock030",
-    "contrast": 1.15,
-    "hf": 1.0
+    "contrast": 1.0,
+    "hf": 1.0,
+    "relief": 14
    },
    "stoch": true
   },
@@ -115,9 +119,11 @@
    "gen": "direct",
    "p": {
     "set": "ground097",
-    "contrast": 1.0,
-    "hf": 1.0,
-    "native_mottle": 0.3
+    "contrast": 0.8,
+    "hf": 0.6,
+    "native_mottle": 0.3,
+    "relief": 7,
+    "nstrength": 0.7
    }
   },
   "a_brick": {
@@ -232,17 +238,22 @@
     "set": "class:dirt",
     "macro": 0.1,
     "contrast": 1.1,
-    "native_mottle": 0.5
+    "native_mottle": 0.5,
+    "relief": 11,
+    "nstrength": 1.0,
+    "hf": 0.8
    },
    "world_m": 2.0
   },
   "a_sand": {
    "gen": "direct",
    "p": {
-    "set": "class:sand",
-    "contrast": 1.0,
-    "hf": 1.0,
-    "native_mottle": 0.3
+    "set": "role:sand",
+    "contrast": 0.8,
+    "hf": 0.6,
+    "native_mottle": 0.3,
+    "relief": 7,
+    "nstrength": 0.7
    },
    "world_m": 2.0
   },
@@ -254,7 +265,9 @@
     "macro": 0.12,
     "contrast": 1.0,
     "chroma": 0.1,
-    "native_mottle": 0.6
+    "native_mottle": 0.6,
+    "relief": 9,
+    "nstrength": 0.9
    },
    "world_m": 2.0
   },
@@ -263,9 +276,10 @@
    "stoch": true,
    "p": {
     "set": "role:rock",
-    "contrast": 1.15,
+    "contrast": 1.0,
     "hf": 1.0,
-    "native_mottle": 0.25
+    "native_mottle": 0.25,
+    "relief": 14
    },
    "world_m": 3.0
   },
