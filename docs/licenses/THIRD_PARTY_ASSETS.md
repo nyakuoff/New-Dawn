@@ -20,6 +20,16 @@ None of it comes from the game. Total size: about 8.2 MB.
 | `nightsky/stars.bin` | night stars | David Nash, HYG Database v4.1, https://github.com/astronexus/HYG-Database (from Hipparcos, Yale Bright Star, Gliese) | **CC BY-SA 4.0**; this derivative is under the same licence | filtered to magnitude <= 6.9, colour from B-V, binary packed |
 | `nightsky/milkyway_eq.jpg`, `.txt` | Milky Way | NASA/GSFC Scientific Visualization Studio, "Deep Star Maps 2020" (SVS 4851), https://svs.gsfc.nasa.gov/4851; Gaia DR2: ESA/Gaia/DPAC; animator Ernie Wright | NASA media: not copyrighted, credit requested; Gaia DR2 **CC BY-SA 3.0 IGO**, so this derivative is distributed under CC BY-SA 3.0 IGO | stars despiked, galactic 8192x4096 resampled to equatorial 4096x2048, cube-root 8-bit JPEG (q95) |
 
+## Texture library (ND-016): catalog only, files not yet committed
+`tools/newdawn/texlib/` lists CC0 / MIT PBR materials (ambientCG, Poly Haven, TextureCan, AMD GPUOpen MaterialX) that the
+texture pipeline may ship. The image files are **not** in the repository yet: the engine picks the final set and commits it
+with a `MANIFEST.md`. Per-asset rows for the 100 shortlisted materials, with page, licence and SHA-256, are in
+[`TEXLIB_CREDITS.md`](TEXLIB_CREDITS.md). Licence evidence per source is in `texlib/` (page snapshots, fetched 2026-11-16),
+and the verdict for every source checked (including the excluded ones) is in `tools/newdawn/texlib/SOURCES.md`.
+- ambientCG, Poly Haven, TextureCan: CC0 (credit given anyway).
+- AMD GPUOpen MaterialX Library: **MIT**, so the copyright notice must ship with any material used (see `TEXLIB_CREDITS.md`).
+- Excluded for not explicitly allowing redistribution: FreePBR, Poliigon, colormass, Adobe Substance Community Assets, PolyScan, ShareTextures, LotPixel, CGAxis, Texture.ninja, BlenderKit "Royalty Free" items.
+
 ## Required credit lines
 - **Stars:** HYG Database by David Nash (astronexus.com), CC BY-SA 4.0.
 - **Milky Way:** NASA/Goddard Space Flight Center Scientific Visualization Studio. Gaia DR2: ESA/Gaia/DPAC (CC BY-SA 3.0 IGO).
