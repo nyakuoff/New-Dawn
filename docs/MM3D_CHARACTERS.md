@@ -58,13 +58,13 @@ The 3DS combiner multiplies the texture by the fragment-lighting term
 `ambient * 0.4 + diffuse * 0.5 * N.L` (material constants 102 and 127 on nearly every character); the N64 display lists
 multiply by the actor's full light. The same texture therefore came out about half as bright and flat. The material
 constants are folded into the texture when it is converted: `gain = LightRef / (0.6 * diffuse + 0.4 * ambient)`, then
-a saturation lift. `gNewDawn.MM3D.LightRef` (0.6) and `gNewDawn.MM3D.Saturation` (1.35) are tunables and part of the
+a saturation lift. `gNewDawn.MM3D.LightRef` (0.55) and `gNewDawn.MM3D.Saturation` (1.15); a model whose palette is already strong carries its own values in the table (`COLOUR` in `chartable.py`: the guard 0.5 / 1.0, the receptionist 0.55 / 1.05) are tunables and part of the
 signature. Specular sphere maps (`sp_*` textures) and other second texture units are not mapped.
 
 Art direction (maintainer, 2026-11-16): characters are colourful and tactile against a darker world, so the defaults
 lean saturated rather than faithful to the 3DS palette. The study images (`~/dev/ghm-mods/showcase/mm3d-characters/
 colour_*_study.png`) compare LightRef 0.5 to 0.8 and saturation 1.1 to 1.55 on the guard, Anju and the receptionist:
-1.35 keeps skin and hair vivid without clipping; 1.55 turns the guard's skin and Anju's hair garish.
+1.35 looked vivid on Anju but made the guard's skin and trim and the receptionist's face garish (maintainer review, 2026-11-16), so the default is 1.15 with per-model overrides; 1.55 is garish everywhere.
 
 ## Textures
 The 3DS character textures are 128x128 atlases (faces and hair 32x32), against 1024x1024 in the community pack for the
@@ -101,12 +101,13 @@ Implemented, built (RelWithDebInfo, `nd-heavy build`) and run in game.
 
 | | |
 |---|---|
-| Skeletons in the table | 58 Flex skeletons with a hierarchy identical to a CMB of the same-named 3DS archive (`chartable.py`) |
-| Converted / failed | **58 / 0** (every CMB parses, binds and writes) |
+| Skeletons in the table | 53: 49 with a hierarchy identical to a CMB of the same-named 3DS archive (58 matched, 9 excluded) and 4 paired by a rig recipe (`chartable.py`) |
+| Converted / failed | **53 / 0** (every CMB parses, binds and writes) |
 | Conversion time | **0.03 s** for all 58 without the texture upscale; **1.0 s** with it for the 4 enabled models (20 threads, includes reading the GARs and the N64 skeletons; 51,078 triangles, 154 textures, 9,114 triangles span a joint) |
 | Cache | 2.4 MB for the 4 enabled models with the 512 px textures (173 KB before the upscale) |
-| Enabled in game (reviewed) | **4**: Clock Town guard, Anju, Mayor's Residence receptionist, Business Scrub |
-| Held back (converted, not enabled) | 54, until each has been looked at in game |
+| Enabled in game (reviewed) | **6**: Clock Town guard, Anju, Mayor's Residence receptionist, Business Scrub, Treasure Chest Shop gal, the tree climber in Termina Field |
+| Unreviewed (converted, off unless "Include unreviewed 3DS models (experimental)" is on) | 47, see "Review of the held-back models" |
+| Excluded (not converted at all) | 9 skeletons, `EXCLUDE` in `chartable.py` |
 | Off identity | toggle off with the cache mounted, and no dump at all: frozen Stock Pot Inn (clock 12, frame 30, the extended off list) is **pixel-identical** (0 differing pixels) to main `85fbd4fd4`, which itself reproduces exactly run to run |
 | GL errors | 0 in every capture (`MESA_DEBUG=context`) |
 
@@ -123,13 +124,62 @@ enemies. What could be verified:
 | Receptionist (`object_bg`, Mayor's Residence) | in game; face and blouse; her N64 actor draws with `SkelAnime_DrawTransformFlexOpa` and the flex matrices still line up |
 | Business Scrub (`object_dnt`) | in game in the Southern Swamp (the two frames caught different actor states, so only the model is comparable) |
 | Postman (`object_mm`), Mayor Dotour (`object_dt`) | convert fine; **no in-game capture**: the Postman was not where the scene's actor list put him in the three rooms tried, and the Mayor is not in his residence at 10:00 on day 1 |
-| Takkuri, Wolfos, Dinolfos, Big Octo, dog | convert fine; **no usable in-game capture** (a flying Takkuri and the Snowhead Wolfos never entered the frame; the Octo renders translucent in poison water and was held back). Needs an actor-aware capture fixture (aim at the live actor), milestone 2 |
+| Treasure Chest Shop gal (`object_bg`, `gTreasureChestShopGalSkel`) | in game; purple hair and pink top kept. The archive holds two CMBs with this hierarchy (`reception_girl`, `treasure_girl`); the table now picks per skeleton (`CMB` in `chartable.py`), which a first capture showed was needed (she came out with the receptionist's green hair) |
+| Tree climber (`object_ani`, Termina Field) | in game, same frame as N64; body, hair and clothes line up |
+| Takkuri, Wolfos, Dinolfos, dog | convert fine; no usable in-game view (the dog was hidden behind Link, the flying Takkuri and the Snowhead Wolfos stayed out of frame) |
+| Big Octo | **rejected in game**: the 3DS mesh draws translucent and a different shape in the poison-water room |
 | Kafei, Romani, Cremia, Bombers | **no match**: their 3DS rigs differ from the N64 ones (Romani 22 vs 25 bones with different offsets, Cremia 21 vs 23, the Bombers 20 vs 17, no Kafei CMB found by name). They need the leaf and contraction reduction plus per-limb registration (milestone 2) |
 
 Offline joint checks (software render of the same N64 animations, `ref/measure.py` from the spike; flex-weld has no seam by
 construction): guard (idle, wave, come-up-here), Anju (walk, idle, bow), receptionist (her idle) and the Business Scrub
 (excited, jump, bob). Flex displacement from true weighted skinning: mean 5 to 17 units, p95 41 to 112; triangle stretch p99
 1.95 to 3.4x, worst 7.5x (scrub, excited). Rigid-per-limb seam gaps for comparison: mean 94 to 238 units.
+
+### Review of the held-back models (milestone 2)
+The Graphics menu option "Include unreviewed 3DS models (experimental)" (`gNewDawn.MM3D.ReviewAll`, default off, applied on
+the next launch or Convert) also writes the 47 models that have not been checked in game, so they can be reviewed while
+playing; the default stays the 6 `reviewed` rows of the table. Checked at boot: off 6 enabled, on 53, off again 6. A scan of 25 scenes with it on found live actors for 13 of
+the 50 objects (guard, Anju, receptionist/treasure gal, scrub, dog, tree climber, Postman, tied monkey, Big Octo, Real
+Bombchu, Takkuri, Snowhead Wolfos, balloon Poe); the other 37 objects only appear in cutscenes, at other times of day or in
+rooms the fixture did not reach. The bind-pose gallery of all 58 (flat colour, front and side) gave these offline verdicts:
+- Same CMB for a variant that looks different: both Pamela's father skeletons use one human CMB, so the Gibdo form would
+  turn into a human; the Great Fairy has five colour CMBs for one skeleton; White Wolfos and the Garo pair needed their
+  own CMB (now picked). 
+- Not a plausible stand-in: Deku Princess (a flower on a stalk), Biodeku lily pad (a flat red hexagon), Big Octo.
+- Props baked into the CMB, not yet excluded: Iron Knuckle axe, the witch sisters' brooms, Wizzrobe staff, the pirate spear.
+- The Postman (`En_Pm`, post office) rendered identically in both modes; the cause was not determined, so `object_mm` stays off.
+Everything else is plausible offline but unseen in game, so it is only in the experimental option.
+
+Excluded from the table (never converted, even with the option on): Big Octo, Pamela's father as a Gibdo, Deku Princess,
+Biodeku lily pad, Postman, Iron Knuckle and Takkuri (both keep `*dList` of a limb and draw it later as flying armour or
+death pieces, outside the Flex matrix pool the flex-weld display lists read), the pirate (his weapons were not compared
+with the N64 swords) and the Great Fairy (one skeleton, five colour models; the model cannot follow her param).
+Props: the witches' brooms, the Wizzrobe staff, the pirate weapons and the Iron Knuckle axe are limbs of the N64 skeleton
+too (`KOUME_LIMB_BROOM`, `WIZROBE_LIMB_STAFF`, `IRON_KNUCKLE_LIMB_AXE`), so the matched bones drive them and nothing
+doubles; the only separately drawn prop found is Koume's potion bottle (`gKoumeBottleDL`), now in her `SKIP` list.
+
+### Rig reduction (milestone 2)
+Kafei, Romani, Cremia and the Bombers do not match an N64 hierarchy: the 3DS rigs have clavicles, split spines, a skirt of
+three bones, or a wrist and hand where the N64 has a pivot and two parts at the same joint. Their rows carry a rig recipe
+(`RIG` in `chartable.py`, "bone:limb" pairs, found from both trees and the joint offsets):
+- listed bones drive the paired limb; an unlisted 3DS bone follows its nearest listed ancestor (clavicles go to the torso,
+  the head's second bone to the first, the skirt chain to its first bone, the right wrist's pivot to the hand);
+- an unlisted N64 limb gets an empty display list (Dress2 to 4, the Bombers' spare head parts);
+- the rest shift of a bone is the N64 offset to its nearest listed ancestor limb (the unlisted pivots in between added up,
+  their rest rotation taken as identity) against the offset of the bone from the 3DS bone paired with that limb, both from
+  the world bind matrices.
+Stature: a rigged model is scaled uniformly about the origin so its root bone sits at the N64 root limb's rest height
+(Kafei 1.10, Romani 0.95, Cremia 1.02, Bombers 1.0); without it the feet float or sink by up to 220 units, since the N64
+animation places the root, not the feet.
+Pairing the skirt bones with the N64 dress limbs flared Cremia's skirt: the 3DS skirt bones carry rest rotations (up to
+0.77 rad) the N64 dress limbs do not, so those chains were folded into one bone. Everything in a recipe must share rest
+rotations with the limb it is paired with; a chain that does not has to be folded.
+
+In game, same-frame N64 vs 3DS (`showcase/mm3d-characters/review/`): **Romani** (walking, Romani Ranch), **Cremia**
+(milking, same scene) and a **Bomber** (East Clock Town) pose like the N64 model. **Kafei** converts (0 failures) but was
+not framed: the one scan scene with him (South Clock Town) is the intro cutscene, so he is unverified in game. All four stay
+in the experimental option. The five Bombers share one 3DS model (one hat), so with the option on they look alike, where the
+N64 gives each their own hat colour.
 
 ### Limits
 - Eye and mouth textures are static (see Faces). Props baked into a CMB are listed per skeleton (guard bottle, Anju's

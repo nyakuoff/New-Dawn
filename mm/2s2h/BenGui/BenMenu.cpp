@@ -581,6 +581,13 @@ static void RenderMm3dCharacters() {
                                 .DefaultValue(true)
                                 .Tooltip("Runs a small CC0 upscaler (PBRify SPAN) over the converted 3DS textures, 128 to 512 "
                                          "pixels. Takes a few seconds; applied on the next launch or Convert."));
+    UIWidgets::CVarCheckbox("Include unreviewed 3DS models (experimental)", "gNewDawn.MM3D.ReviewAll",
+                            UIWidgets::CheckboxOptions()
+                                .Color(UIWidgets::Colors::NewDawn)
+                                .DefaultValue(false)
+                                .Tooltip("Also converts the 3DS models that have not been checked in game yet (props, colours or "
+                                         "faces may be off; known broken ones stay excluded). Applied on the next launch or "
+                                         "Convert."));
     ImGui::TextWrapped("%s", NewDawnMm3d::StatusText().c_str());
     if (running && progress.total) {
         ImGui::ProgressBar((float)progress.done / (float)progress.total, ImVec2(-1.0f, 0.0f));

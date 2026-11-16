@@ -42,7 +42,7 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.1.0";
+constexpr const char* kConverterVersion = "1.2.0";
 
 struct Entry {
     const char* object;
@@ -51,6 +51,8 @@ struct Entry {
     const char* cmb; // GAR entry name
     const char* skip; // comma separated material indices of props the N64 draws elsewhere
     bool reviewed;
+    float lightRef, saturation; // colour overrides for this model, 0 = the global defaults
+    const char* rig;            // "bone:limb,..." when the 3DS rig differs from the N64 one (see ParseRig); "" = same hierarchy
 };
 const Entry kTable[] = {
 #include "Mm3dCharacterTable.inc"
@@ -135,6 +137,32 @@ std::set<int> ParseList(const char* s) {
     return out;
 }
 
+// "bone:limb,bone:limb": the pairs of a skeleton whose 3DS rig is not the N64 one. 3DS bones that are not listed follow
+// their nearest listed ancestor; N64 limbs that are not listed get an empty display list (docs/MM3D_CHARACTERS.md).
+std::map<int, int> ParseRig(const char* s) {
+    std::map<int, int> out;
+    int a = 0, b = 0;
+    bool second = false, any = false;
+    for (const char* p = s;; ++p) {
+        if (*p >= '0' && *p <= '9') {
+            (second ? b : a) = (second ? b : a) * 10 + (*p - '0');
+            any = true;
+        } else if (*p == ':') {
+            second = true;
+        } else {
+            if (any && second) {
+                out[a] = b;
+            }
+            a = b = 0;
+            second = any = false;
+            if (*p == 0) {
+                break;
+            }
+        }
+    }
+    return out;
+}
+
 // The upscaler weights ship with the game (assets/newdawn/mm3d/span_v4_4x.bin, CC0); gNewDawn.MM3D.Upscale=0 skips them.
 std::string UpscalerPath() {
     const char* root = CVarGetString("gNewDawn.Assets.Path", "assets/newdawn");
@@ -142,6 +170,11 @@ std::string UpscalerPath() {
 }
 bool UpscaleWanted() {
     return CVarGetInteger("gNewDawn.MM3D.Upscale", 1) != 0;
+}
+// "Include unreviewed 3DS models" (gNewDawn.MM3D.ReviewAll, off by default): also writes the models not yet reviewed in game.
+// The table leaves out the known broken ones, so they stay excluded.
+bool Enabled(const Entry& e) {
+    return e.reviewed || CVarGetInteger("gNewDawn.MM3D.ReviewAll", 0) != 0;
 }
 
 // ------------------------------------------------------------------ N64 skeleton (from the loaded game archives)
@@ -462,7 +495,7 @@ struct ColourParams {
     float lightRef, saturation;
 };
 ColourParams GetColourParams() {
-    return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.6f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.35f) };
+    return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.55f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.15f) };
 }
 
 void MapColour(Mm3d::Image& img, const Mm3d::Material& mat, const ColourParams& cp) {
@@ -547,18 +580,72 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
     try {
         std::string err;
         std::map<int, int> boneToLimb;
-        if (!MatchBones(limbs, model.bones, boneToLimb, err)) {
-            res.error = "bone match: " + err;
-            return res;
-        }
-        const std::map<int, int> slots = MatrixSlots(limbs);
+        const bool rigged = e.rig && e.rig[0];
         std::map<int, size_t> boneIndex;
         for (size_t i = 0; i < model.bones.size(); ++i) {
             boneIndex[model.bones[i].id] = i;
         }
+        if (rigged) {
+            boneToLimb = ParseRig(e.rig);
+            for (const auto& kv : boneToLimb) {
+                if (!boneIndex.count(kv.first) || kv.second < 0 || kv.second >= (int)limbs.size()) {
+                    res.error = "rig: bone " + std::to_string(kv.first) + " or limb " + std::to_string(kv.second) + " does not exist";
+                    return res;
+                }
+            }
+        } else if (!MatchBones(limbs, model.bones, boneToLimb, err)) {
+            res.error = "bone match: " + err;
+            return res;
+        }
+        const std::map<int, int> slots = MatrixSlots(limbs);
         std::map<int, int> limbToBone;
         for (const auto& kv : boneToLimb) {
             limbToBone[kv.second] = kv.first;
+        }
+        if (rigged && limbToBone.count(0)) {
+            // Stature: the N64 root limb sits at its rest height; scale the whole 3DS model about the origin so its root
+            // bone does too (the feet then stay on the floor and the head where the N64 one is).
+            const double rootHeight = model.bones[boneIndex[limbToBone[0]]].bind[7];
+            const double k = rootHeight > 1 && limbs[0].trans[1] > 1 ? limbs[0].trans[1] / rootHeight : 1.0;
+            if (std::fabs(k - 1.0) > 0.005) {
+                for (Mm3d::Bone& b : model.bones) {
+                    b.bind[3] *= k, b.bind[7] *= k, b.bind[11] *= k;
+                    for (int c = 0; c < 3; ++c) {
+                        b.translation[c] *= (float)k;
+                    }
+                }
+                for (Mm3d::Draw& dr : model.draws) {
+                    for (Mm3d::Vertex& v : dr.vertices) {
+                        for (int c = 0; c < 3; ++c) {
+                            v.pos[c] *= (float)k;
+                        }
+                    }
+                }
+            }
+        }
+        // Rigged: every 3DS bone follows its nearest listed ancestor (else a listed descendant, else the first listed bone).
+        std::map<int, int> resolved;
+        if (rigged) {
+            for (const Mm3d::Bone& b : model.bones) {
+                int cur = b.id;
+                while (cur >= 0 && !boneToLimb.count(cur)) {
+                    cur = model.bones[boneIndex[cur]].parent;
+                }
+                if (cur < 0) { // no listed ancestor: breadth-first below this bone
+                    std::vector<int> queue = { b.id };
+                    for (size_t qi = 0; qi < queue.size() && cur < 0; ++qi) {
+                        if (boneToLimb.count(queue[qi])) {
+                            cur = queue[qi];
+                        }
+                        for (const Mm3d::Bone& c : model.bones) {
+                            if (c.parent == queue[qi]) {
+                                queue.push_back(c.id);
+                            }
+                        }
+                    }
+                }
+                resolved[b.id] = cur >= 0 ? cur : boneToLimb.begin()->first;
+            }
         }
         // Per bone: inverse bind, and the rest-pose fix (where the 3DS joint offset differs from the N64 limb's, the
         // child's mesh is shifted so that at the 3DS bind rotation it sits where it does in the 3DS model).
@@ -568,7 +655,39 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
             const Mm3d::Bone& b = model.bones[boneIndex[kv.first]];
             inv[kv.first] = InvertBind(b.bind);
             std::array<double, 3> s = { 0, 0, 0 };
-            if (b.parent >= 0) {
+            if (rigged) {
+                // Offset of this limb from its nearest listed ancestor limb on the N64 side (the unlisted limbs between
+                // them are pivots, their rest rotation taken as identity), against the offset of the bone from the bone
+                // paired with that ancestor, both in the ancestor's frame.
+                int pl = limbs[kv.second].parent;
+                double dn[3] = { (double)limbs[kv.second].trans[0], (double)limbs[kv.second].trans[1], (double)limbs[kv.second].trans[2] };
+                while (pl >= 0 && !limbToBone.count(pl)) {
+                    for (int k = 0; k < 3; ++k) {
+                        dn[k] += limbs[pl].trans[k];
+                    }
+                    pl = limbs[pl].parent;
+                }
+                if (pl >= 0) {
+                    const Mm3d::Bone& qa = model.bones[boneIndex[limbToBone[pl]]];
+                    const Affine ia = InvertBind(qa.bind);
+                    double rel[9], t3[3];
+                    for (int i = 0; i < 3; ++i) {
+                        for (int j = 0; j < 3; ++j) {
+                            rel[i * 3 + j] = ia.r[i * 3] * b.bind[j] + ia.r[i * 3 + 1] * b.bind[4 + j] + ia.r[i * 3 + 2] * b.bind[8 + j];
+                        }
+                        t3[i] = ia.r[i * 3] * b.bind[3] + ia.r[i * 3 + 1] * b.bind[7] + ia.r[i * 3 + 2] * b.bind[11] + ia.t[i];
+                    }
+                    double d[3];
+                    for (int k = 0; k < 3; ++k) {
+                        d[k] = dn[k] - t3[k];
+                    }
+                    if (std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) > 1) {
+                        for (int k = 0; k < 3; ++k) { // -R^T d
+                            s[k] = -(rel[k] * d[0] + rel[3 + k] * d[1] + rel[6 + k] * d[2]);
+                        }
+                    }
+                }
+            } else if (b.parent >= 0) {
                 double d[3];
                 for (int k = 0; k < 3; ++k) {
                     d[k] = (double)limbs[kv.second].trans[k] - b.translation[k];
@@ -599,13 +718,16 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                         if (v.bone[k] < 0 || v.weight[k] <= 0) {
                             continue;
                         }
-                        auto it = boneToLimb.find(v.bone[k]);
+                        auto it = boneToLimb.find(rigged && resolved.count(v.bone[k]) ? resolved[v.bone[k]] : v.bone[k]);
                         if (it == boneToLimb.end()) {
                             continue;
                         }
                         const int limb = NearestDrawnLimb(limbs, slots, it->second);
                         if (limb < 0) {
                             continue;
+                        }
+                        if (!limbToBone.count(limb)) {
+                            throw std::runtime_error("rig: limb " + std::to_string(limb) + " draws but has no bone");
                         }
                         acc[limb] += v.weight[k];
                         own[limb] += v.weight[k];
@@ -858,7 +980,9 @@ std::string Signature(const std::string& dump) {
     }
     std::set<std::string> archives;
     for (const Entry& e : kTable) {
-        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (e.reviewed ? "1" : "0"), h);
+        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig, h);
+        h = Fnv1a(&e.lightRef, sizeof(e.lightRef), h);
+        h = Fnv1a(&e.saturation, sizeof(e.saturation), h);
         archives.insert(e.archive);
     }
     std::error_code ec;
@@ -995,6 +1119,13 @@ void Generate(bool boot) {
             for (size_t i; (i = next++) < kTableCount;) {
                 Job& job = jobs[i];
                 const Entry& e = *job.e;
+                ColourParams entryColour = colourParams;
+                if (e.lightRef > 0) {
+                    entryColour.lightRef = e.lightRef;
+                }
+                if (e.saturation > 0) {
+                    entryColour.saturation = e.saturation;
+                }
                 Result res;
                 if (!job.error.empty() || job.limbs.empty()) {
                     res.error = "N64 skeleton: " + job.error;
@@ -1012,7 +1143,7 @@ void Generate(bool boot) {
                     } else {
                         // Reviewed skeletons are written to the archive; the others convert (and are counted) but stay out.
                         res = Convert(e, job.limbs, model, [&](const std::string& name, const std::vector<uint8_t>& data) {
-                            if (!e.reviewed) {
+                            if (!Enabled(e)) {
                                 return;
                             }
                             {
@@ -1022,15 +1153,15 @@ void Generate(bool boot) {
                                 }
                             }
                             zip.Add(name, data.data(), data.size());
-                        }, colourParams, e.reviewed ? upscaler : nullptr);
+                        }, entryColour, Enabled(e) ? upscaler : nullptr);
                     }
                 }
                 (res.ok ? okCount : failCount)++;
-                if (res.ok && e.reviewed) {
+                if (res.ok && Enabled(e)) {
                     ++enabledCount;
                 }
                 report[i] = json{ { "object", e.object }, { "skeleton", e.skeleton }, { "cmb", e.cmb },       { "ok", res.ok },
-                              { "reviewed", e.reviewed }, { "error", res.error },  { "triangles", res.tris }, { "limbs", res.limbs },
+                              { "reviewed", Enabled(e) }, { "error", res.error },  { "triangles", res.tris }, { "limbs", res.limbs },
                               { "stretched", res.stretched }, { "textures", res.textures }, { "dropped", res.dropped },
                               { "seconds", res.seconds } };
                 ++gDone;
