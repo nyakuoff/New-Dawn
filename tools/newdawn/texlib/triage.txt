@@ -1,0 +1,605 @@
+# id score [class_override]   (visual triage, round 1; 0 = drop)
+brick_wall_005 9
+brick_wall_006 7
+brick_wall_02 8
+brick_wall_04 8
+broken_brick_wall 8.5
+castle_brick_02_red 8.5
+castle_brick_02_white 7.5
+castle_brick_07 9
+castle_brick_broken_06 9
+clay_block_wall 7 plaster
+concrete_block_wall_02 0
+Bricks076A 7.5
+Bricks076C 8.5
+Bricks094 7
+Bricks102 8
+cobblestone_04 7.5
+cobblestone_floor_06 9
+concrete_floor_03 0
+square_cobblestone 8
+stone_floor 7.5
+volcanic_herringbone_0 8
+volcanic_herringbone_01 8
+PavingStones131 8.5
+PavingStones141 8
+PavingStones148 7.5
+PavingStones152 6.5
+concrete_slab_wall 0
+concrete_slab_wall_02 0
+dry_riverbed_rock 8.5 rock
+worn_rock_natural_01 7 rock
+Tiles130 8.5
+Tiles133C 0
+Tiles133D 0
+Tiles135C 6
+Tiles135D 6.5
+Tiles137D 6
+Tiles144 6.5
+concrete_rock_path 7.5
+coral_fort_wall_01 8.5
+coral_fort_wall_03 8
+dark_rock 9
+granite_wall 7.5
+medieval_wall_02 8.5 worked_stone
+old_stone_wall 8.5 worked_stone
+old_stone_wall_02 8 worked_stone
+rabdentse_ruins_wall 9 worked_stone
+rock_05 8.5
+rock_06 8
+Ground063 7.5 gravel
+Ground065 0
+Rock048 8.5
+Rocks025 7.5
+concrete_floor_worn_02 6.5 plaster
+ground_0012 7 dirt
+Ground069 7 dirt
+Ground085 8 dirt
+Ground086 8 dirt
+black_painted_planks 7.5
+dark_wooden_planks 8.5
+distressed_painted_planks 8.5
+distressed_painted_pla 8.5
+green_rough_planks 9
+medieval_wood 8.5
+old_planks_02 8
+old_wood_floor 8.5
+old_wooden_floor_01 6
+old_wooden_floor_02 8.5
+old_wooden_floor_03 7.5
+PaintedWood005 7
+Planks021 5.5
+Planks039 8
+WoodFloor065B 5
+wood_0047 7.5
+Wood035 8
+Wood036 6.5
+Wood039 6
+Wood040 7.5
+Wood059 8
+Wood060 7.5
+Wood061 7
+Wood062 8.5
+Wood076 8
+Wood077 7.5
+Wood082B 0
+Wood086 8
+wood_0019 5
+wood_textured_concrete 0
+blue_plaster_weathered 8.5
+brushed_concrete 7
+brushed_concrete_03 7
+brushed_concrete_04 6
+brushed_concrete_2 7
+chipped_concrete 6
+clay_plaster 9
+concrete 5.5
+concrete_floor 7
+Concrete039 8.5
+Concrete040 6
+Concrete042C 7
+Plaster007 8
+corrugated_iron 0
+reed_roof_03 9 thatch
+reed_roof_04 9 thatch
+thatch_roof_angled 8.5 thatch
+worn_corrugated_iron 6 metal
+rooftop_0004 7.5
+RoofingTiles014B 8
+RoofingTiles014C 8.5
+RoofingTiles014D 8.5
+red_slate_roof_tiles_0 8.5
+roof_slates_02 8
+bark_willow 8
+bark_willow_02 7.5
+chinese_cedar_bark 6
+fever_tree_bark 7
+pine_bark 8
+Bark007 7.5
+Bark010 5
+Bark014 7
+Bark015 8.5
+Ground067 7.5
+Ground082L 7
+Ground082S 7
+Ground103 8
+Ground104 8.5
+Ground105 8.5
+Ground112 8
+ground_0004 0
+ground_0007 5
+grassy_cobblestone 9 cobble
+grass_concrete_pavement 6.5
+rock_tile_floor_02 8 flagstone
+rocky_terrain 9
+withered_grass 7.5
+Grass001 5.5
+Grass006 6
+Grass008 5.5
+Ground030 6
+brick_gravel 7
+cobblestone_02 8
+cobblestone_floor_13 8.5
+gravel_concrete_02 6
+river_small_rocks 8
+rocks_ground_06 8.5
+rocky_trail 8
+Concrete018 6
+Ground108 8
+Ground110 8
+Rocks006 6.5
+Rocks022 7.5
+Rocks023 8
+coast_sand_02 8
+coast_sand_05 8.5
+gravel_floor_04 7
+moon_01 5
+moon_02 6
+rocky_trail_02 8
+shell_floor_01 8
+Ground093C 6.5
+Ground099 7
+Ground102 7.5
+Rock062 8
+dirty_carpet 6.5 carpet_rug
+fabrics_0040 7 leather
+Fabric028 6
+Metal042B 6
+Metal046B 7
+Metal048B 0
+Metal062C 7
+others_0010 0
+Granite004B 5
+Moss001 7.5
+Moss002 7
+Moss003 7
+Moss004 7.5
+concrete_moss 7.5
+moss_wood 8.5 wood_planks
+mossy_brick_floor 8 brick
+mossy_cobblestone 9 cobble
+mossy_rock 9 rock
+cracked_red_ground 8 dirt
+dry_ground_01 7.5 dirt
+dry_mud_field_001 8 dirt
+farm_furrows 8.5 dirt
+mud_cracked_dry_riverbed 8.5 dirt
+ground_0013 5
+ground_0034 6
+ground_0044 7.5 mud
+Pathway002 0
+snow_01 7.5
+snow_03 8
+snow_04 6.5
+snow_05 8
+snow_field_aerial 7
+Snow011 7
+Snow012 7
+Snow013 8
+Snow015 8.5
+rust_coarse_01 7.5
+rusty_metal 6.5
+rusty_metal_02 7.5
+rusty_metal_03 7.5
+Metal053C 7
+Metal056B 6
+Metal056C 7.5
+Rust009 7
+3e3a415f 6.5 wallpaper
+5c91d8a2 6
+a25278cc 7 wallpaper
+fabrics_0082 5
+Fabric043 7
+Fabric045 6
+Fabric061 4.5
+Fabric062 4.5
+Fabric066 7
+a4359d85 4
+tatami_mat 7 carpet_rug
+fabrics_0076 5
+fabrics_0085 4
+Carpet001 5
+Carpet011 4
+Carpet014 4
+Carpet015 7
+Carpet016 6
+cotton_jersey 4
+denim_fabric 6
+denim_fabric_06 6
+denmin_fabric_02 6.5
+fabric_leather_01 7.5 leather
+fabric_0025 7 leather
+Leather014 8
+Leather032 7.5
+Leather039 4
+fabrics_0066 7 rope
+fabrics_0086 7.5 rope
+Net001B 4
+Net002B 6.5
+Net003B 4
+Net004B 4
+Rope001 8
+Ground037 8 dirt
+Ground094C 8 mud
+Ground106 7.5
+Ground107 7.5
+Ground109 7
+coast_land_rocks_01 8.5
+rock_04 6
+rock_3 7.5
+Rock053 8
+Rock063 8.5
+Rock064 8.5
+4ac91368 4
+c6d2669a 8.5 wood_planks
+aerial_beach_03 5
+coast_sand_01 7
+coast_sand_03 7.5
+coast_sand_rocks_02 8.5
+dense_sand 6.5
+playground_sand 7
+sand_01 7
+Footsteps002 0
+Shells001 8
+fe2e970d 7
+wood_inlaid_concrete_w 8.5 worked_stone
+wood_inlaid_stone_wall 9 worked_stone
+wood_stone_pathway 7.5 cobble
+Wood064 8
+Wood065 8
+Wood080 8.5 wood_planks
+cobblestone_01 8
+cobblestone_05 8
+cobblestone_color 8.5
+cobblestone_floor_001 8
+cobblestone_floor_01 8.5
+cobblestone_floor_04 8.5
+large_grey_tiles 7.5
+Tiles039 4
+Tiles134D 5
+grass_ground 7
+grass_path_2 6
+Grass007 5
+large_pebbles 8
+rocky_gravel 6.5
+Gravel032 7
+Gravel039 7
+Gravel041 6.5
+Gravel042 7
+castle_brick_01 8
+Bricks075B 8.5
+jolcham_oak_bark_01 8.5
+tree_bark_03 7
+Bark013 7.5
+Bark016 7
+aerial_rocks_02 8
+brown_floor_tiles 6 flagstone
+brown_mud_leaves_01 7.5 mud
+ceramic_roof_01 8 roof_tiles
+cliff_side 8.5 rock
+dirt_floor 7 dirt
+forest_floor 7 dirt
+forest_leaves_02 6.5 dirt
+grey_roof_tiles 6.5 roof_tiles
+old_mosaic_floor 6.5 flagstone
+patterned_clay_plaster 7 plaster
+patterned_plaster_wall 7.5 plaster
+quarry_wall_02 8 rock
+riet_01 8 thatch
+rock_boulder_cracked 8.5 rock
+rock_face 7.5 rock
+rock_face_03 8.5 rock
+rock_wall_02 8.5 rock
+rock_wall_04 9 worked_stone
+rock_wall_05 8.5 worked_stone
+rock_wall_07 8.5 brick
+rock_wall_13 9 worked_stone
+rocks_ground_02 8 gravel
+rocks_ground_08 7.5 gravel
+roof_07 8.5 roof_tiles
+roof_3 8.5 roof_tiles
+roof_tiles 7.5 roof_tiles
+roots 8 dirt
+seaside_rock 8 rock
+tiger_rock 8.5 rock
+metal_0079 5
+rock_0003 6
+rock_0004 8.5 rock
+GlazedTerracotta001 4
+Rock028 7.5
+Rock029 6
+Rock030 8
+Rock031 8.5
+Rock032 7.5
+Rock033 8.5
+Rock034 8
+Rock035 8.5
+Rock050 8.5
+Rock051 8.5
+Rock055 8
+Rock056 8.5
+Rock057 7.5
+Rock058 8
+Rock059 7.5
+Rock060 8.5
+Rock061 8.5
+Rocks001 9 flagstone
+Rocks002 6.5 gravel
+Rocks011 9 worked_stone
+brick_wall_09 6.5
+castle_wall_slates 8.5 worked_stone
+coral_fort_wall_02 8.5 rock
+large_sandstone_blocks_01 8.5 worked_stone
+large_sandstone_blocks 5
+medieval_blocks_02 8.5 worked_stone
+medieval_blocks_03 8 worked_stone
+medieval_blocks_06 7.5 plaster
+medieval_red_brick 7.5 brick
+old_sandstone_02 9 worked_stone
+plaster_brick_01 8.5 brick
+red_sandstone_pavement 7.5 flagstone
+red_sandstone_tiles 6.5 flagstone
+red_sandstone_wall 9 worked_stone
+rough_plaster_brick 9 plaster
+sandstone_blocks_04 7 plaster
+sandstone_blocks_05 8.5 worked_stone
+sandstone_blocks_08 6 worked_stone
+sandstone_brick_wall_0 7 brick
+seaworn_sandstone_bric 8.5 worked_stone
+seaworn_stone_tiles 7 flagstone
+stenciled_brick_floor 7.5 brick
+stone_brick_wall_001 6.5 worked_stone
+stone_wall_05 8.5 worked_stone
+white_sandstone_blocks 7.5 worked_stone
+white_sandstone_bricks 8.5 worked_stone
+worn_brick_path 8.5 brick
+worn_brick_wall 8.5 brick
+yellow_bricks 8 brick
+bricks_0019 6.5 worked_stone
+Bricks003 7.5
+Bricks005 3
+Bricks008 5
+Bricks024 6 worked_stone
+Bricks073C 8
+Bricks076B 8
+Bricks078 8 worked_stone
+Bricks079 6.5
+Bricks083 7 worked_stone
+Bricks084 7.5 worked_stone
+Bricks087 8
+Bricks089 7.5 cobble
+medieval_blocks_05 8 worked_stone
+PavingStones036 5
+PavingStones040 6.5
+PavingStones042 7.5
+PavingStones046 7.5
+PavingStones054 8 flagstone
+PavingStones055 4
+PavingStones113 7
+PavingStones115A 7.5
+PavingStones138 6.5
+PavingStones139 7
+PavingStones149 6
+PavingStones151 8
+sandstone_cracks 6 dirt
+slate_driveway 8 flagstone
+slate_floor 3
+slate_floor_02 7.5 flagstone
+slate_floor_03 7 flagstone
+stone_pathway 8 flagstone
+stone_tiles_02 6.5 flagstone
+volcanic_rock_tiles 8.5 flagstone
+Tiles098 6
+Tiles131 5
+brown_planks_03 6.5
+brown_planks_04 7
+brown_planks_09 7
+dark_planks 7.5
+hinoki_planks 5.5
+japanese_cedar_planks 5
+oak_wood_planks 4
+raw_plank_wall 8
+raw_wooden_floor_01 8
+rough_wood 8.5 wood_beam
+stair_planks 5
+weathered_brown_planks 8
+weathered_peeling_timb 8.5
+weathered_plank_siding 8
+weathered_planks 8
+wood_floor_worn 8
+wood_planks_dirt 5.5
+wood_planks_grey 8.5
+wood_shutter 6
+wood_trunk_wall 7.5 wood_beam
+wooden_gate 6.5
+wooden_rough_planks 8.5
+worn_planks 8.5
+metal_0044 5
+Fence007A 5 metal
+Fence008A 5 metal
+Planks009 4.5
+Planks031C 8
+Planks038 7.5
+WoodSiding005 5
+WoodSiding007 6.5
+WoodSiding008 6.5
+aerial_mud_1 7
+brown_mud 7.5
+brown_mud_02 7.5
+brown_mud_dry 7
+brown_mud_rocks_01 7.5
+coral_mud_01 6.5
+mud_forest 8
+muddy_tracks 7.5
+red_dirt_mud_01 7.5
+red_mud_stones 7.5
+rock_0007 5
+ice_0001 5
+ice_0002 7
+Ice001 6.5
+Ice002 6.5
+Ice003 6.5
+Ice004 6.5
+Snow006 6.5
+Snow014 6
+roof_planks 7 wood_planks
+roof_slates_03 7 roof_tiles
+RoofingTiles001 7.5
+RoofingTiles003 7
+RoofingTiles008 8
+ThatchedRoof001A 8 thatch
+ThatchedRoof001B 8.5 thatch
+ThatchedRoof002A 7.5 thatch
+ThatchedRoof002B 8.5 thatch
+damp_beach_sand 5
+damp_sand 8
+grass_path_3 6
+sparse_grass 7.5 grass
+coral_gravel 7.5
+coral_ground_02 7.5
+low_tide_rocks 7
+multicolored_pebble_fl 8
+Bark008 6
+Bark011 5
+Ground023 8 dirt
+Ground036 7 dirt
+Ground054 7 sand
+Ground068 8.5 dirt
+Ground071 7.5 dirt
+Ground075 0
+Ground076 8 dirt
+Ground087 7.5 dirt
+Ground095A 7 sand
+Ground097 7.5 sand
+Ground098 7.5 sand
+aerial_grass_rock 7 moss
+aerial_rocks_01 8 rock
+brick_moss_001 7.5 brick
+lichen_rock 8.5 rock
+mossy_brick 8.5 brick
+mossy_sandstone 8.5 worked_stone
+mossy_stone_wall 9 worked_stone
+rock_pitted_mossy 8 rock
+worn_mossy_plasterwall 8.5 plaster
+bricks_0007 6.5 worked_stone
+rock_0006 7 rock
+broken_wall 8 worked_stone
+castle_wall_varriation 8 worked_stone
+coral_stone_wall 8.5 worked_stone
+defense_wall 7 rock
+defense_wall_02 7 rock
+grey_plaster 6 plaster
+medieval_wall_01 8.5 plaster
+rusty_painted_metal 7 metal
+stone_block_wall 8.5 worked_stone
+stone_wall_04 8.5 worked_stone
+white_plaster_rough_01 7 plaster
+white_plaster_rough_02 8.5 plaster
+white_stucco 7.5 plaster
+yellow_plaster 7.5 plaster
+yellow_plaster_02 8.5 plaster
+Plaster002 6.5
+Plaster003 6.5
+metal_grate_rusty 8 metal
+metal_plate 7.5 metal
+rusty_corrugated_iron 7 metal
+metal_0056 6 metal
+Chainmail004 7 metal
+Grate001 0
+Grate002 0
+Metal041A 4
+Metal052C 6.5
+Metal054A 6.5
+Metal055A 6
+Metal057C 5
+Metal058A 5
+731ae88a 7 wood_planks
+87838de0 7.5 wood_beam
+book_pattern 6.5
+fabric_pattern_05 5.5
+fabric_pattern_07 7
+floral_jacquard 5.5
+hessian_230 8 rope
+hessian_380 6.5
+quatrefoil_jacquard_fa 6
+rough_linen 7
+fabrics_0044 4
+fabrics_0053 5
+fabrics_0071 4
+Bamboo001A 5
+Cork002 4
+Fabric019 5
+Fabric030 5.5
+Fabric036 3
+Fabric048 3.5
+Fabric077 5
+Fabric079 4
+Fabric080 3
+Fabric085 5.5
+Fabric086 4
+Wallpaper001A 5.5 wallpaper
+Wallpaper001B 5.5 wallpaper
+Wallpaper002A 5.5 wallpaper
+Wallpaper002B 7.5 wallpaper
+Wicker001 7 thatch
+Wicker005 6.5 thatch
+Wicker013 5
+Clay001 6
+Clay002 6.5
+Clay003 6
+Clay005 5
+Clay007 6.5
+Clay009 6
+PaintedPlaster001 6
+PaintedPlaster006 8.5
+PaintedPlaster010 9
+PaintedPlaster014 9
+PaintedPlaster017 7
+Plaster001 4
+Plaster004 6.5
+Plaster005 7
+Plaster006 7
+leafy_grass 7 grass
+Grass002 7
+Grass003 7.5
+Grass004 6.5
+Grass005 5.5
+brown_leather 7.5
+caban 5.5 fabric
+curly_teddy_natural 6 fabric
+gingham_check 5.5 fabric
+knitted_fleece 6.5 fabric
+leather_red_02 7
+leather_red_03 7
+poly_wool_herringbone 6.5 fabric
+ribbed_corduroy 6.5 fabric
+velour_velvet 8 fabric
+wool_boucle 7 fabric
+Carpet002 4
+Carpet003 4
+Carpet012 5.5
+Carpet013 4
+Rope002 6.5
+Rope003 8
+snow_02 6
+snow_floor 7.5 ice_snow

@@ -31,6 +31,7 @@
 #include "2s2h/BenPort.h"
 #include "2s2h/resource/type/Skeleton.h"
 #include "Mm3dFormats.h"
+#include "SpanUpscale.h"
 #include "ZipWriter.h"
 
 namespace fs = std::filesystem;
@@ -41,7 +42,7 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.0.1";
+constexpr const char* kConverterVersion = "1.1.0";
 
 struct Entry {
     const char* object;
@@ -132,6 +133,15 @@ std::set<int> ParseList(const char* s) {
         }
     }
     return out;
+}
+
+// The upscaler weights ship with the game (assets/newdawn/mm3d/span_v4_4x.bin, CC0); gNewDawn.MM3D.Upscale=0 skips them.
+std::string UpscalerPath() {
+    const char* root = CVarGetString("gNewDawn.Assets.Path", "assets/newdawn");
+    return (fs::path(root ? root : "assets/newdawn") / "mm3d" / "span_v4_4x.bin").string();
+}
+bool UpscaleWanted() {
+    return CVarGetInteger("gNewDawn.MM3D.Upscale", 1) != 0;
 }
 
 // ------------------------------------------------------------------ N64 skeleton (from the loaded game archives)
@@ -531,7 +541,7 @@ struct Result {
 using Writer = std::function<void(const std::string&, const std::vector<uint8_t>&)>;
 
 Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& model, const Writer& write,
-               const ColourParams& colour) {
+               const ColourParams& colour, const SpanUpscaler* upscaler) {
     Result res;
     const auto t0 = std::chrono::steady_clock::now();
     try {
@@ -644,14 +654,20 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
             for (int j = 0; j < 3 && ti < 0; ++j) {
                 ti = m.texture[j];
             }
-            if (ti < 0 || ti >= (int)model.textures.size() || model.textures[ti].image.rgba.empty()) {
-                continue;
+            if (skip.count((int)mi) || ti < 0 || ti >= (int)model.textures.size() || model.textures[ti].image.rgba.empty()) {
+                continue; // a prop's texture is not needed
             }
             texName[(int)mi] = base + "_tex" + std::to_string(ti);
             DeclaredSize(model.textures[ti].image.width, model.textures[ti].image.height, texDeclared[(int)mi][0],
                          texDeclared[(int)mi][1]);
             if (written.insert(ti).second) {
                 Mm3d::Image img = model.textures[ti].image;
+                if (upscaler) { // 4x; the display list keeps the declared size of the original, so the UVs still fit
+                    Mm3d::Image big;
+                    if (upscaler->Upscale4x(img, big)) {
+                        img = std::move(big);
+                    }
+                }
                 MapColour(img, m, colour);
                 write(texName[(int)mi], TextureResource(img));
                 ++res.textures;
@@ -835,6 +851,11 @@ std::string Signature(const std::string& dump) {
     uint64_t h = Fnv1a(std::string(kConverterVersion), 14695981039346656037ULL);
     const ColourParams cp = GetColourParams();
     h = Fnv1a(&cp, sizeof(cp), h);
+    {
+        SpanUpscaler up;
+        const uint64_t fp = UpscaleWanted() && up.Load(UpscalerPath()) ? up.Fingerprint() : 0;
+        h = Fnv1a(&fp, sizeof(fp), h);
+    }
     std::set<std::string> archives;
     for (const Entry& e : kTable) {
         h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (e.reviewed ? "1" : "0"), h);
@@ -959,6 +980,11 @@ void Generate(bool boot) {
         };
 
         const ColourParams colourParams = GetColourParams();
+        SpanUpscaler spanUp;
+        const SpanUpscaler* upscaler = UpscaleWanted() && spanUp.Load(UpscalerPath()) ? &spanUp : nullptr;
+        if (UpscaleWanted() && !upscaler) {
+            SPDLOG_WARN("NewDawn MM3D: upscaler weights not found at {}; textures stay at their 3DS size", UpscalerPath());
+        }
         std::vector<json> report(kTableCount);
         std::atomic<size_t> next{ 0 };
         std::atomic<uint32_t> okCount{ 0 }, failCount{ 0 }, enabledCount{ 0 };
@@ -996,7 +1022,7 @@ void Generate(bool boot) {
                                 }
                             }
                             zip.Add(name, data.data(), data.size());
-                        }, colourParams);
+                        }, colourParams, e.reviewed ? upscaler : nullptr);
                     }
                 }
                 (res.ok ? okCount : failCount)++;
