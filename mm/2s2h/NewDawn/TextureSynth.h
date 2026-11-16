@@ -26,6 +26,9 @@ struct Palette {
 struct Params {
     std::unordered_map<std::string, double> num;
     std::unordered_map<std::string, std::string> str;
+    // The original texture's luminance (0..1), used for "native_mottle": its own large tonal patches ride on the generated tone map.
+    std::shared_ptr<const std::vector<float>> native;
+    int nativeW = 0, nativeH = 0;
     double Get(const char* k, double def) const {
         auto it = num.find(k);
         return it == num.end() ? def : it->second;

@@ -211,6 +211,55 @@ Caveats of this metric: it includes actor and camera drift between two runs (the
 * The first unlit version rendered black room geometry: the vertex template used `@elseif`, which produced no `main`. Found by logging the program's link error.
 * The first 3DS acceptance rule (aspect, 2x to 4x, mean colour) let two wrong textures through (a banner whose emblem sits on another flag, and a cut-out post that became an opaque wood rectangle). Fixed by requiring an opaque original and a coarse 8x8 colour layout test; of the 15 candidates now exactly the 3 correct ones pass. The rule is tuned on those 15 and could overfit; it is deliberately conservative.
 * Moss class: the moss set alone looked like fur on vertical rock; the class is now rock with moss growth. Grass base: mud sets with ripples looked scalloped, and photo colour leaked through the chroma term (olive swamp ground); now fine grass and dirt sets with low chroma. The swamp ground is soft by design and blander than the native mottling.
-* Recipe or algorithm changes must bump `kVersion` (a cached archive was reused once after a rule change).
+* Recipe or algorithm changes used to need a manual `kVersion` bump (a cached archive was reused once after a rule change); since milestone 3 the version is a hash of the generator's sources.
 * Frames of `Southern Swamp` and `Woodfall Temple` were recaptured after the grass/moss/chroma changes; the other scenes' frames predate them (only the grass, mud and moss classes changed; their textures are hidden or minor there).
 * The 3DS-sourced textures (3, all in the Stock Pot Inn: the hexagon floor and the floral wallpaper) were checked as extracted pairs (`unique_3ds_sources.png`); they are not in any captured view.
+
+## Milestone 3
+
+**Cache safety.** `mm/CMakeLists.txt` hashes the generator's sources (`RuntimeTextures`, `TextureSynth`, `UniqueArt`, `SpanUpscale`, `Mm3dFormats`, `ZipWriter`, line endings normalised) at configure time; the files are
+configure dependencies, so editing one re-runs CMake, and only `RuntimeTextures.cpp` is recompiled with `NEWDAWN_TEXTURE_LOGIC_HASH`. The stamp's `version` is `logic-<hash>`; the data files (`recipes.json`, tables), the library manifest, the SPAN
+weights, the `mm.o2r` archive, the tier cvars and the unique-art settings were already part of the signature. A stale cache cannot be reused after any change of logic or data.
+
+**Unique art everywhere.** `recipes.json:unique.scenes` is `"all"`: 1,427 textures of 100 scenes are upscaled (64 left native: several palettes, intensity textures, undecodable), 52.8 s and 1.1 GB for the whole generation on 8 threads.
+**The 3DS acceptance rule failed a fresh sample.** Run over all 780 confident matches with a decodable pair it accepts 40 pairs from 17 scenes (the 3 Inn pairs plus 37 fresh ones). By eye: 13 clearly the same art, 14 clearly wrong (atlas pieces, a flat or noisy 3DS
+texture over structured art, flowers turned into plain tile, a symbol turned into a plate), 13 the same kind of surface but not the same art. No pixel measure separated them (colour distance, 8x8 layout, normalised correlation at 16 px and at full size, high-pass correlation,
+contrast ratio, black or transparent area: the 3DS textures are redrawn, so even correct pairs correlate near zero). So the rule cannot be validated automatically, and a 3DS texture is now used only for the **13 hand-verified pairs** listed in `recipes.json:unique.mm3d_verified`
+(and only when the rule also accepts them). `gNewDawn.Textures.Unique3ds`: 0 off, 1 verified pairs (default), 2 every rule-accepted pair (experimental; about half of those are wrong).
+
+**North Clock Town capture.** The point `north_clock_town` (entrance 0xd600, spawn 0 of Z2_BACKTOWN) boots with `gNewDawn.Debug.BootClockTownVisited=1` (capture/debug only, `WarpPoint.cpp`), which sets the three Clock Town entrance-cutscene flags the intro-skip enhancement also sets.
+The earlier attempt reloaded the scene in a loop (first-arrival cutscene, and a spawn position of (0,0,0), outside the mesh).
+
+**Art direction by region.** `recipes.json:region_params` overrides class parameters per scene region (the first region of the scene's priority list that has an entry): `interiors` gets hand-finished plaster (detail kept at 35 %, contrast 0.5, relief 5, rougher) and calmer
+planks; `swamp_woodfall` gets a mottled grass base; `clock_town` calmer sand and rock; `snowhead` and `dungeon` calmer ice and snow. `native_mottle` (grass, dirt, mud, sand, rock classes) adds the original texture's own large tonal patches (its luminance, smoothed and
+normalised) on top of the generated tone, which restores the mottling of the swamp ground that the generated sets lack. Ground classes got their relief and normal strength lowered (sand 7, dirt 11, mud 9) after North Clock Town's walls read as wood strokes.
+
+**Smooth unlit relief** (`gNewDawn.Materials.UnlitSmooth`, default on). Unlit room triangles (identity modelview) are welded by world position (quantised to half a unit); each corner's normal is the area-weighted mean of the neighbouring face normals within 40 degrees of its own face,
+built from the triangles drawn so far (persistent, bounded to 600k corners), and passed to the unlit material shader as a vertex attribute; a zero normal falls back to the flat derivative normal. The post passes' depth/normal buffers were not used: the world pass has no
+normal buffer, and a depth-derived normal is the same faceted normal. On flat walls the difference is small; it shows on curved rock and rounded cave walls (the shading no longer steps at triangle edges).
+
+## Milestone 3 measurements (RX 7800 XT, 1080p, Ultra look, 2026-11-16)
+
+Sheets (22 views x day and dusk, native | remastered with 1:1 crops at the most-changed windows), `changed_pixels.json`, the 3DS rule review sheets, `gpu_overlay_crops.png` and the North Clock Town capture: `~/dev/ghm-mods/showcase/texture-pipeline-3/`.
+Regions: Clock Town (south, north, east), Termina Field, Stock Pot Inn (interior), Woodfall Temple (dungeon), Southern Swamp, Mountain Village in winter (Snowhead), Great Bay Coast, Ikana Canyon, Stone Tower Temple (dungeon). Snowhead Temple is not in the matched set: its camera
+differs between runs (a letterboxed cinematic state), so native and remastered frames do not match.
+
+| item | result |
+|---|---|
+| **First run** (everything replaceable + unique art of every scene) | 2,299 textures (872 materials + 1,427 unique), 42 skipped (transparency), **51.9 s** on 8 threads, **1.12 GB** cache |
+| **Download** | base library 76.8 MB (unchanged), `assets/newdawn` 85 MB |
+| **GPU ms** (overlay, native to remastered; run-to-run noise about +-0.5 ms) | Stock Pot Inn 3.11 to 3.25, Woodfall Temple 4.29 to 4.38, Ikana Canyon 4.23 to 4.60, Stone Tower Temple 4.66 to 4.97, South Clock Town 6.02 to 5.53 (a different guard pose changes this scene more than the textures do); CPU +0.0 to +0.2 ms |
+| **GL errors** | 0 in all 88 matrix captures, the GPU runs and the identity runs (Mesa messages and our link log searched) |
+| **Off identity** | frozen Stock Pot Inn (unlit), play build `5a9be4122` (main plus #123) with its toggle off against this build with `Remastered=0`: mean abs difference 0.021 and 0.004 levels (main against main 0.054, ours against ours 0.029), no pixel above 8; toggle on: 2.84 |
+| Brightness | remastered over native mean luminance 0.95 to 1.07 in all 44 pairs |
+| Pixels changed vs native (RGB sum above 30 / above 6) | day: median 30 % / 73 % (2.8 % to 62 % / 43 % to 94 %); dusk: median 18 % / 65 %; lowest in the dark dungeons and the Great Bay coast at the strict threshold, highest in Ikana, the swamp and Termina Field |
+
+**Process bug found by the matrix.** The first final matrix showed the "Preparing remastered textures" popup in every capture: the signature changed with the new recipes, regeneration (about 52 s) needed longer than the capture's 46 s wait, was killed, and the half-built staging directory was discarded
+on every launch. The changed-pixel table of that run (95-100 %) was nonsense and was thrown away; the cache was warmed with a 160 s wait and every remastered frame recaptured. A popup frame is detectable (one colour above 60 % of the pixels); every frame of the final matrix was checked that way (0 popup frames) before the numbers were taken. For players the same thing means: first launch
+shows the popup for about a minute, an interrupted first launch repeats it.
+
+**Not done / limits**
+* Snowhead Temple is not matched (see above); the Snowhead region is judged on Mountain Village in winter, whose ice and snow read calmer after the `snowhead`/`dungeon` ice parameters. The Termina Field frames after the sand and ground relief changes were recaptured, so they are current.
+* North Clock Town: the leaf-patterned back wall (a herringbone vine texture) stays pattern-heavy at 1:1; its source is one of the unique-art textures upscaled from the N64 original.
+* Smooth unlit normals change little on flat walls; they matter on curved rock. The weld is built from the triangles drawn so far, so the first frame of a scene uses flat normals for corners whose neighbours have not been drawn yet.
+* The 3DS sources (13 verified pairs) are in rooms none of the matched views shows except the Inn's.

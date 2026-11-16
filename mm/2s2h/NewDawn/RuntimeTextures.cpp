@@ -36,8 +36,13 @@ using json = nlohmann::json;
 namespace NewDawnTextures {
 namespace {
 
-// Bump when the synthesis or the encoding changes; the data files and the library manifest are hashed into the signature.
-constexpr const char* kVersion = "1.2.0-cpp";
+// The generator's own logic: a hash of its sources, computed by CMake (mm/CMakeLists.txt), so no edit can leave a stale cache valid.
+// The data files and the library manifest are hashed into the signature themselves.
+#ifdef NEWDAWN_TEXTURE_LOGIC_HASH
+constexpr const char* kVersion = "logic-" NEWDAWN_TEXTURE_LOGIC_HASH;
+#else
+constexpr const char* kVersion = "logic-unhashed";
+#endif
 constexpr const char* kDataDir = "newdawn_textures/"; // inside 2ship.o2r (mm/assets/custom/newdawn_textures)
 constexpr const char* kArchiveName = "newdawn-textures.o2r";
 constexpr uint32_t kTextureType = 0x4F544558; // "OTEX"
@@ -420,6 +425,19 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
         if (c.contains("p")) {
             p.update(c["p"]);
         }
+        // per-region art direction (recipes.json:region_params): the first region of the scene's list that has this class
+        if (!j.region.empty() && data.recipes.contains("region_params")) {
+            const json& rp = data.recipes["region_params"];
+            for (size_t at = 0; at <= j.region.size();) {
+                const size_t comma = j.region.find(',', at);
+                const std::string name = j.region.substr(at, comma == std::string::npos ? std::string::npos : comma - at);
+                at = comma == std::string::npos ? j.region.size() + 1 : comma + 1;
+                if (rp.contains(name) && rp[name].contains(cls)) {
+                    p.update(rp[name][cls]);
+                    break;
+                }
+            }
+        }
         if (entry.contains("p")) {
             p.update(entry["p"]);
         }
@@ -477,8 +495,21 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
     // Unique art (ND-016): everything scene-side the classification did not call a replaceable material, in the chosen scenes.
     std::string uniqueScenes = CVarGetString("gNewDawn.Textures.UniqueScenes", "");
     if (uniqueScenes.empty() && data.recipes.contains("unique")) {
-        for (const auto& sc : data.recipes["unique"].value("scenes", json::array())) {
-            uniqueScenes += (uniqueScenes.empty() ? "" : ",") + sc.get<std::string>();
+        const json& us = data.recipes["unique"].value("scenes", json::array());
+        if (us.is_string()) {
+            uniqueScenes = us.get<std::string>();
+        } else {
+            for (const auto& sc : us) {
+                uniqueScenes += (uniqueScenes.empty() ? "" : ",") + sc.get<std::string>();
+            }
+        }
+    }
+    // 3DS sources: 0 none, 1 the hand-verified pairs of recipes.json (default), 2 every pair the content rule accepts (experimental)
+    const int mm3dMode = CVarGetInteger("gNewDawn.Textures.Unique3ds", 1);
+    std::unordered_set<std::string> verified3ds;
+    if (data.recipes.contains("unique")) {
+        for (const auto& v : data.recipes["unique"].value("mm3d_verified", json::array())) {
+            verified3ds.insert(v.get<std::string>());
         }
     }
     const bool allScenes = uniqueScenes == "all";
@@ -519,7 +550,7 @@ void BuildJobs(const Data& data, std::vector<Job>& jobs) {
             j.gen = "unique";
             if (data.mm3d.contains("textures") && data.mm3d["textures"].contains(it.key())) {
                 const json& m = data.mm3d["textures"][it.key()];
-                if (!m.value("weak", false)) {
+                if (!m.value("weak", false) && (mm3dMode == 2 || (mm3dMode == 1 && verified3ds.count(it.key())))) {
                     j.mm3dScene = m.value("scene", "");
                     j.mm3dTex = m.value("mm3d", "");
                 }
@@ -547,6 +578,7 @@ std::string Signature(const Data& data) {
     {   // unique art: which scenes, whether the 3DS dump is there (and where), and the upscaler's weights
         const std::string u = std::string(CVarGetString("gNewDawn.Textures.UniqueScenes", "")) + "|" +
                               std::to_string(CVarGetInteger("gNewDawn.Textures.Unique", 1)) + "|" +
+                              std::to_string(CVarGetInteger("gNewDawn.Textures.Unique3ds", 1)) + "|" +
                               (NewDawnMm3d::DumpValid(NewDawnMm3d::DumpPath()) ? NewDawnMm3d::DumpPath() : std::string("-"));
         h = Fnv1a(u.data(), u.size(), h);
         NewDawnMm3d::SpanUpscaler span;
@@ -692,6 +724,15 @@ void RunJob(const Job& job, NewDawnSynth::Library& lib, NewDawn::ZipWriter& zip,
     }
     const NewDawnSynth::Palette pal = NewDawnSynth::Palette::FromRgba(o.rgba.data(), (size_t)o.w * o.h);
     NewDawnSynth::Params params = job.params;
+    if (params.Get("native_mottle", 0.) > 0) {
+        auto luma = std::make_shared<std::vector<float>>((size_t)o.w * o.h);
+        for (size_t i = 0; i < luma->size(); ++i) {
+            (*luma)[i] = (o.rgba[i * 4] * .299f + o.rgba[i * 4 + 1] * .587f + o.rgba[i * 4 + 2] * .114f) / 255.f;
+        }
+        params.native = luma;
+        params.nativeW = (int)o.w;
+        params.nativeH = (int)o.h;
+    }
     if (!job.measure.empty()) { // counts of courses and boards, measured on the player's own pixels (hand-set values win)
         std::vector<float> Y((size_t)o.w * o.h);
         for (size_t i = 0; i < Y.size(); ++i) {
