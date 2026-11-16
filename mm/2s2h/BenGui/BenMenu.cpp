@@ -13,6 +13,7 @@
 #include "NewDawnPresets.h"
 #include "NewDawnTheme.h"
 #include "2s2h/NewDawn/RuntimeMaterials.h"
+#include "2s2h/NewDawn/RuntimeTextures.h"
 #include "2s2h/NewDawn/Mm3dCharacters.h"
 #include "2s2h/Extractor/portable-file-dialogs.h"
 #include "2s2h/Enhancements/Trackers/DisplayOverlay.h"
@@ -522,6 +523,27 @@ static void RenderRuntimeMaterials() {
         NewDawnMaterials::Regenerate();
     }
     if (progress.state == NewDawnMaterials::State::Running) {
+        ImGui::EndDisabled();
+    }
+}
+
+static void RenderRuntimeTextures() {
+    const auto progress = NewDawnTextures::GetProgress();
+    ImGui::TextWrapped("%s", NewDawnTextures::StatusText().c_str());
+    if (progress.state == NewDawnTextures::State::Running && progress.total) {
+        ImGui::ProgressBar((float)progress.done / (float)progress.total, ImVec2(-1.0f, 0.0f));
+    }
+    UIWidgets::ButtonOptions options = {};
+    options.color = UIWidgets::Colors::NewDawn;
+    options.tooltip = "Rebuilds the remastered textures from your game data and the base materials, in the background. "
+                      "Restart the game afterwards. They are generated on this computer and never shipped.";
+    if (progress.state == NewDawnTextures::State::Running) {
+        ImGui::BeginDisabled();
+    }
+    if (UIWidgets::Button("Regenerate Remastered Textures", options)) {
+        NewDawnTextures::Regenerate();
+    }
+    if (progress.state == NewDawnTextures::State::Running) {
         ImGui::EndDisabled();
     }
 }
@@ -1359,6 +1381,15 @@ void BenMenu::AddSettings() {
         .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).Step(0.05f).Format("%.2f").DefaultValue(1.0f));
 
     path.group = "Materials & Textures";
+    AddWidget(path, "Remastered Textures", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Textures.Remastered")
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Replaces world textures (brick, stone, cobble, wood, plaster, rock, dirt, grass, ...) with art-directed "
+            "materials in the colours of the originals. Generated from your game data on first launch and cached; "
+            "independent of the alternate-asset (mod) switch. OpenGL only."));
+    AddWidget(path, "Regenerate Remastered Textures", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        RenderRuntimeTextures();
+    });
     AddWidget(path, "Companion Materials", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Materials.Enabled")
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(

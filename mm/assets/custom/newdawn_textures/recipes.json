@@ -1,0 +1,120 @@
+{
+ "version": 1,
+ "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry. Material ids refer to assets/newdawn/materials/manifest.json. Names and numbers only. stoch: isotropic materials are sampled stochastically by the shader (no visible repetition); never layouts (brick, planks, cobble).",
+ "tiers": {
+  "hero": 1024,
+  "rest": 512,
+  "min": 256
+ },
+ "classes": {
+  "brick": {
+   "gen": "masonry",
+   "p": {
+    "layout": "brick",
+    "rows": 4,
+    "cols": 3,
+    "face": "rock050",
+    "gap_set": "concrete034",
+    "gap_tone": 1.0,
+    "tone": [
+     0.03,
+     0.5
+    ],
+    "nstrength": 1.0,
+    "face_gain": 0.08
+   }
+  },
+  "ashlar": {
+   "gen": "masonry",
+   "p": {
+    "layout": "brick",
+    "rows": 5,
+    "cols": 3,
+    "row_jit": 0.1,
+    "col_jit": 0.28,
+    "stagger": -1,
+    "gap": 0.09,
+    "radius": 0.2,
+    "bevel": 0.1,
+    "face": "rock050",
+    "gap_set": "ground085",
+    "gap_tone": 0.04,
+    "tone": [
+     0.28,
+     0.95
+    ],
+    "nstrength": 1.2
+   }
+  },
+  "cobble": {
+   "gen": "masonry",
+   "p": {
+    "layout": "cobble",
+    "n": 7,
+    "gap": 0.1,
+    "bevel": 0.08,
+    "face": "rock050",
+    "gap_set": "ground085",
+    "gap_tone": 0.04,
+    "tone": [
+     0.35,
+     0.97
+    ],
+    "nstrength": 1.2
+   }
+  },
+  "planks": {
+   "gen": "direct",
+   "p": {
+    "set": "planks033b",
+    "planks": 5,
+    "contrast": 1.0,
+    "hf": 1.0
+   }
+  },
+  "grass": {
+   "gen": "direct",
+   "p": {
+    "set": "grass004",
+    "contrast": 1.0,
+    "macro": 0.16,
+    "macro_size": 90
+   },
+   "stoch": true
+  },
+  "dirt": {
+   "gen": "direct",
+   "p": {
+    "set": "ground079s",
+    "macro": 0.1,
+    "contrast": 1.1
+   },
+   "stoch": true
+  },
+  "rock": {
+   "gen": "direct",
+   "p": {
+    "set": "rock030",
+    "contrast": 1.15,
+    "hf": 1.0
+   },
+   "stoch": true
+  },
+  "plaster": {
+   "gen": "direct",
+   "p": {
+    "set": "plaster006",
+    "macro": 0.06
+   },
+   "stoch": true
+  },
+  "sand": {
+   "gen": "direct",
+   "p": {
+    "set": "ground097",
+    "contrast": 1.0,
+    "hf": 1.0
+   }
+  }
+ }
+}

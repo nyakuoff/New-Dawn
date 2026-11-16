@@ -1,0 +1,197 @@
+{
+ "version": 1,
+ "comment": "INTERIM table for South Clock Town and Termina Field (the spike's mapping): resource names, classes and parameters only, no pixels. To be replaced by the classification tables.",
+ "textures": {
+  "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00E880": {
+   "class": "brick",
+   "seed": 3,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "moss": 0.0
+   }
+  },
+  "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00D880": {
+   "class": "brick",
+   "seed": 5,
+   "tier": "hero",
+   "role": "base"
+  },
+  "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00CB40": {
+   "class": "brick",
+   "seed": 7,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "grime": 1.4
+   }
+  },
+  "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00F080": {
+   "class": "brick",
+   "seed": 11,
+   "tier": "hero",
+   "role": "base"
+  },
+  "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_00E080": {
+   "class": "brick",
+   "seed": 13,
+   "tier": "hero",
+   "role": "base"
+  },
+  "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_01D200": {
+   "class": "ashlar",
+   "seed": 17,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "row_jit": 0.12,
+    "col_jit": 0.3,
+    "gap": 0.12,
+    "tone": [
+     0.3,
+     0.95
+    ],
+    "moss": 0.12
+   }
+  },
+  "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_020E00": {
+   "class": "planks",
+   "seed": 19,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "k": 1
+   }
+  },
+  "scenes/nonmq/Z2_CLOCKTOWER/Z2_CLOCKTOWERTex_01BE00": {
+   "class": "planks",
+   "seed": 23,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "k": 1,
+    "rot": 1
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01C650": {
+   "class": "grass",
+   "seed": 29,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "k": 1
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_02C050": {
+   "class": "grass",
+   "seed": 31,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "set": "grass002",
+    "k": 1,
+    "macro": 0.3,
+    "macro_size": 110
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_02A050": {
+   "class": "rock",
+   "seed": 37,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "k": 1
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_033898": {
+   "class": "ashlar",
+   "seed": 41,
+   "tier": "hero",
+   "role": "base",
+   "palette": "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTLUT_038318"
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_02CC50": {
+   "class": "cobble",
+   "seed": 43,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "n": 11,
+    "bevel": 0.1,
+    "face": "rock060",
+    "tone": [
+     0.42,
+     1.0
+    ],
+    "face_gain": 0.1
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_02F258": {
+   "class": "cobble",
+   "seed": 47,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "moss": 0.35
+   },
+   "palette": "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTLUT_0382B8"
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01F650": {
+   "class": "dirt",
+   "seed": 53,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "k": 1
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01EE50": {
+   "class": "plaster",
+   "seed": 59,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "k": 1
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01CE50": {
+   "class": "rock",
+   "seed": 61,
+   "tier": "hero",
+   "role": "base",
+   "p": {
+    "set": "rock061",
+    "k": 1
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01E650": {
+   "class": "ashlar",
+   "seed": 71,
+   "tier": "hero",
+   "role": "detail",
+   "p": {
+    "rows": 4,
+    "cols": 2,
+    "col_jit": 0.1,
+    "row_jit": 0.0,
+    "stagger": 0.5,
+    "nstrength": 0.7
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01DE50": {
+   "class": "grass",
+   "seed": 73,
+   "tier": "hero",
+   "role": "detail",
+   "p": {
+    "macro": 0.25
+   }
+  },
+  "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_01FE50": {
+   "class": "sand",
+   "seed": 79,
+   "tier": "hero",
+   "role": "detail"
+  }
+ }
+}
