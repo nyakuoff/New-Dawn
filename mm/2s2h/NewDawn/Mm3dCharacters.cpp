@@ -42,7 +42,7 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.2.0";
+constexpr const char* kConverterVersion = "1.3.2";
 
 struct Entry {
     const char* object;
@@ -53,6 +53,7 @@ struct Entry {
     bool reviewed;
     float lightRef, saturation; // colour overrides for this model, 0 = the global defaults
     const char* rig;            // "bone:limb,..." when the 3DS rig differs from the N64 one (see ParseRig); "" = same hierarchy
+    const char* face;           // eye and mouth states (see ParseFace); "" = the faces stay at their first frame
 };
 const Entry kTable[] = {
 #include "Mm3dCharacterTable.inc"
@@ -161,6 +162,59 @@ std::map<int, int> ParseRig(const char* s) {
         }
     }
     return out;
+}
+
+// "E:8:misc/x_eye.cmab:gNameTex=2,gOtherTex=0|M:9:..." : per face part, the segment the N64 limb display list reads its texture
+// from (the actor points it at one of the state textures), the CMAB of the 3DS frames, and which frame replaces each N64 state
+// texture. The converted display list reads the same segment, and the state textures are overridden by the 3DS frames.
+struct FacePart {
+    int seg = 0;
+    std::string cmab;
+    std::vector<std::pair<std::string, int>> states;
+};
+std::vector<FacePart> ParseFace(const char* s) {
+    std::vector<FacePart> out;
+    std::string all(s ? s : "");
+    size_t pos = 0;
+    while (pos < all.size()) {
+        size_t end = all.find('|', pos);
+        end = end == std::string::npos ? all.size() : end;
+        const std::string part = all.substr(pos, end - pos);
+        pos = end + 1;
+        const size_t a = part.find(':'), b = a == std::string::npos ? a : part.find(':', a + 1),
+                     c = b == std::string::npos ? b : part.find(':', b + 1);
+        if (c == std::string::npos) {
+            continue;
+        }
+        FacePart f;
+        f.seg = std::atoi(part.substr(a + 1, b - a - 1).c_str());
+        f.cmab = part.substr(b + 1, c - b - 1);
+        size_t q = c + 1;
+        while (q < part.size()) {
+            size_t comma = part.find(',', q);
+            comma = comma == std::string::npos ? part.size() : comma;
+            const std::string kv = part.substr(q, comma - q);
+            const size_t eq = kv.find('=');
+            if (eq != std::string::npos) {
+                f.states.emplace_back(kv.substr(0, eq), std::atoi(kv.c_str() + eq + 1));
+            }
+            q = comma + 1;
+        }
+        out.push_back(std::move(f));
+    }
+    return out;
+}
+
+// GAR names carry either slash ("misc\\ange_eye.cmab" in some archives).
+const std::vector<uint8_t>* FindGarFile(const Mm3d::Gar& gar, const std::string& name) {
+    for (const auto& kv : gar.files) {
+        std::string k = kv.first;
+        std::replace(k.begin(), k.end(), '\\', '/');
+        if (k == name) {
+            return &kv.second;
+        }
+    }
+    return nullptr;
 }
 
 // The upscaler weights ship with the game (assets/newdawn/mm3d/span_v4_4x.bin, CC0); gNewDawn.MM3D.Upscale=0 skips them.
@@ -425,7 +479,8 @@ struct Dl {
         W(0x05000000u | (a[0] * 2 << 16) | (a[1] * 2 << 8) | a[2] * 2, 0);
     }
     // gDPLoadTextureBlock for an RGBA32 image declared as w x h texels; the resource keeps its real size.
-    void Tex(uint64_t hash, int w, int h, uint16_t wrapS, uint16_t wrapT) {
+    // seg >= 0: the image comes from that segment (the actor points it at an N64 face texture; the overlay swaps in the 3DS frame).
+    void Tex(uint64_t hash, int seg, int w, int h, uint16_t wrapS, uint16_t wrapT) {
         auto mode = [](uint16_t wrap) { return wrap == 0x8370 ? 1 : (wrap == 0x812F ? 2 : 0); };
         auto mask = [](int n) { return (n & (n - 1)) == 0 ? (int)std::log2((double)n) : 0; };
         const int cms = mode(wrapS), cmt = mode(wrapT);
@@ -433,7 +488,11 @@ struct Dl {
         const int line = (w * 2 + 7) >> 3; // G_IM_SIZ_32b_LINE_BYTES = 2
         const uint32_t tile = (cmt << 18) | (mt << 14) | (cms << 8) | (ms << 4);
         W(0xE7000000, 0);
-        Ex(0x20000000u | (3 << 19), 0, hash);
+        if (seg >= 0) {
+            W(0xFD000000u | (3 << 19), ((uint32_t)seg << 24) | 1u); // bit 0: the interpreter treats the address as segmented
+        } else {
+            Ex(0x20000000u | (3 << 19), 0, hash);
+        }
         W(0xE8000000, 0);
         W(0xF5000000u | (3 << 19), (7u << 24) | tile);
         W(0xE6000000, 0);
@@ -574,7 +633,7 @@ struct Result {
 using Writer = std::function<void(const std::string&, const std::vector<uint8_t>&)>;
 
 Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& model, const Writer& write,
-               const ColourParams& colour, const SpanUpscaler* upscaler) {
+               const ColourParams& colour, const SpanUpscaler* upscaler, const Mm3d::Gar* gar) {
     Result res;
     const auto t0 = std::chrono::steady_clock::now();
     try {
@@ -765,6 +824,80 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
             }
         }
 
+        // faces: the eye and mouth materials read a segment; the 3DS frames replace the N64 state textures
+        struct FaceUse {
+            FacePart part;
+            std::vector<Mm3d::Image> frames;
+            int material = -1;
+        };
+        std::map<int, int> faceSeg; // material -> segment
+        std::vector<FaceUse> faces;
+        if (gar && e.face && e.face[0]) {
+            for (FacePart& fp : ParseFace(e.face)) {
+                const std::vector<uint8_t>* raw = FindGarFile(*gar, fp.cmab);
+                FaceUse fu;
+                std::string cerr;
+                if (!raw || !Mm3d::ParseCmabFrames(*raw, fu.frames, cerr)) {
+                    continue; // no animation: the face keeps its first frame
+                }
+                int bestTex = -1;
+                double bestDiff = 1e30;
+                const Mm3d::Image& f0 = fu.frames[0];
+                for (size_t ti = 0; ti < model.textures.size(); ++ti) {
+                    const Mm3d::Image& im = model.textures[ti].image;
+                    if (im.width != f0.width || im.height != f0.height || im.rgba.size() != f0.rgba.size()) {
+                        continue;
+                    }
+                    double d = 0;
+                    for (size_t i = 0; i < im.rgba.size(); i += 4) {
+                        for (int c = 0; c < 3; ++c) {
+                            d += std::abs((int)im.rgba[i + c] - (int)f0.rgba[i + c]);
+                        }
+                    }
+                    d /= (double)(im.rgba.size() / 4) * 3.0;
+                    if (d < bestDiff) {
+                        bestDiff = d, bestTex = (int)ti;
+                    }
+                }
+                if (bestTex < 0 || bestDiff > 40.0) {
+                    continue;
+                }
+                for (size_t mi = 0; mi < model.materials.size(); ++mi) {
+                    int ti = -1;
+                    for (int j = 0; j < 3 && ti < 0; ++j) {
+                        ti = model.materials[mi].texture[j];
+                    }
+                    if (ti == bestTex && !skip.count((int)mi)) {
+                        faceSeg[(int)mi] = fp.seg;
+                        if (fu.material < 0) {
+                            fu.material = (int)mi;
+                        }
+                    }
+                }
+                if (fu.material >= 0) {
+                    fu.part = std::move(fp);
+                    faces.push_back(std::move(fu));
+                }
+            }
+        }
+        for (const FaceUse& fu : faces) {
+            for (const auto& st : fu.part.states) {
+                if (st.second < 0 || st.second >= (int)fu.frames.size()) {
+                    continue;
+                }
+                Mm3d::Image img = fu.frames[st.second];
+                if (upscaler) {
+                    Mm3d::Image big;
+                    if (upscaler->Upscale4x(img, big)) {
+                        img = std::move(big);
+                    }
+                }
+                MapColour(img, model.materials[fu.material], colour);
+                write(std::string("mm3d/objects/") + e.object + "/" + st.first, TextureResource(img));
+                ++res.textures;
+            }
+        }
+
         // textures: one RGBA32 resource per CMB texture, named per skeleton
         const std::string base = std::string("mm3d/objects/") + e.object + "/mm3d_" + e.skeleton;
         std::map<int, std::string> texName;
@@ -782,7 +915,7 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
             texName[(int)mi] = base + "_tex" + std::to_string(ti);
             DeclaredSize(model.textures[ti].image.width, model.textures[ti].image.height, texDeclared[(int)mi][0],
                          texDeclared[(int)mi][1]);
-            if (written.insert(ti).second) {
+            if (!faceSeg.count((int)mi) && written.insert(ti).second) {
                 Mm3d::Image img = model.textures[ti].image;
                 if (upscaler) { // 4x; the display list keeps the declared size of the original, so the UVs still fit
                     Mm3d::Image big;
@@ -845,7 +978,8 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                 dl.W(0xD9000000, (0x00230405u & ~0x400u) | cull);
                 dl.W(0xE200001C, mat.alpha == Mm3d::Material::Opaque ? 0xC8112078u
                                  : mat.alpha == Mm3d::Material::Cutout ? 0xC81049D8u : 0xC8113078u);
-                dl.Tex(Crc64(texName[m]), dw, dh, mat.wrapS[0], mat.wrapT[0]);
+                dl.Tex(faceSeg.count(m) ? 0 : Crc64(texName[m]), faceSeg.count(m) ? faceSeg[m] : -1, dw, dh, mat.wrapS[0],
+                       mat.wrapT[0]);
 
                 std::map<Key, std::pair<int, std::array<uint8_t, 16>>> cache; // key -> (drive limb, packed vertex)
                 std::vector<std::array<Key, 3>> batch;
@@ -980,7 +1114,7 @@ std::string Signature(const std::string& dump) {
     }
     std::set<std::string> archives;
     for (const Entry& e : kTable) {
-        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig, h);
+        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig + e.face, h);
         h = Fnv1a(&e.lightRef, sizeof(e.lightRef), h);
         h = Fnv1a(&e.saturation, sizeof(e.saturation), h);
         archives.insert(e.archive);
@@ -1153,7 +1287,7 @@ void Generate(bool boot) {
                                 }
                             }
                             zip.Add(name, data.data(), data.size());
-                        }, entryColour, Enabled(e) ? upscaler : nullptr);
+                        }, entryColour, Enabled(e) ? upscaler : nullptr, gar.get());
                     }
                 }
                 (res.ok ? okCount : failCount)++;
