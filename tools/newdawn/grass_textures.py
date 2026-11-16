@@ -29,6 +29,16 @@ for t in data["textures"]:
     if t["class"] == "grass" and t.get("excluded") == "alpha/cutout or translucent" and not interior(t["resource"]):
         sway.append(t["resource"].rsplit("/", 1)[-1])
 
+    # Lawn tiles the hue classifier left as "stone" (#75): the yellow-green 1024/2048 ground tile of Romani Ranch, the
+    # Milk Road / Ikana Valley entrance / Gorman Track / Laundry Pool / Moon lawns (hue 60-70, saturation >= 0.55,
+    # luminance >= 0.5; checked by eye on a contact sheet). The 20SICHITAI2 gradient strips match the numbers but are not lawns.
+    s = t["statistics"]
+    if (t["class"] != "grass" and 60 <= s["hue"] <= 70 and s["saturation"] >= 0.55 and s["luminance"] >= 0.5
+            and min(t["size"]) >= 512 and t.get("excluded") is None and not interior(t["resource"])
+            and not t["resource"].split("/")[2].startswith("Z2_20SICHITAI")):
+        rows.append(t["resource"].rsplit("/", 1)[-1])
+        continue
+
     # Alpha-carrying 4K tiles are kept: the renderer only records draws that are opaque in the game's own render state.
     if t["class"] != "grass" or t.get("excluded") not in (None, "alpha/cutout or translucent"):
         continue

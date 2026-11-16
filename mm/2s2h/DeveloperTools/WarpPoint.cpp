@@ -105,6 +105,11 @@ void Warp(WarpPoint& warpPoint) {
         gPlayState->transitionTrigger = TRANS_TRIGGER_START;
         gPlayState->transitionType = TRANS_TYPE_INSTANT;
     }
+    // Capture/debug only: gNewDawn.Debug.BootSpawn=1 enters the scene by the entrance's own spawn point (position, yaw and
+    // entrance rules of the game) and ignores the stored position, for scenes whose coordinates are not known.
+    if (gPlayState == NULL && CVarGetInteger("gNewDawn.Debug.BootSpawn", 0)) {
+        return;
+    }
     gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance =
         Entrance_Create(warpPoint.entranceId >> 9, 0, warpPoint.entranceId & 0xF);
     gSaveContext.respawn[RESPAWN_MODE_DOWN].roomIndex = warpPoint.roomNum;
