@@ -53,13 +53,13 @@ def crc64(name):
 # ------------------------------------------------------------------ table rows
 def read_table(path=TABLE):
     rows = []
-    rx = re.compile(r'\{ "(\w+)", "(\w+)", "(\w+)", "([^"]*)", "([^"]*)", (true|false), ([\d.]+)f, ([\d.]+)f, "([^"]*)", "([^"]*)", "([^"]*)" \}')
+    rx = re.compile(r'\{ "(\w+)", "(\w+)", "(\w+)", "([^"]*)", "([^"]*)", (true|false), ([\d.]+)f, ([\d.]+)f, "([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)" \}')
     for line in open(path):
         m = rx.match(line)
         if m:
             g = m.groups()
             rows.append(dict(obj=g[0], skel=g[1], arch=g[2], cmb=g[3], skip=g[4], reviewed=g[5] == 'true', light=float(g[6]),
-                             sat=float(g[7]), rig=g[8], face=g[9], tint=g[10]))
+                             sat=float(g[7]), rig=g[8], face=g[9], matcls=g[10], tint=g[11]))
     return rows
 
 

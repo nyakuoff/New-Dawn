@@ -104,7 +104,7 @@ from the 3DS game is ever shipped.
 ## Planned 📋
 Roughly in priority order; this will change as work lands.
 
-1. **Character materials.** Skin that transmits light, cloth and felt sheen, metal, hair highlights, for both the
+1. **Character materials** (done, local: `docs/CHARACTER_LIGHTING.md`). Skin that transmits light, cloth and felt sheen, metal, hair highlights, for both the
    original and the 3DS models (after the character lighting pass now in progress).
 2. **Objects and props** in the texture pipeline (in progress), and more unique art sourced from your 3DS copy.
 3. **Temporal upscaling.** Render the world below native resolution and upsample with the TAA history.
