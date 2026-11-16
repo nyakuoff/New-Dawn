@@ -66,6 +66,21 @@ point('treasure_chest_shop', 0x2800, 0, (-70, 0, 161), 0, 'Z2_TAKARAYA spawn 0 (
 point('pirate_fortress_interior_b', 0x4030, 0, (3300, 240, -1780), 11520, 'Z2_PIRATE spawn 3 (entrance 0x4030)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
 point('pirate_fortress_interior_c', 0x4070, 0, (708, 160, -2260), 23040, 'Z2_PIRATE spawn 7 (entrance 0x4070)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
 point('pirate_fortress_interior_d', 0x40a0, 0, (2520, 200, 660), 23040, 'Z2_PIRATE spawn 10 (entrance 0x40a0)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+# 3DS-sourced unique art (docs/TEXTURE_PIPELINE.md, milestone 4 review): Link stands in front of the largest triangle that uses the texture, facing it
+# (positions from tools/newdawn/texclassify geometry; room = the room of the texture); the entrance's own spawn scene, position overridden.
+point('r3_musichouse_barrel', 0xa400, 0, (115, -45, 4), -32768, 'Z2_MUSICHOUSE Tex_00D4C0 (Music Box House wall)')
+point('r3_fisherman_wave', 0x7200, 0, (-127, 41, -95), 0, 'Z2_FISHERMAN Tex_006630 (Fisherman wave band)')
+point('r3_deku_palace_zigzag', 0x5000, 1, (503, 165, 1797), 16384, 'Z2_22DEKUCITY room_01 Tex_00E6E8 (Deku Palace zigzag)')
+point('r3_swordsman_plaster', 0xa200, 0, (20, 82, 270), 16384, 'Z2_DOUJOU Tex_006130 (Swordsman school plaster)')
+point('r3_stone_tower_window', 0x2a00, 0, (10, -95, -920), 0, 'Z2_INISIE_R Tex_011680 (inverted Stone Tower window)')
+point('r3_shooting_backdrop', 0x4200, 0, (87, 42, -179), -32768, 'Z2_SYATEKI_MIZU Tex_007E60 (swamp shooting gallery backdrop)')
+point('r3_ikana_castle_floor', 0x3400, 3, (-325, -1365, -993), 0, 'Z2_CASTLE room_03 Tex_003548 (Ikana Castle checker floor)')
+point('r3_woodfall_log', 0x3000, 11, (-2128, 2, -105), 16384, 'Z2_MITURIN room_11 Tex_006578 (Woodfall Temple log end)')
+point('r3_laundry_alley', 0xda00, 0, (-2056, 125, 657), 0, 'Z2_ALLEY Tex_00A300 (Laundry Pool panel)')
+point('r3_deku_palace_floor', 0x5000, 2, (-300, 410, 1055), 16384, 'Z2_22DEKUCITY room_02 Tex_011568 (Deku Palace upper level)')
+point('r3_lottery_disc', 0x6c00, 0, (35, 57, 5), 0, 'Z2_TAKARAKUJI Tex_001310 (lottery shop ceiling disc, viewed from the doorway side)')
+point('r3_ikana_castle_floor_b', 0x3410, 3, (-325, -1365, -993), 0, 'Z2_CASTLE room_03 Tex_003548, entrance spawn 1')
+point('r3_fisherman_wave_b', 0x7210, 0, (-127, 41, -95), 0, 'Z2_FISHERMAN Tex_006630, entrance spawn 1')
 # POINTS-TABLE-END
 # fmt: on
 

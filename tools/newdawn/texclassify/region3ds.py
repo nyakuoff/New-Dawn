@@ -10,6 +10,8 @@ rectangle onto that 3DS atlas by geometry, so only the sub-region that shows the
                        are game-derived and stay outside the repository.
   table  <cands.json> <out.json>
                        the committed table (mm3d_regions.json): the registrations of the sheets plus every approved one.
+  zoom   <cands.json> <decisions.txt> ID,ID,... <out.png> [size]
+                       the same cells at larger size for a second look at chosen IDs.
   apply  <cands.json> <decisions.txt> <recipes.json>
                        writes the approved lines (`ID r|w|y`) into recipes.json unique.mm3d_regions_verified {resource: r|w|y}; everything else
                        stays N64-sourced.
@@ -444,16 +446,67 @@ def do_sheet(cands, outdir, floor, cols, rows, density, include_verified):
     print(len(items), 'candidates on', (len(items) + per - 1) // per, 'sheets ->', outdir)
 
 
-def do_apply(decisions, recipes_path):
-    """`ID r|w|y resource`: r = region crop, w = whole texture, y = the better of the two by rank (resolved when the table is read)."""
-    yes = {}
+def do_zoom(cands, decisions, ids, out, size, cols=2):
+    """Larger panels for chosen IDs of an existing decisions file (the IDs of the sheets stay valid): `zoom <cands.json> <decisions.txt> R0004,R0009 <out.png> [size]`."""
+    from PIL import Image, ImageDraw
+    C = json.load(open(cands))
+    byid = {}
     for l in open(decisions):
         f = l.split()
-        if f and not l.startswith('#') and len(f) >= 4 and f[1].lower() in ('r', 'w', 'y'):
-            yes[f[3]] = f[1].lower()
+        if f and not l.startswith('#') and len(f) >= 4:
+            byid[f[0]] = f[3]
+    arc = o2r.Archive()
+    arc.names_set = set(arc.names)
+    cl = json.load(open(os.path.join(TABLES, 'classification.json')))['textures']
+    cache = {}
+    S = size
+    cw, ch = 3 * S + 16, S + 32
+    rows = (len(ids) + cols - 1) // cols
+    sh = Image.new('RGB', (cols * cw, rows * ch), (24, 24, 24))
+    d = ImageDraw.Draw(sh)
+    for i, cid in enumerate(ids):
+        res = byid[cid]
+        e = C[res]
+        if e['scene'] not in cache:
+            cache[e['scene']] = scene_textures(ROMFS, e['scene'])
+        orig = decode_n64(arc, res, cl[res])
+        w, h = e['size']
+        x, y = (i % cols) * cw, (i // cols) * ch
+        d.text((x + 3, y + 2), '%s %s r%.2f' % (cid, res.split('/')[2][:22], top(e)), fill=(255, 255, 160))
+        panels, txt = [orig[..., :3]], []
+        for k in ('r', 'w'):
+            b = e.get(k)
+            img = cache[e['scene']].get(b['mm3d']) if b else None
+            if img is None:
+                panels.append(None)
+                continue
+            panels.append(sample(img, b['m'], w, h, b['scale']).clip(0, 255).astype(np.uint8))
+            txt.append('%s %.2f %dx' % (k, rank(b), b['scale']))
+        d.text((x + 3, y + 14), ' | '.join(txt) + '  best ' + e['best'], fill=(170, 170, 170))
+        for k, im in enumerate(panels):
+            if im is None:
+                continue
+            a = Image.fromarray(im)
+            f = S / max(a.size)
+            sh.paste(a.resize((max(1, int(a.width * f)), max(1, int(a.height * f))), Image.BICUBIC), (x + 4 + k * (S + 4), y + 28))
+    sh.save(out)
+
+
+def do_apply(decisions, recipes_path):
+    """`ID r|w|y|n resource`: r = region crop, w = whole texture, y = the better of the two by rank (resolved when the table is read), n = reject (and withdraw an earlier approval)."""
+    yes, no = {}, set()
+    for l in open(decisions):
+        f = l.split()
+        if f and not l.startswith('#') and len(f) >= 4:
+            if f[1].lower() in ('r', 'w', 'y'):
+                yes[f[3]] = f[1].lower()
+            elif f[1].lower() == 'n':
+                no.add(f[3])
     rec = json.load(open(recipes_path))
     cur = rec['unique'].get('mm3d_regions_verified', {})
     cur.update(yes)
+    for r in no:                      # an explicit n withdraws an earlier approval
+        cur.pop(r, None)
     rec['unique']['mm3d_regions_verified'] = dict(sorted(cur.items()))
     open(recipes_path, 'w').write(json.dumps(rec, indent=1, ensure_ascii=False))
     print(len(yes), 'approved;', len(cur), 'in total')
@@ -471,6 +524,8 @@ if __name__ == '__main__':
         do_sheet(a[2], a[3], opt('--min', 0.15), opt('--cols', 3), opt('--rows', 6), opt('--density', 1.4), '--all' in a)
     elif cmd == 'table':
         do_table(sys.argv[2], sys.argv[3], 0.15, 1.4)
+    elif cmd == 'zoom':
+        do_zoom(sys.argv[2], sys.argv[3], sys.argv[4].split(','), sys.argv[5], int(sys.argv[6]) if len(sys.argv) > 6 else 220)
     elif cmd == 'apply':
         do_apply(sys.argv[3], sys.argv[4])
     else:
