@@ -105,8 +105,8 @@ Implemented, built (RelWithDebInfo, `nd-heavy build`) and run in game.
 | Converted / failed | **58 / 0** (every CMB parses, binds and writes) |
 | Conversion time | **0.03 s** for all 58 without the texture upscale; **1.0 s** with it for the 4 enabled models (20 threads, includes reading the GARs and the N64 skeletons; 51,078 triangles, 154 textures, 9,114 triangles span a joint) |
 | Cache | 2.4 MB for the 4 enabled models with the 512 px textures (173 KB before the upscale) |
-| Enabled in game (reviewed) | **4**: Clock Town guard, Anju, Mayor's Residence receptionist, Business Scrub |
-| Held back (converted, not enabled) | 54, until each has been looked at in game |
+| Enabled in game (reviewed) | **6**: Clock Town guard, Anju, Mayor's Residence receptionist, Business Scrub, Treasure Chest Shop gal, the tree climber in Termina Field |
+| Held back (converted, not enabled) | 52, see "Review of the held-back models" |
 | Off identity | toggle off with the cache mounted, and no dump at all: frozen Stock Pot Inn (clock 12, frame 30, the extended off list) is **pixel-identical** (0 differing pixels) to main `85fbd4fd4`, which itself reproduces exactly run to run |
 | GL errors | 0 in every capture (`MESA_DEBUG=context`) |
 
@@ -123,13 +123,30 @@ enemies. What could be verified:
 | Receptionist (`object_bg`, Mayor's Residence) | in game; face and blouse; her N64 actor draws with `SkelAnime_DrawTransformFlexOpa` and the flex matrices still line up |
 | Business Scrub (`object_dnt`) | in game in the Southern Swamp (the two frames caught different actor states, so only the model is comparable) |
 | Postman (`object_mm`), Mayor Dotour (`object_dt`) | convert fine; **no in-game capture**: the Postman was not where the scene's actor list put him in the three rooms tried, and the Mayor is not in his residence at 10:00 on day 1 |
-| Takkuri, Wolfos, Dinolfos, Big Octo, dog | convert fine; **no usable in-game capture** (a flying Takkuri and the Snowhead Wolfos never entered the frame; the Octo renders translucent in poison water and was held back). Needs an actor-aware capture fixture (aim at the live actor), milestone 2 |
+| Treasure Chest Shop gal (`object_bg`, `gTreasureChestShopGalSkel`) | in game; purple hair and pink top kept. The archive holds two CMBs with this hierarchy (`reception_girl`, `treasure_girl`); the table now picks per skeleton (`CMB` in `chartable.py`), which a first capture showed was needed (she came out with the receptionist's green hair) |
+| Tree climber (`object_ani`, Termina Field) | in game, same frame as N64; body, hair and clothes line up |
+| Takkuri, Wolfos, Dinolfos, dog | convert fine; no usable in-game view (the dog was hidden behind Link, the flying Takkuri and the Snowhead Wolfos stayed out of frame) |
+| Big Octo | **rejected in game**: the 3DS mesh draws translucent and a different shape in the poison-water room |
 | Kafei, Romani, Cremia, Bombers | **no match**: their 3DS rigs differ from the N64 ones (Romani 22 vs 25 bones with different offsets, Cremia 21 vs 23, the Bombers 20 vs 17, no Kafei CMB found by name). They need the leaf and contraction reduction plus per-limb registration (milestone 2) |
 
 Offline joint checks (software render of the same N64 animations, `ref/measure.py` from the spike; flex-weld has no seam by
 construction): guard (idle, wave, come-up-here), Anju (walk, idle, bow), receptionist (her idle) and the Business Scrub
 (excited, jump, bob). Flex displacement from true weighted skinning: mean 5 to 17 units, p95 41 to 112; triangle stretch p99
 1.95 to 3.4x, worst 7.5x (scrub, excited). Rigid-per-limb seam gaps for comparison: mean 94 to 238 units.
+
+### Review of the held-back models (milestone 2)
+`gNewDawn.MM3D.ReviewAll=1` (reviewer switch, no menu entry) writes every converted model so it can be looked at in game;
+the shipped default stays the `reviewed` rows of the table. A scan of 25 scenes with it on found live actors for 13 of
+the 50 objects (guard, Anju, receptionist/treasure gal, scrub, dog, tree climber, Postman, tied monkey, Big Octo, Real
+Bombchu, Takkuri, Snowhead Wolfos, balloon Poe); the other 37 objects only appear in cutscenes, at other times of day or in
+rooms the fixture did not reach. The bind-pose gallery of all 58 (flat colour, front and side) gave these offline verdicts:
+- Same CMB for a variant that looks different: both Pamela's father skeletons use one human CMB, so the Gibdo form would
+  turn into a human; the Great Fairy has five colour CMBs for one skeleton; White Wolfos and the Garo pair needed their
+  own CMB (now picked). Stay held back: Gibdo, Great Fairy.
+- Not a plausible stand-in: Deku Princess (a flower on a stalk), Biodeku lily pad (a flat red hexagon), Big Octo.
+- Props baked into the CMB, not yet excluded: Iron Knuckle axe, the witch sisters' brooms, Wizzrobe staff, the pirate spear.
+- The Postman (`En_Pm`, post office) rendered identically in both modes; the cause was not determined, so `object_mm` stays off.
+Everything else is plausible offline but unseen in game, so it stays off until a capture exists.
 
 ### Limits
 - Eye and mouth textures are static (see Faces). Props baked into a CMB are listed per skeleton (guard bottle, Anju's

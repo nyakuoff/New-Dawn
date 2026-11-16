@@ -144,6 +144,10 @@ std::string UpscalerPath() {
 bool UpscaleWanted() {
     return CVarGetInteger("gNewDawn.MM3D.Upscale", 1) != 0;
 }
+// Reviewer switch (no menu entry): gNewDawn.MM3D.ReviewAll=1 also writes the held-back models, to look at them in game.
+bool Enabled(const Entry& e) {
+    return e.reviewed || CVarGetInteger("gNewDawn.MM3D.ReviewAll", 0) != 0;
+}
 
 // ------------------------------------------------------------------ N64 skeleton (from the loaded game archives)
 struct Limb {
@@ -859,7 +863,7 @@ std::string Signature(const std::string& dump) {
     }
     std::set<std::string> archives;
     for (const Entry& e : kTable) {
-        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (e.reviewed ? "1" : "0"), h);
+        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0"), h);
         h = Fnv1a(&e.lightRef, sizeof(e.lightRef), h);
         h = Fnv1a(&e.saturation, sizeof(e.saturation), h);
         archives.insert(e.archive);
@@ -1022,7 +1026,7 @@ void Generate(bool boot) {
                     } else {
                         // Reviewed skeletons are written to the archive; the others convert (and are counted) but stay out.
                         res = Convert(e, job.limbs, model, [&](const std::string& name, const std::vector<uint8_t>& data) {
-                            if (!e.reviewed) {
+                            if (!Enabled(e)) {
                                 return;
                             }
                             {
@@ -1032,15 +1036,15 @@ void Generate(bool boot) {
                                 }
                             }
                             zip.Add(name, data.data(), data.size());
-                        }, entryColour, e.reviewed ? upscaler : nullptr);
+                        }, entryColour, Enabled(e) ? upscaler : nullptr);
                     }
                 }
                 (res.ok ? okCount : failCount)++;
-                if (res.ok && e.reviewed) {
+                if (res.ok && Enabled(e)) {
                     ++enabledCount;
                 }
                 report[i] = json{ { "object", e.object }, { "skeleton", e.skeleton }, { "cmb", e.cmb },       { "ok", res.ok },
-                              { "reviewed", e.reviewed }, { "error", res.error },  { "triangles", res.tris }, { "limbs", res.limbs },
+                              { "reviewed", Enabled(e) }, { "error", res.error },  { "triangles", res.tris }, { "limbs", res.limbs },
                               { "stretched", res.stretched }, { "textures", res.textures }, { "dropped", res.dropped },
                               { "seconds", res.seconds } };
                 ++gDone;

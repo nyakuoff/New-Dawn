@@ -4,8 +4,8 @@
 { "object_ah", "object_ah_Skel_009E70", "zelda2_ah", "model/ange_mother.cmb", "", false, 0.00f, 0.00f },  // 16 limbs, 1044 triangles
 { "object_al", "gMadameAromaSkel", "zelda2_al", "model/aroma.cmb", "", false, 0.00f, 0.00f },  // 26 limbs, 1054 triangles
 { "object_an1", "gAnju1Skel", "zelda2_an1", "model/ange.cmb", "0,1", true, 0.00f, 0.00f },  // 20 limbs, 1112 triangles
-{ "object_ani", "gAniSkel", "zelda2_ani", "model/parttimeman.cmb", "", false, 0.00f, 0.00f },  // 15 limbs, 624 triangles
-{ "object_bg", "gTreasureChestShopGalSkel", "zelda2_bg", "model/reception_girl.cmb", "", false, 0.00f, 0.00f },  // 23 limbs, 1062 triangles
+{ "object_ani", "gAniSkel", "zelda2_ani", "model/parttimeman.cmb", "", true, 0.00f, 0.00f },  // 15 limbs, 624 triangles
+{ "object_bg", "gTreasureChestShopGalSkel", "zelda2_bg", "model/treasure_girl.cmb", "", true, 0.00f, 0.00f },  // 23 limbs, 1038 triangles
 { "object_bg", "object_bg_Skel_011B60", "zelda2_bg", "model/reception_girl.cmb", "", true, 0.55f, 1.05f },  // 23 limbs, 1062 triangles
 { "object_bh", "gBhSkel", "zelda2_bh", "model/skylark.cmb", "", false, 0.00f, 0.00f },  // 5 limbs, 90 triangles
 { "object_bigokuta", "gBigOctoSkel", "zelda2_bigokuta", "model/daiocta.cmb", "", false, 0.00f, 0.00f },  // 19 limbs, 670 triangles
@@ -32,7 +32,7 @@
 { "object_ikn_demo", "object_ikn_demo_Skel_007B48", "zelda2_ikn_demo", "sk2/model/ikana_aide2_head.cmb", "", false, 0.00f, 0.00f },  // 6 limbs, 364 triangles
 { "object_ikn_demo", "object_ikn_demo_Skel_00B490", "zelda2_ikn_demo", "sk2/model/ikana_aide2_head.cmb", "", false, 0.00f, 0.00f },  // 6 limbs, 364 triangles
 { "object_jso", "gGaroMasterSkel", "zelda2_jso", "model/boss_garo.cmb", "", false, 0.00f, 0.00f },  // 19 limbs, 1408 triangles
-{ "object_jso", "gGaroSkel", "zelda2_jso", "model/boss_garo.cmb", "", false, 0.00f, 0.00f },  // 19 limbs, 1408 triangles
+{ "object_jso", "gGaroSkel", "zelda2_jso", "model/garo.cmb", "", false, 0.00f, 0.00f },  // 19 limbs, 1210 triangles
 { "object_kitan", "gKeatonSkel", "zelda2_kitan", "model/keatan.cmb", "", false, 0.00f, 0.00f },  // 20 limbs, 976 triangles
 { "object_kz", "gFighterPirateSkel", "zelda2_kz", "model/pirate_soldier2.cmb", "", false, 0.00f, 0.00f },  // 23 limbs, 1226 triangles
 { "object_mm", "object_mm_Skel_0096E8", "zelda2_mm", "model/postman.cmb", "", false, 0.00f, 0.00f },  // 15 limbs, 864 triangles
@@ -53,7 +53,7 @@
 { "object_tsn", "object_tsn_Skel_008AB8", "zelda2_tsn", "model/fisherman.cmb", "", false, 0.00f, 0.00f },  // 16 limbs, 1164 triangles
 { "object_wdhand", "gDexihandSkel", "zelda2_wdhand", "model/dixiehand.cmb", "", false, 0.00f, 0.00f },  // 7 limbs, 284 triangles
 { "object_wf", "gWolfosNormalSkel", "zelda2_wf", "Model/wolfos.cmb", "", false, 0.00f, 0.00f },  // 21 limbs, 649 triangles
-{ "object_wf", "gWolfosWhiteSkel", "zelda2_wf", "Model/wolfos.cmb", "", false, 0.00f, 0.00f },  // 21 limbs, 649 triangles
+{ "object_wf", "gWolfosWhiteSkel", "zelda2_wf", "model/wolfos_white.cmb", "", false, 0.00f, 0.00f },  // 21 limbs, 649 triangles
 { "object_wiz", "gWizrobeSkel", "zelda2_wiz", "model/wizrobe.cmb", "", false, 0.00f, 0.00f },  // 19 limbs, 1342 triangles
 { "object_zm", "object_zm_Skel_00A978", "zelda2_zm", "model/toto.cmb", "", false, 0.00f, 0.00f },  // 17 limbs, 1134 triangles
 { "object_zoraegg", "gZoraBabySkel", "zelda2_zoraegg", "model/zora_fry.cmb", "", false, 0.00f, 0.00f },  // 6 limbs, 212 triangles
