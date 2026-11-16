@@ -1,0 +1,17 @@
+{
+  "name": "clock_town_streets",
+  "inherits": "clock_town",
+  "scenes": [
+    "CLOCKTOWER",
+    "TOWN",
+    "ICHIBA",
+    "BACKTOWN"
+  ],
+  "base": {
+    "air": {
+      "fogDensity": 0.35,
+      "fogHeight": 700,
+      "fogBase": 0.0
+    }
+  }
+}

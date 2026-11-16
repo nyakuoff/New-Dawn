@@ -1,0 +1,145 @@
+{
+  "name": "moon_dungeons",
+  "scenes": [
+    "LAST_BS",
+    "LAST_DEKU",
+    "LAST_GORON",
+    "LAST_ZORA",
+    "LAST_LINK"
+  ],
+  "base": {
+    "grade": {
+      "gain": 1.0,
+      "warmth": 0.1,
+      "tint": 0.0,
+      "lift": 0.006,
+      "gamma": 1.0,
+      "contrast": 0.15,
+      "saturation": 1.16,
+      "shadowR": 0.0,
+      "shadowG": 0.01,
+      "shadowB": 0.034,
+      "highR": 0.026,
+      "highG": 0.016,
+      "highB": -0.012,
+      "greenShift": 0.08,
+      "greenSaturation": 1.14
+    }
+  },
+  "clock": {
+    "4.5": {
+      "grade": {
+        "gain": 1.02,
+        "warmth": -0.5,
+        "tint": 0.0,
+        "lift": 0.012,
+        "gamma": 1.0,
+        "contrast": 0.18,
+        "saturation": 1.08,
+        "shadowR": -0.006,
+        "shadowG": 0.014,
+        "shadowB": 0.06,
+        "highR": 0.03,
+        "highG": 0.02,
+        "highB": -0.006,
+        "greenShift": -0.12,
+        "greenSaturation": 1.09
+      }
+    },
+    "6": {
+      "grade": {
+        "gain": 1.0,
+        "warmth": 0.35,
+        "tint": 0.0,
+        "lift": 0.006,
+        "gamma": 1.0,
+        "contrast": 0.15,
+        "saturation": 1.18,
+        "shadowR": 0.0,
+        "shadowG": 0.01,
+        "shadowB": 0.048,
+        "highR": 0.044,
+        "highG": 0.02,
+        "highB": -0.024,
+        "greenShift": 0.18,
+        "greenSaturation": 1.14
+      }
+    },
+    "9": {
+      "grade": {
+        "gain": 1.0,
+        "warmth": 0.1,
+        "tint": 0.0,
+        "lift": 0.006,
+        "gamma": 1.0,
+        "contrast": 0.15,
+        "saturation": 1.16,
+        "shadowR": 0.0,
+        "shadowG": 0.01,
+        "shadowB": 0.034,
+        "highR": 0.026,
+        "highG": 0.016,
+        "highB": -0.012,
+        "greenShift": 0.08,
+        "greenSaturation": 1.14
+      }
+    },
+    "15.5": {
+      "grade": {
+        "gain": 1.0,
+        "warmth": 0.1,
+        "tint": 0.0,
+        "lift": 0.006,
+        "gamma": 1.0,
+        "contrast": 0.15,
+        "saturation": 1.16,
+        "shadowR": 0.0,
+        "shadowG": 0.01,
+        "shadowB": 0.034,
+        "highR": 0.026,
+        "highG": 0.016,
+        "highB": -0.012,
+        "greenShift": 0.08,
+        "greenSaturation": 1.14
+      }
+    },
+    "17.5": {
+      "grade": {
+        "gain": 0.99,
+        "warmth": 0.45,
+        "tint": 0.0,
+        "lift": 0.006,
+        "gamma": 1.0,
+        "contrast": 0.17,
+        "saturation": 1.18,
+        "shadowR": 0.012,
+        "shadowG": 0.01,
+        "shadowB": 0.056,
+        "highR": 0.048,
+        "highG": 0.02,
+        "highB": -0.032,
+        "greenShift": 0.18,
+        "greenSaturation": 1.14
+      }
+    },
+    "19.5": {
+      "grade": {
+        "gain": 1.02,
+        "warmth": -0.5,
+        "tint": 0.0,
+        "lift": 0.012,
+        "gamma": 1.0,
+        "contrast": 0.18,
+        "saturation": 1.08,
+        "shadowR": -0.006,
+        "shadowG": 0.014,
+        "shadowB": 0.06,
+        "highR": 0.03,
+        "highG": 0.02,
+        "highB": -0.006,
+        "greenShift": -0.12,
+        "greenSaturation": 1.09
+      }
+    }
+  }
+}

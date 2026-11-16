@@ -66,6 +66,11 @@ point('treasure_chest_shop', 0x2800, 0, (-70, 0, 161), 0, 'Z2_TAKARAYA spawn 0 (
 point('pirate_fortress_interior_b', 0x4030, 0, (3300, 240, -1780), 11520, 'Z2_PIRATE spawn 3 (entrance 0x4030)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
 point('pirate_fortress_interior_c', 0x4070, 0, (708, 160, -2260), 23040, 'Z2_PIRATE spawn 7 (entrance 0x4070)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
 point('pirate_fortress_interior_d', 0x40a0, 0, (2520, 200, 660), 23040, 'Z2_PIRATE spawn 10 (entrance 0x40a0)', cvars={"gNewDawn.Debug.BootClockTownVisited": 1})
+point('east_clock_town', 0xd200, 0, (0, 0, 0), 0, 'Z2_TOWN spawn 0 (entrance 0xd200), the scene own spawn', cvars={"gNewDawn.Debug.BootClockTownVisited": 1, "gNewDawn.Debug.BootDefaultSpawn": 1})
+point('snowhead', 0xb200, 0, (0, 0, 0), 0, 'Z2_12HAKUGINMAE spawn 0 (entrance 0xb200), the scene own spawn', cvars={"gNewDawn.Debug.BootClockTownVisited": 1, "gNewDawn.Debug.BootDefaultSpawn": 1})
+point('grotto', 0x1400, 0, (0, 0, 0), 0, 'Z2_KAKUSIANA spawn 0 (entrance 0x1400), the scene own spawn', cvars={"gNewDawn.Debug.BootClockTownVisited": 1, "gNewDawn.Debug.BootDefaultSpawn": 1})
+point('south_clock_town_plaza', 0x1c00, 0, (100, 0, 200), 39140, 'Z2_CLOCKTOWER, a spot in the plaza facing the stalls (as south_clock_town, see INTRO)', intro=True)
+point('great_bay_coast_sea', 0x6890, 0, (-305, 80, 4756), 45511, 'Z2_30GYOSON spawn 9 (entrance 0x6890), turned to face the sea and the Marine Research Lab')
 # 3DS-sourced unique art (docs/TEXTURE_PIPELINE.md, milestone 4 review): Link stands in front of the largest triangle that uses the texture, facing it
 # (positions from tools/newdawn/texclassify geometry; room = the room of the texture); the entrance's own spawn scene, position overridden.
 point('r3_musichouse_barrel', 0xa400, 0, (115, -45, 4), -32768, 'Z2_MUSICHOUSE Tex_00D4C0 (Music Box House wall)')

@@ -1,0 +1,143 @@
+{
+  "name": "stone_tower",
+  "scenes": [
+    "F40",
+    "INISIE_N",
+    "INISIE_BS"
+  ],
+  "base": {
+    "grade": {
+      "gain": 1.0,
+      "warmth": 0.3,
+      "tint": 0.0,
+      "lift": 0.006,
+      "gamma": 1.04,
+      "contrast": 0.14,
+      "saturation": 1.14,
+      "shadowR": 0.016,
+      "shadowG": 0.0,
+      "shadowB": 0.04,
+      "highR": 0.03,
+      "highG": 0.012,
+      "highB": -0.02,
+      "greenShift": 0.0,
+      "greenSaturation": 1.0
+    }
+  },
+  "clock": {
+    "4.5": {
+      "grade": {
+        "gain": 1.02,
+        "warmth": -0.3,
+        "tint": 0.0,
+        "lift": 0.012,
+        "gamma": 1.04,
+        "contrast": 0.17,
+        "saturation": 1.06,
+        "shadowR": 0.01,
+        "shadowG": 0.004,
+        "shadowB": 0.066,
+        "highR": 0.034,
+        "highG": 0.016,
+        "highB": -0.014,
+        "greenShift": -0.2,
+        "greenSaturation": 0.95
+      }
+    },
+    "6": {
+      "grade": {
+        "gain": 1.0,
+        "warmth": 0.55,
+        "tint": 0.0,
+        "lift": 0.006,
+        "gamma": 1.04,
+        "contrast": 0.14,
+        "saturation": 1.16,
+        "shadowR": 0.016,
+        "shadowG": 0.0,
+        "shadowB": 0.054,
+        "highR": 0.048,
+        "highG": 0.016,
+        "highB": -0.032,
+        "greenShift": 0.1,
+        "greenSaturation": 1.0
+      }
+    },
+    "9": {
+      "grade": {
+        "gain": 1.0,
+        "warmth": 0.3,
+        "tint": 0.0,
+        "lift": 0.006,
+        "gamma": 1.04,
+        "contrast": 0.14,
+        "saturation": 1.14,
+        "shadowR": 0.016,
+        "shadowG": 0.0,
+        "shadowB": 0.04,
+        "highR": 0.03,
+        "highG": 0.012,
+        "highB": -0.02,
+        "greenShift": 0.0,
+        "greenSaturation": 1.0
+      }
+    },
+    "15.5": {
+      "grade": {
+        "gain": 1.0,
+        "warmth": 0.3,
+        "tint": 0.0,
+        "lift": 0.006,
+        "gamma": 1.04,
+        "contrast": 0.14,
+        "saturation": 1.14,
+        "shadowR": 0.016,
+        "shadowG": 0.0,
+        "shadowB": 0.04,
+        "highR": 0.03,
+        "highG": 0.012,
+        "highB": -0.02,
+        "greenShift": 0.0,
+        "greenSaturation": 1.0
+      }
+    },
+    "17.5": {
+      "grade": {
+        "gain": 0.99,
+        "warmth": 0.65,
+        "tint": 0.0,
+        "lift": 0.006,
+        "gamma": 1.04,
+        "contrast": 0.16,
+        "saturation": 1.16,
+        "shadowR": 0.028,
+        "shadowG": 0.0,
+        "shadowB": 0.062,
+        "highR": 0.052,
+        "highG": 0.016,
+        "highB": -0.04,
+        "greenShift": 0.1,
+        "greenSaturation": 1.0
+      }
+    },
+    "19.5": {
+      "grade": {
+        "gain": 1.02,
+        "warmth": -0.3,
+        "tint": 0.0,
+        "lift": 0.012,
+        "gamma": 1.04,
+        "contrast": 0.17,
+        "saturation": 1.06,
+        "shadowR": 0.01,
+        "shadowG": 0.004,
+        "shadowB": 0.066,
+        "highR": 0.034,
+        "highG": 0.016,
+        "highB": -0.014,
+        "greenShift": -0.2,
+        "greenSaturation": 0.95
+      }
+    }
+  }
+}

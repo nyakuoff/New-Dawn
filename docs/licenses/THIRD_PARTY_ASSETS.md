@@ -11,6 +11,7 @@ None of it comes from the game. Total size: about 85 MB (76.8 MB of it is the ba
 | `vfx/*.png` (12 sprites) | fire, smoke, sparks, embers, magic | Kenney Vleugels, Particle Pack 1.1 (as above) | CC0 1.0 | none (byte-identical) |
 | `vfx/fire_flipbook_8x8.png` | torch fire | made for New Dawn: `tools/newdawn/vfx-flipbook/` (Blender Mantaflow bake + numpy) | CC0 1.0 | n/a |
 | `caustics/caustics_8x4.png` | water caustics | made for New Dawn: `tools/newdawn/caustics/gen_caustics.py` | CC0 1.0 | n/a |
+| `looks/*.json` | look profiles (light, air, grade by place and time) | written for New Dawn | CC0 1.0 | n/a |
 | `water/flow_noise_256.png` | river flow streaks, waterfall streams | made for New Dawn: `tools/newdawn/water-flow/gen_flow_noise.py` | CC0 1.0 | n/a |
 | `water/foam_lace_512.png` | shoreline and river foam (lace, clumps, bubbles) | made for New Dawn: `tools/newdawn/water-flow/gen_foam.py` | CC0 1.0 | n/a |
 | `grass/tuft_atlas.png` | grass tufts | made for New Dawn: `tools/newdawn/grass-tufts/render_tufts.py` | CC0 1.0 | n/a |

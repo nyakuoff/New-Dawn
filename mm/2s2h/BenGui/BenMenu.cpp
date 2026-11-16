@@ -1258,6 +1258,13 @@ void BenMenu::AddSettings() {
         })
         .Options(FloatSliderOptions().Min(0.0f).Max(1.6f).Step(0.01f).Format("%.2f").DefaultValue(1.08f).Tooltip(
             "1.00 leaves colours unchanged."));
+    AddWidget(path, "Look Profiles", WIDGET_CVAR_CHECKBOX)
+        .CVar("gNewDawn.Look.Profiles")
+        .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
+        .Options(CheckboxOptions().Tooltip(
+            "Light levels, exposure, fog, grade and bloom come from New Dawn's look profiles for each place and time "
+            "of day, instead of one setting for the whole game. Your own sliders stay as adjustments on top. Requires "
+            "the Modern Lighting Pipeline."));
     AddWidget(path, "Art Direction", WIDGET_CVAR_CHECKBOX)
         .CVar("gNewDawn.Grade.ArtDirection")
         .PreFunc([](WidgetInfo& info) { info.activeDisables.push_back(DISABLE_FOR_NEWDAWN_POSTFX_OFF); })
@@ -3254,6 +3261,12 @@ void BenMenu::AddDevTools() {
     AddSidebarEntry("Dev Tools", "General", 3);
     WidgetPath path = { "Dev Tools", "General", SECTION_COLUMN_1 };
     AddPerfOverlayWidgets(path);
+    AddWidget(path, "Look", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Look Editor", WIDGET_WINDOW_BUTTON)
+        .CVar("gWindows.LookEditor")
+        .WindowName("Look Editor")
+        .Options(ButtonOptions().Tooltip("Shows what decides the look of the current scene and time, edits the look "
+                                         "profiles live and saves them as JSON."));
     AddWidget(path, "Debug", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Debug Mode", WIDGET_CVAR_CHECKBOX)
         .CVar("gDeveloperTools.DebugEnabled")

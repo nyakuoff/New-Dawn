@@ -1,0 +1,14 @@
+{
+  "name": "termina_field",
+  "inherits": "field",
+  "scenes": [
+    "00KEIKOKU"
+  ],
+  "base": {
+    "air": {
+      "fogDensity": 1.0,
+      "fogHeight": 700,
+      "fogBase": 0.0
+    }
+  }
+}

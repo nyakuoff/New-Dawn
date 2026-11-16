@@ -1,0 +1,145 @@
+{
+  "name": "swamp_poisoned",
+  "scenes": [
+    "20SICHITAI",
+    {
+      "scene": "21MITURINMAE",
+      "when": "!woodfall_cleared"
+    }
+  ],
+  "base": {
+    "grade": {
+      "gain": 1.03,
+      "warmth": -0.14,
+      "tint": 0.1,
+      "lift": 0.014,
+      "gamma": 1.0,
+      "contrast": 0.1,
+      "saturation": 0.82,
+      "shadowR": 0.024,
+      "shadowG": 0.006,
+      "shadowB": 0.045,
+      "highR": 0.03,
+      "highG": 0.03,
+      "highB": -0.03,
+      "greenShift": 0.65,
+      "greenSaturation": 1.06
+    }
+  },
+  "clock": {
+    "4.5": {
+      "grade": {
+        "gain": 1.05,
+        "warmth": -0.74,
+        "tint": 0.1,
+        "lift": 0.02,
+        "gamma": 1.0,
+        "contrast": 0.13,
+        "saturation": 0.74,
+        "shadowR": 0.018,
+        "shadowG": 0.01,
+        "shadowB": 0.071,
+        "highR": 0.034,
+        "highG": 0.034,
+        "highB": -0.024,
+        "greenShift": 0.45,
+        "greenSaturation": 1.01
+      }
+    },
+    "6": {
+      "grade": {
+        "gain": 1.03,
+        "warmth": 0.11,
+        "tint": 0.1,
+        "lift": 0.014,
+        "gamma": 1.0,
+        "contrast": 0.1,
+        "saturation": 0.84,
+        "shadowR": 0.024,
+        "shadowG": 0.006,
+        "shadowB": 0.059,
+        "highR": 0.048,
+        "highG": 0.034,
+        "highB": -0.042,
+        "greenShift": 0.75,
+        "greenSaturation": 1.06
+      }
+    },
+    "9": {
+      "grade": {
+        "gain": 1.03,
+        "warmth": -0.14,
+        "tint": 0.1,
+        "lift": 0.014,
+        "gamma": 1.0,
+        "contrast": 0.1,
+        "saturation": 0.82,
+        "shadowR": 0.024,
+        "shadowG": 0.006,
+        "shadowB": 0.045,
+        "highR": 0.03,
+        "highG": 0.03,
+        "highB": -0.03,
+        "greenShift": 0.65,
+        "greenSaturation": 1.06
+      }
+    },
+    "15.5": {
+      "grade": {
+        "gain": 1.03,
+        "warmth": -0.14,
+        "tint": 0.1,
+        "lift": 0.014,
+        "gamma": 1.0,
+        "contrast": 0.1,
+        "saturation": 0.82,
+        "shadowR": 0.024,
+        "shadowG": 0.006,
+        "shadowB": 0.045,
+        "highR": 0.03,
+        "highG": 0.03,
+        "highB": -0.03,
+        "greenShift": 0.65,
+        "greenSaturation": 1.06
+      }
+    },
+    "17.5": {
+      "grade": {
+        "gain": 1.02,
+        "warmth": 0.21,
+        "tint": 0.1,
+        "lift": 0.014,
+        "gamma": 1.0,
+        "contrast": 0.12,
+        "saturation": 0.84,
+        "shadowR": 0.036,
+        "shadowG": 0.006,
+        "shadowB": 0.067,
+        "highR": 0.052,
+        "highG": 0.034,
+        "highB": -0.05,
+        "greenShift": 0.75,
+        "greenSaturation": 1.06
+      }
+    },
+    "19.5": {
+      "grade": {
+        "gain": 1.05,
+        "warmth": -0.74,
+        "tint": 0.1,
+        "lift": 0.02,
+        "gamma": 1.0,
+        "contrast": 0.13,
+        "saturation": 0.74,
+        "shadowR": 0.018,
+        "shadowG": 0.01,
+        "shadowB": 0.071,
+        "highR": 0.034,
+        "highG": 0.034,
+        "highB": -0.024,
+        "greenShift": 0.45,
+        "greenSaturation": 1.01
+      }
+    }
+  }
+}
