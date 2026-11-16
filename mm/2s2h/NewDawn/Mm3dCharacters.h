@@ -1,4 +1,4 @@
-// 3DS character models (docs/MM3D_CHARACTERS.md, ND-014): the player's own Majora's Mask 3D (3DS) NPC and enemy models,
+// 3DS character models (docs/MM3D_CHARACTERS.md, ND-015): the player's own Majora's Mask 3D (3DS) NPC and enemy models,
 // converted on their machine to display lists for the N64 skeleton, so the original animations drive them.
 //
 //   <app dir>/cache/newdawn-mm3d/live/mm3d-characters.o2r   generated, never committed or shipped

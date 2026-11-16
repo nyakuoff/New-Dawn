@@ -2,7 +2,7 @@
 
 `gNewDawn.MM3D.Characters` (default 1; Graphics, Advanced, Experimental, "3DS character models (requires your MM3D
 dump)"). Needs the player's own decrypted *Majora's Mask 3D* RomFS (`gNewDawn.MM3D.RomFS`). Without it the switch is
-disabled and the game is exactly as before. ND-014; direction in ND-013; the feasibility spike is ND-013's "Next".
+disabled and the game is exactly as before. ND-015; direction in ND-013 and ND-014; the feasibility spike is ND-013's "Next".
 
 Visual only: the N64 skeleton, its limb offsets, animations, collision, hitboxes and actor code are read and never
 changed. The 3DS meshes replace only the *display lists* of the limbs, so the original animation data drives them.
