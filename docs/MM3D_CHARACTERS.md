@@ -287,8 +287,13 @@ row sits behind "Include unreviewed 3DS models" until masks and the other forms 
 - **Masks:** through the debug path they work: `gDeveloperTools.DebugEnabled=1` with Debug Save File Mode "Vanilla Debug Save"
   (all masks in the inventory), a test-only fixture that writes the Bunny Hood's item and slot into the human form's C-down
   button and an injected C-down press. The Bunny Hood draws and sits on the head the same way in N64 and 3DS (head turned
-  and run; the N64 mask display list follows the head limb's matrix, which the converted head shares). One mask on one form
-  only; the other masks and forms were not exercised (a Zora Bunny Hood and the Captain's Hat were interrupted).
+  and run; the N64 mask display list follows the head limb's matrix, which the converted head shares).
+  The Captain's Hat (human) also attaches and moves with the head, but the 3DS cap is longer and sits further back than the
+  N64 hat, so the skull cap is mostly buried inside it (only its top shows from behind): a mask that sits on the head is
+  placed for the N64 head and cap, not the 3DS one. A Bunny Hood on the Zora form draws in neither build (the game does not
+  let a transformed Link wear it), so nothing was learned there. Masks that sit on the face (Kafei's, Keaton, Stone) and
+  the transformation masks were not exercised
+  (`review/masks_zora_bunny_captain_n64_vs_3ds.png`).
 - Rig quirks found: the hat bone's rest rotation (2.16 rad) differs from the N64 hat limb's; per-limb rotation registration over several animation frames did not give a clearly better frame for any limb.
 
 ### Link, Deku form
@@ -321,7 +326,7 @@ and Fierce Deity read differently from the N64 ones (the 3DS Goron has a blue ne
 teal clothes and green hair).
 
 ### Remaining unverified
-- **Masks:** one mask (Bunny Hood) on human Link only, through the debug path above; other masks, other forms, mask change animations.
+- **Masks:** Bunny Hood and Captain's Hat on human Link only, through the debug path above; the Captain's Hat is mostly hidden by the longer 3DS cap (a head-top mask placed for the N64 head). Other masks, other forms (a transformed Link cannot wear the Bunny Hood), mask change animations.
 - **Held items and form moves** on the converted forms: hookshot, bottle and ocarina on human Link; the Goron roll and spikes,
   the Zora swim, fins and barrier, boomerang, the Deku pipes, bubbles, flower and spin, the Fierce Deity sword; transformation
   cutscenes. Hands and equipment keep their N64 display lists, so hold points are unchanged, but this was not looked at.
