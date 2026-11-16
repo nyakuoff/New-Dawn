@@ -553,6 +553,12 @@ static void RenderMm3dCharacters() {
     if (!NewDawnMm3d::Available()) {
         ImGui::EndDisabled();
     }
+    UIWidgets::CVarCheckbox("Upscale 3DS textures (4x)", "gNewDawn.MM3D.Upscale",
+                            UIWidgets::CheckboxOptions()
+                                .Color(UIWidgets::Colors::NewDawn)
+                                .DefaultValue(true)
+                                .Tooltip("Runs a small CC0 upscaler (PBRify SPAN) over the converted 3DS textures, 128 to 512 "
+                                         "pixels. Takes a few seconds; applied on the next launch or Convert."));
     ImGui::TextWrapped("%s", NewDawnMm3d::StatusText().c_str());
     if (running && progress.total) {
         ImGui::ProgressBar((float)progress.done / (float)progress.total, ImVec2(-1.0f, 0.0f));
@@ -673,7 +679,8 @@ static void RenderAboutPage() {
                        "CC0, used unchanged.");
     ImGui::TextWrapped("Particle sprites: Particle Pack by Kenney (kenney.nl), CC0. Leaf: \"Leaf Pack\" by "
                        "cemkalyoncu on OpenGameArt, CC0. Water caustics, grass tufts and the torch-fire flipbook "
-                       "were made for New Dawn with scripts in this repository, CC0.");
+                       "were made for New Dawn with scripts in this repository, CC0. The 3DS-texture upscaler weights are PBRify "
+                       "UpscalerSPANV4 (PBRify_Remix), CC0.");
     EndSectionCard();
     ImGui::Dummy(ImVec2(0, 4.0f * u));
 
