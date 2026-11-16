@@ -501,19 +501,16 @@
   ],
   "comment": "unique art of every scene is upscaled; a 3DS texture is a source only for the hand-verified pairs below (and only when it also passes the content rule): the classification's correspondence cannot be verified automatically (40 rule-accepted pairs from 17 scenes: 13 clearly the same art, 14 clearly wrong, 13 same kind of surface; no pixel measure separated them). gNewDawn.Textures.Unique3ds: 0 off, 1 verified list (default), 2 every rule-accepted pair (experimental).",
   "mm3d_regions_verified": {
-   "scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKUTex_028250": "w",
-   "scenes/nonmq/Z2_ALLEY/Z2_ALLEYTex_00A300": "r",
+   "scenes/nonmq/Z2_22DEKUCITY/Z2_22DEKUCITY_room_01Tex_00E6E8": "r",
+   "scenes/nonmq/Z2_22DEKUCITY/Z2_22DEKUCITY_room_02Tex_011568": "r",
    "scenes/nonmq/Z2_CASTLE/Z2_CASTLE_room_03Tex_003548": "r",
    "scenes/nonmq/Z2_DANPEI2TEST/Z2_DANPEI2TEST_room_01Tex_0055B0": "r",
+   "scenes/nonmq/Z2_DOUJOU/Z2_DOUJOUTex_006130": "w",
+   "scenes/nonmq/Z2_FISHERMAN/Z2_FISHERMANTex_006630": "w",
    "scenes/nonmq/Z2_INISIE_R/Z2_INISIE_RTex_011680": "r",
-   "scenes/nonmq/Z2_LAST_GORON/Z2_LAST_GORON_room_00Tex_012608": "r",
-   "scenes/nonmq/Z2_LAST_LINK/Z2_LAST_LINK_room_00Tex_0019C0": "r",
    "scenes/nonmq/Z2_MITURIN/Z2_MITURIN_room_11Tex_006578": "r",
-   "scenes/nonmq/Z2_SONCHONOIE/Z2_SONCHONOIETex_005900": "r",
-   "scenes/nonmq/Z2_SYATEKI_MIZU/Z2_SYATEKI_MIZUTex_005E60": "r",
    "scenes/nonmq/Z2_SYATEKI_MIZU/Z2_SYATEKI_MIZUTex_007E60": "r",
-   "scenes/nonmq/Z2_TAKARAKUJI/Z2_TAKARAKUJITex_001310": "w",
-   "scenes/nonmq/Z2_TOUGITES/Z2_TOUGITESTex_0033C0": "r"
+   "scenes/nonmq/Z2_TAKARAKUJI/Z2_TAKARAKUJITex_001310": "w"
   }
  },
  "region_params": {
