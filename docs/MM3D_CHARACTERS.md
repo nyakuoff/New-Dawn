@@ -196,6 +196,74 @@ not framed: the one scan scene with him (South Clock Town) is the intro cutscene
 in the experimental option. The five Bombers share one 3DS model (one hat), so with the option on they look alike, where the
 N64 gives each their own hat colour.
 
+### Link, human form (milestone 2)
+`object_link_child/gLinkHumanSkel` against `zelda2_link_child_new/child/model/link_child.cmb` (26 bones, 95 draws, 42 materials).
+It is a row with a rig recipe (`RIG`), the same recipe as Kafei's: the 3DS and N64 limbs share one layout, the torso hangs
+off the upper-root pivot (`9:9>20`: the bone's frame is the pivot's, its mesh is drawn under the torso limb). In the table the
+row sits behind "Include unreviewed 3DS models" until masks and the other forms are checked.
+- **What is converted:** body, tunic, hat, head with hair, face and eyes. **What stays N64:** the hand display lists (limbs 15
+  and 18, which the Player override swaps per held item: sword, shield, bow, ocarina, hookshot, bottle) and the sheath
+  (limb 19); the 3DS CMB carries the equipment too (draws 13-34 and 44-94: ~20 hand poses, bow, shield, sword models), which
+  is left out for now with `d<n>` entries in the row's skip list. Every hold point therefore stays the N64's: the sword, shield
+  and bow follow the hand limbs exactly as before.
+- **Hat:** the 3DS hat is 2636 units long and 1195 wide against the N64's 1702 and 901 (head 1.2x the N64's), so it read
+  as oversized. `s5=0.66:0.85@12` shortens draw 5 to 0.66 along its axis and narrows it to 0.85 about the hat bone's origin
+  (the base keeps covering the hair). Same-frame crops: `showcase/.../review/link_human_hat_green_before_after.png`.
+- **Green:** the tunic and hat greens measured value 0.50 (Clock Town) and 0.57 (Termina Field) against the N64's 0.29 and 0.44,
+  saturation 0.99 (r and b clipped to 0: neon). The row's tint, `1:-8:0.85:0.68:60:180`, shifts hue by -8 degrees, scales
+  saturation by 0.85 and value by 0.68 on greens only (hue 60-180, the buckle and boots share the texture): now 0.32 and 0.46,
+  hue 109 (N64 111). The hair gets its own tint (`11:20:0.8`, ginger towards the N64's blond).
+- **Faces:** the 3DS eye and mouth frames follow the N64 states (`FACE`); checked that eyes close (blink) and open in a run.
+- **Checked in game** (same scripted input, N64 vs 3DS, 0 GL errors): run, run to a halt, sword swing, shield up, bow aim
+  (first-person view: the bow is the N64 bow display list in the right hand, identical in both), stand at idle.
+  Not checked: mask attachments (an `equippedMask` poke did not take effect), the other forms, the hookshot, bottle and ocarina,
+  swimming, climbing, and cutscene poses.
+- **Head direction (review of the first run sheet):** the head-down 3DS frames of the first sheet were a comparison of different
+  animation phases (the two builds' bursts drift by a few frames, and Link bows his head in the swing recovery in the N64 too),
+  not a rig fault. Checked three ways with the final build: (1) a long same-input burst in both builds (roll, three swings,
+  shield, side hop, back flip, spin; `link_human_burst_n64.png` / `_3ds.png`) and a phase-matched sheet
+  (`link_human_run_sword_n64_vs_3ds.png`): upright head wherever the N64's is, bowed where it bows; (2) an offline overlay
+  that poses both the N64 and the converted 3DS meshes with the same N64 animation matrices over 12 animations (sword
+  kiru, power-jump kiru, rolling kiru/spin, landing roll, shield, bow ready, back-turn jump, side jump, turn kiru, run, walk,
+  bow defence), 4 frames each (`link_human_head_overlay_12_animations.png`): the 3DS head and hat silhouette covers the
+  N64's in every frame, so the head follows the head limb's matrix and nothing else; (3) a rigid fit of the 3DS head mesh to
+  the N64's in the limb frame: 6.8 degrees about the lateral axis, left as is (the heads differ in shape, so the fit
+  absorbs some of it; the hat, shoulders and forearms fit within 7 to 37 degrees, the largest from the 3DS arms' different
+  rest bend). The same fit would show a missing neck bone or a double rotation as a large angle on the head.
+- Masks: poking `equippedMask` in the save and `currentMask` on the live Player actor (both with the form fixture) draws no
+  mask in either build; in-game mask changes are unverified for all five forms.
+- Rig quirks found: the hat bone's rest rotation (2.16 rad) differs from the N64 hat limb's, so the hat hangs steeper than the
+  N64's; per-limb rotation registration over several animation frames did not give a clearly better frame for any limb.
+
+### Link, Deku form
+`object_link_nuts/gLinkDekuSkel` against `zelda2_link_nuts_new/nuts/model/link_deknuts.cmb` (24 bones, 25 draws): the same 21-limb
+layout and the same rig recipe as human Link. Skipped: the hand and fist meshes (the N64 hand display lists are kept, limbs
+15 and 18, as for every hold point), the bottle and cork, a stray triangle and the 3DS Deku shell (`link_nuts_shiel`, a hood
+that sits around the head). The hat is 0.75 of its 3DS size (the N64 hat measures 3339 x 1859 x 1519, the 3DS 4495 x 2454 x 2043).
+- **Eyes:** the 3DS eye planes sit inside the face mesh (the face is an opaque shell). Draw 22 is pushed 300 units along its
+  normals (`o22=300`) and material 5 is drawn unlit (`u5`: the PICA material has no fragment lighting, so its glow is the
+  texture alone; without it the eyes came out brown). New skip tokens: `o<draw>=<units>` and `u<material>`.
+- **Greens:** hat and tunic use the human Link tint with the hue window starting at 85 (the hair is yellow-olive, hue 60).
+- Checked in game (`gNewDawn`'s private fixture sets `playerForm` in the save: a Deku at spawn, run toward the camera,
+  same input in both builds): the pose, hat and limbs follow the N64 animation; the face is the 3DS one (wood face with a
+  tube mouth, orange eyes) against the N64's dark face with a black mouth.
+- Not checked: pipes, flower, bubble, spin, hopping on water, the Deku Link cutscene transformations.
+
+### Link, Goron, Zora and Fierce Deity forms
+The same recipe again (`1:0,2:1,3:6,4:7,5:8,6:3,7:4,8:5,9:9>20,11:10,12:11,15:13,16:14,17:15,19:16,20:17,21:18,22:19`: all five 3DS
+Link rigs share the 21-limb layout; only the bone offsets differ and the rest shifts take care of that), per form a skip list
+that leaves the hand, gauntlet and equipment meshes out and keeps the N64 hand display lists (limbs 15, 18, 19):
+| Form | 3DS archive and model | Left out (draws) | Other |
+|---|---|---|---|
+| Goron | `link_goron_new` / `link_goron.cmb` | fists 10-14, cork 8, bottle 15 16 | eye states from the CMAB (open, half, closed, surprised); colour (0.5, 1.0) |
+| Zora | `link_zora_new` / `link_zora.cmb` | fins 12-15 (the game draws its own), hand poses 18-29, barrier 30, cork and bottle | eye and mouth states in human Link's order |
+| Fierce Deity | `link_boy_new` / `link_demon.cmb` | gauntlets 1-7, hand poses 15-19, the Double Helix 9, cork and bottle | static face (the N64 has one eye and one mouth texture) |
+Checked in game with the form set in the save (private fixture): each form runs toward the camera in the same frames as the
+N64 model and the pose follows. Not checked: the sword, shield, bow or anything held in these forms, transformation
+cutscenes, the Goron roll and spikes, the Zora swim, boomerang fins and barrier, the Fierce Deity sword beam. The 3DS Goron
+and Fierce Deity read differently from the N64 ones (the 3DS Goron has a blue necklace and white beard, the Fierce Deity
+teal clothes and green hair).
+
 ### Limits
 - Eye and mouth states exist only for the models listed under Faces. Props baked into a CMB are listed per skeleton (guard bottle, Anju's
   moon mask, the bomb shopkeeper's bomb); other models were not scanned for props beyond the validation set.
