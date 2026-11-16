@@ -29,20 +29,10 @@ SKIP = {
 }
 # object/skeleton pairs that have been looked at in game (colour, props, joints) and may be switched on.
 REVIEWED = {
-    ('object_sdn', 'gSoldierSkel'),
-    ('object_an1', 'gAnju1Skel'),
-    ('object_mm', 'object_mm_Skel_0096E8'),
-    ('object_dt', 'object_dt_Skel_00B0CC'),
-    ('object_rsn', 'gBombShopkeeperSkel'),
-    ('object_thiefbird', 'gTakkuriSkel'),
-    ('object_wf', 'gWolfosNormalSkel'),
-    ('object_wf', 'gWolfosWhiteSkel'),
-    ('object_dinofos', 'gDinolfosSkel'),
-    ('object_dog', 'gDogSkel'),
-    ('object_dnt', 'gBusinessScrubSkel'),
-    ('object_bigokuta', 'gBigOctoSkel'),
-    ('object_bg', 'gTreasureChestShopGalSkel'),
-    ('object_bg', 'object_bg_Skel_011B60'),
+    ('object_sdn', 'gSoldierSkel'),               # Clock Town guard
+    ('object_an1', 'gAnju1Skel'),                 # Anju
+    ('object_bg', 'object_bg_Skel_011B60'),       # Mayor's Residence receptionist
+    ('object_dnt', 'gBusinessScrubSkel'),         # Business Scrub
 }
 
 

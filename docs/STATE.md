@@ -3,6 +3,7 @@
 > **Live handoff document.** Keep this brief and update after meaningful milestones. Record facts, not aspirations. Only one integration owner should edit this file at a time.
 
 ## Current milestone
+**3DS character models, milestone 1** (`feature/mm3d-characters`, local, built and captured; see `docs/MM3D_CHARACTERS.md`, ND-014): in-game C++ converter for the player's own MM3D RomFS, overlay prefix switch, colour mapping; 58 skeletons convert (0.03 s), 4 reviewed and enabled (guard, Anju, receptionist, Business Scrub). Next: milestone 2 in the doc. Previous:
 **VFX gaps #74** (`feature/vfx-gaps`, local, built, captured; see `docs/VFX.md`): sparkles, frost, bubble pop and mask flash upgraded; lightning, hookshot, magic meter and in-flight bubble kept native (reasons in the doc). Previous:
 **Rivers and waterfalls** (`feature/rivers-waterfalls`, local, built; see `docs/WATER_SIM.md`): flow from the native texture scroll, flow-mapped river streaks and foam verified on the Ikana river and the Mountain Village spring pool; the waterfall overlay is on in Ultra/High for the one confirmed real fall (Mountain Village spring, `01C488`); other falls have no scrolling texture the interpreter can see, and the fall-foot mist/spray was not seen. Shoreline foam was reworked (thin crisp line + lace from `foam_lace_512.png`, `fix/shore-foam-waterfalls`, `docs/WATER_FOAM.md`). Previous:
 **Torch light: flame glow and light pools** (`feature/torch-light`, local, built, captured; see `docs/LOCAL_LIGHTS.md`). Previous:

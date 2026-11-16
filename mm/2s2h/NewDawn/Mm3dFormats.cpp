@@ -730,12 +730,17 @@ bool ParseCmb(const std::vector<uint8_t>& raw, Model& out, std::string& error) {
                         vx.bone[0] = table[slot];
                         vx.weight[0] = 1.0f;
                     } else if (prim.skinning == 2) {
+                        float sum = 0;
                         for (int k = 0; k < sec.boneDim; ++k) {
                             const int slot = (int)bi[k];
                             if (slot >= 0 && slot < (int)table.size()) {
                                 vx.bone[k] = table[slot];
                                 vx.weight[k] = bw[k];
+                                sum += bw[k];
                             }
+                        }
+                        for (int k = 0; k < 4 && sum > 0; ++k) { // some models store percent weights (sum 100)
+                            vx.weight[k] /= sum;
                         }
                     }
                     const float len = std::sqrt(vx.normal[0] * vx.normal[0] + vx.normal[1] * vx.normal[1] +

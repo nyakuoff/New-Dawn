@@ -41,7 +41,7 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.0.0";
+constexpr const char* kConverterVersion = "1.0.1";
 
 struct Entry {
     const char* object;
@@ -452,7 +452,7 @@ struct ColourParams {
     float lightRef, saturation;
 };
 ColourParams GetColourParams() {
-    return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.55f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.1f) };
+    return { CVarGetFloat("gNewDawn.MM3D.LightRef", 0.6f), CVarGetFloat("gNewDawn.MM3D.Saturation", 1.35f) };
 }
 
 void MapColour(Mm3d::Image& img, const Mm3d::Material& mat, const ColourParams& cp) {
