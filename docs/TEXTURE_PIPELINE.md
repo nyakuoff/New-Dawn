@@ -2,8 +2,9 @@
 
 New Dawn **replaces** world textures instead of upscaling them. On the player's machine, at first launch, every texture the
 classification tables call replaceable is regenerated from a small shipped library of CC0 PBR materials, recoloured to the
-palette of the player's own N64 original and laid out at the original's UV scale. Unique painted art is not touched here
-(milestone 2: upscale, MM3D-sourced where matched). Nothing generated is ever committed or shipped (ND-008).
+palette of the player's own N64 original and laid out at the original's UV scale. Unique painted art (murals, signs, carvings) cannot be
+replaced by a generic material; it is upscaled instead (milestone 2, below), from the player's own 3DS texture where a safe counterpart
+exists. Nothing generated is ever committed or shipped (ND-008).
 
 ```
  shipped (committed)                         player's machine (first launch, cached)
@@ -93,6 +94,37 @@ Isotropic classes (grass, dirt, rock, plaster, mud, moss, snow) are written with
 (only for repeating tiles), the shader samples such textures with three taps on a triangle grid, each shifted by a hash of its grid vertex (albedo, normal and roughness/relief share the offsets).
 Never applied to layouts (brick, planks, cobble): random offsets would break their courses.
 
+## Milestone 2
+
+**Base library (84 sets, 76.8 MB).** `tools/newdawn/matlib/build_library.py` builds `mm/assets/newdawn/materials/` from two inputs: `library.json` (17 hand picks the
+tuned entries and recipe defaults name by id) and the curated shortlist of `tools/newdawn/texlib/catalog.json` (67 sets: rock, worked stone, planks, plaster, thatch, beams,
+bark, roof tiles, dirt, gravel, sand, snow/ice, rope, mud, metal). JPEG at 1024 px: albedo q78 (4:2:0), normal q84 (4:4:4), roughness and height q68. Left out: brick, cobble and
+flagstone (complete walls with their own joints), wallpaper, carpet, leather, fabric, moss and grass sources (weak in the catalog; the generator uses the moss and grass sets of the
+hand picks or leaves the texture native). The two GPUOpen items of the shortlist are wallpaper (MIT), which is not imported, so no extra notice is shipped.
+
+**Regions.** `recipes.json:scene_regions` maps 99 scene folders to a region priority list (`interiors,clock_town`); manifest sets carry `regions`; `Library::Resolve` picks, by seed,
+among the sets tagged for the first matching region, then `any`, then the rest. Selectors may combine classes (`class:dirt|class:mud`); a selector that finds nothing leaves the texture native.
+`world_m` (per class) repeats a set so one tile covers about that many metres of the surface (`scale.json:tile_m`, at most `max_repeat`), which fixed oversized sand and rock grain.
+Grass is now a soft earthy base (dirt and mud sets, low relief): the visible grass is the 3D tuft pass. Fabric stays native.
+
+**Unlit geometry** (`gNewDawn.Materials.Unlit`, `UnlitStrength`). Interiors and dungeons are vertex-coloured and unlit, so they had no normals and no maps. Unlit draws whose combiner multiplies
+a texture by the vertex colour now bind the same companion maps: the vertex stage passes the world position only; the fragment stage derives a face normal from the screen derivatives of the position
+(oriented toward the camera), builds the tangent frame from the UV derivatives, and shades the texture by how far the mapped normal turns away from the face normal against one fixed world light
+(`(0.32, 0.76, 0.57)`, MM is Y up) plus the relief channel; the baked vertex colour then multiplies the result, so the room keeps its mood and its coloured light. A new shader variant (`o_unlit_material`);
+a failed link is logged.
+
+**Two map pairs per draw** (`gNewDawn.Materials.TwoLayer`). A multiplied two-texture draw (base times detail, e.g. the Termina wall) whose layers both have maps binds the second pair to slots 8 and 9, which the
+OpenGL backend maps to texture units 22 and 23 (units 8 and up belong to postfx; those two slots never trust the bind cache). Shader option `MATERIAL_MAPS2` (the shader id shift moved from 23 to 24).
+The fragment stage turns each pair into a world-space normal with its own tangent frame and combines them around the face normal, averages the roughness; parallax stays with the base.
+
+**Unique art** (`UniqueArt.cpp`, `gNewDawn.Textures.Unique`, `UniqueScenes`). Textures the classification calls unique, or a material class below confidence 0.6, in the scenes of `recipes.json:unique.scenes`
+(South Clock Town, Stock Pot Inn, Termina Field; `UniqueScenes=all` or a comma list overrides) are upscaled 4x with the CPU SPAN network of ND-017 and graded; textures with several palettes (`pal_alt`), intensity textures (I4/I8) and textures that cannot be decoded
+stay native. The source is the player's 3DS texture when `mm3d_match.json` has a confident entry **and** it passes a coarse content test (aspect within 3 %, 2x to 4x the original's size,
+mean colour within 45 levels per channel): the 3DS rooms are atlases and redrawn, so a name match alone would paste a whole atlas onto a wall (measured: of the 15 confident matches of these three scenes with a 3DS image, the
+test accepts exactly the two that are visibly the same art; pixel correlation fails even on those). Otherwise the N64 original is the source. The 3DS textures are read straight from the RomFS scene files (`<scene>_info.zsi` and room files,
+embedded CMB models, `Mm3d::ParseCmb`), only when `gNewDawn.MM3D.RomFS` points at a valid dump. Upscaling pads each side by 8 px, wrapping an axis whose edges meet (the texture tiles) and replicating otherwise. Grade:
+the original's colour statistics (fully for 3DS sources, a third for N64 sources), a faint S-curve and +6 % saturation, and a faint grain from the plaster material of the region (`fine` channel, 3.5 %). No maps for unique art.
+
 ## Cvars
 
 | cvar | default | |
@@ -101,6 +133,9 @@ Never applied to layouts (brick, planks, cobble): random offsets would break the
 | `gNewDawn.Textures.Generate` | 1 | developer switch: 0 skips generation and mounting |
 | `gNewDawn.Textures.HeroSize` / `RestSize` / `HeroCount` | 1024 / 512 / 450 | tier sizes and count |
 | `gNewDawn.Textures.Stochastic` | 1 | stochastic sampling of the flagged (isotropic) textures |
+| `gNewDawn.Textures.Unique` / `UniqueScenes` | 1 / (recipes) | upscale unique art; `all`, a comma list of scene folders, or empty for the recipes' three scenes |
+| `gNewDawn.Materials.Unlit` / `UnlitStrength` | 1 / 0.6 | material relief on unlit interiors and dungeons |
+| `gNewDawn.Materials.TwoLayer` | 1 | both layers' maps on multiplied two-texture draws |
 | `gNewDawn.Textures.LogDraws` | 0 | log distinct texture pairs per draw |
 
 ## Extending
@@ -141,3 +176,41 @@ Woodfall Temple and East Clock Town, each at 8:00 and 17:30, two views; `changed
 * Layout counts: measured counts agree with the hand-set ones on the Clock Town bricks (5 of 5) and partly on ashlar; planks, cobbles and the 16x8 brick textures fall back to class defaults.
 * One map pair per draw: a base plus detail surface is lit by the base's maps only.
 * Objects (actors, props) are out of scope; cut-outs (foliage) are skipped; the curated shortlist of `tools/newdawn/texlib` is not imported yet (the manifest and selectors are ready for it).
+
+## Milestone 2 measurements (RX 7800 XT, 1080p, Ultra look, 2026-11-16)
+
+Sheets (native | remastered, 1:1 crops at the most-changed windows) and numbers: `~/dev/ghm-mods/showcase/texture-pipeline-2/` (34 scene sheets, `changed_pixels.json`,
+`unique_*.png`, `unique_3ds_sources.png`, `gpu_overlay_crops.png`). Day (8:00) and dusk (17:30); two views per scene except Snowhead Temple (day only).
+
+| item | result |
+|---|---|
+| **Download** | base library **76.8 MB** (84 sets, all CC0); whole `assets/newdawn` 85 MB (milestone 1: 57.4 MB library) |
+| **First run, default** (everything replaceable + unique art of 3 scenes) | 968 textures (872 materials + 96 unique), 42 skipped (transparency), **21 s** on 8 threads, **0.93 GB** cache |
+| First run, unique art of **every** scene (`UniqueScenes=all`) | 2,299 textures (872 + 1,427 unique, 64 left native), **58 s**, **1.0 GB** |
+| **GPU / CPU ms** (overlay, native to remastered) | Stock Pot Inn 3.11 to 3.18 / 1.41 to 1.68; Woodfall Temple 4.23 to 4.38 / 1.24 to 1.58; South Clock Town 5.07 to 5.45 / 2.30 to 2.86; Termina Field 6.49 to 6.75 / 1.98 to 2.04 (GPU +0.07 to +0.38 ms) |
+| **GL errors** | 0 in all 68 matrix captures plus the GPU, identity, 3DS and all-scenes runs (Mesa messages and our link log searched) |
+| **Off identity** | frozen Stock Pot Inn (an unlit scene, so the new path is covered), main with its own toggle off against this build with `Remastered=0`: mean abs difference 0.003 and 0.017 levels (main against main 0.029, ours against ours 0.049), no pixel above 8 |
+| Brightness | mean luminance of the remastered frame over native: 0.96 to 1.07 in every scene sampled (the relief shading does not shift exposure) |
+| Maps bound | Stock Pot Inn 3 and Woodfall Temple 7 materials now bind on the unlit path (milestone 1: 0); South Clock Town 13, Southern Swamp 5 |
+
+Coverage. Textures generated per scene (default run; "of" = textures the scene owns): South Clock Town 21 materials + 45 unique of 87, Termina Field 25 + 32 of 84, Stock Pot Inn 6 + 19 of 38, Woodfall Temple 19 of 75, East Clock Town 14 of 78,
+Southern Swamp 5 of 68, Great Bay Coast 18 of 45, Snowhead Temple 79 of 134, Mountain Village (winter) 7 of 19. Share of pixels that differ from native (RGB sum above 30 / above 6; day):
+
+| scene | milestone 1 | milestone 2 |
+|---|---|---|
+| South Clock Town | 29-38 % / 51-64 % | **36-41 % / 75-80 %** |
+| Termina Field | 48-49 % / 67-72 % | 50 % / 76-81 % |
+| Stock Pot Inn | 14-17 % / 43-49 % | **19-26 % / 57-58 %** |
+| Woodfall Temple | 1-3 % / 35-38 % | 3 % / 42-44 % |
+| East Clock Town | 5-30 % / 11-50 % | 5-29 % / 11-50 % (unchanged: no unique-art scene) |
+| Southern Swamp, Mountain Village (winter), Great Bay Coast | (not measured) | 50-65 %, 21-32 %, 9-13 % at above 30 |
+
+Caveats of this metric: it includes actor and camera drift between two runs (the Inn view 60 at dusk read 19 % in milestone 1 because Link's pose differed; Snowhead Temple's camera moves between runs, so its 51-89 % is not usable) and it saturates on scenes the textures cover completely.
+
+**What did not work, kept for honesty**
+* The first unlit version rendered black room geometry: the vertex template used `@elseif`, which produced no `main`. Found by logging the program's link error.
+* The first 3DS acceptance rule (aspect, 2x to 4x, mean colour) let two wrong textures through (a banner whose emblem sits on another flag, and a cut-out post that became an opaque wood rectangle). Fixed by requiring an opaque original and a coarse 8x8 colour layout test; of the 15 candidates now exactly the 3 correct ones pass. The rule is tuned on those 15 and could overfit; it is deliberately conservative.
+* Moss class: the moss set alone looked like fur on vertical rock; the class is now rock with moss growth. Grass base: mud sets with ripples looked scalloped, and photo colour leaked through the chroma term (olive swamp ground); now fine grass and dirt sets with low chroma. The swamp ground is soft by design and blander than the native mottling.
+* Recipe or algorithm changes must bump `kVersion` (a cached archive was reused once after a rule change).
+* Frames of `Southern Swamp` and `Woodfall Temple` were recaptured after the grass/moss/chroma changes; the other scenes' frames predate them (only the grass, mud and moss classes changed; their textures are hidden or minor there).
+* The 3DS-sourced textures (3, all in the Stock Pot Inn: the hexagon floor and the floral wallpaper) were checked as extracted pairs (`unique_3ds_sources.png`); they are not in any captured view.

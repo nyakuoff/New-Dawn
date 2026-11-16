@@ -2,7 +2,7 @@
 
 Everything under `mm/assets/newdawn/` ships with the game (decision ND-008). The build copies it to
 `<build>/mm/assets/newdawn/` and `install` puts it in `assets/newdawn/`. Each pack also has a `MANIFEST.md` beside the files.
-None of it comes from the game. Total size: about 66 MB (57 MB of it is the base material library).
+None of it comes from the game. Total size: about 85 MB (76.8 MB of it is the base material library).
 
 | Pack / files | Used by | Author and source | Licence | Changes |
 |---|---|---|---|---|
@@ -17,7 +17,7 @@ None of it comes from the game. Total size: about 66 MB (57 MB of it is the base
 | `grass/flower_atlas.png` | daisies, buttercups, violet wildflowers, clover patch | made for New Dawn: `tools/newdawn/grass-tufts/render_tufts.py OUT 7 1024 flower_atlas.png` | CC0 1.0 | n/a |
 | `oga-lens-flares/flare/{star,extend,hexangle,iris,sun,ring}.png` | sun lens flare | hackcraft.de ("hc"), "Lens-Flares and Particles", https://opengameart.org/content/lens-flares-and-particles | CC-BY 3.0 or CC0 (page); archive says CC0. **Credited as CC-BY 3.0** | none (byte-identical) |
 | `mm3d/span_v4_4x.bin` | 4x upscale of the player's own 3DS character textures (generated on their machine) | PBRify_Remix, model 4x-PBRify_UpscalerSPANV4, https://github.com/Kim2091/PBRify_Remix | CC0 1.0 (repo licence; trained on CC0 data per its README) | converted to a raw float32 layout, values unchanged |
-| `materials/*.jpg`, `materials/manifest.json` | first-run remastered-texture generator (ND-016): input to `mm/2s2h/NewDawn/RuntimeTextures.cpp`, never shown unmodified | 35 sets from ambientCG (https://ambientcg.com), see `materials/MANIFEST.md` for every set with page, download URL and archive SHA-256 | CC0 1.0 (https://docs.ambientcg.com/license/) | re-encoded to 1024x1024 JPEG (albedo, normal GL, roughness, height) by `tools/newdawn/matlib/build_library.py` |
+| `materials/*.jpg`, `materials/manifest.json`, `materials/MANIFEST.md` | first-run remastered-texture generator (ND-016): input to `mm/2s2h/NewDawn/RuntimeTextures.cpp`, never shown unmodified | 84 sets: 45 Poly Haven (https://polyhaven.com), 38 ambientCG (https://ambientcg.com), 1 TextureCan; every set with page, download URL and archive SHA-256 in `materials/MANIFEST.md` and `docs/licenses/TEXLIB_CREDITS.md` | CC0 1.0 (all 84; the two MIT-licensed GPUOpen items of the shortlist are wallpapers and are not imported) | re-encoded to 1024x1024 JPEG (albedo, normal GL, roughness, height) by `tools/newdawn/matlib/build_library.py` |
 | `nightsky/stars.bin` | night stars | David Nash, HYG Database v4.1, https://github.com/astronexus/HYG-Database (from Hipparcos, Yale Bright Star, Gliese) | **CC BY-SA 4.0**; this derivative is under the same licence | filtered to magnitude <= 6.9, colour from B-V, binary packed |
 | `nightsky/milkyway_eq.jpg`, `.txt` | Milky Way | NASA/GSFC Scientific Visualization Studio, "Deep Star Maps 2020" (SVS 4851), https://svs.gsfc.nasa.gov/4851; Gaia DR2: ESA/Gaia/DPAC; animator Ernie Wright | NASA media: not copyrighted, credit requested; Gaia DR2 **CC BY-SA 3.0 IGO**, so this derivative is distributed under CC BY-SA 3.0 IGO | stars despiked, galactic 8192x4096 resampled to equatorial 4096x2048, cube-root 8-bit JPEG (q95) |
 

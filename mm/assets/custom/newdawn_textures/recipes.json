@@ -1,6 +1,6 @@
 {
  "version": 1,
- "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is. scene_regions: scene folder -> region priority list (manifest sets tagged for the first region with a match are chosen, then 'any'). world_m: metres one tile of the CC0 set covers; the generator repeats the set k = tile_m / world_m times per texture (scale.json tile_m, max_repeat), the stochastic sampling hides the repetition.",
+ "comment": "Class recipes of the first-run texture generator (ND-016): defaults merged under each textures.json entry (hand-tuned scenes) or, for every other replaceable texture of classification.json, under the recipe class_map names. Material ids refer to assets/newdawn/materials/manifest.json; a list means one is picked by the texture's seed. Names and numbers only. Selectors: role:<name> or class:<name> pick one manifest material by seed (and region, when the manifest has region variants); a plain id is used as it is. scene_regions: scene folder -> region priority list (manifest sets tagged for the first region with a match are chosen, then 'any'). world_m: metres one tile of the CC0 set covers; the generator repeats the set k = tile_m / world_m times per texture (scale.json tile_m, max_repeat), the stochastic sampling hides the repetition. unique.scenes: scenes whose unique (painted) art is upscaled in this milestone; gNewDawn.Textures.UniqueScenes=all or a comma list overrides.",
  "tiers": {
   "hero": 1024,
   "rest": 512,
@@ -247,7 +247,8 @@
    "p": {
     "set": "class:mud|class:dirt",
     "macro": 0.12,
-    "contrast": 1.0
+    "contrast": 1.0,
+    "chroma": 0.1
    },
    "world_m": 2.0
   },
@@ -265,7 +266,12 @@
    "gen": "direct",
    "stoch": true,
    "p": {
-    "set": "class:dirt|class:mud",
+    "set": [
+     "grass004",
+     "grass002",
+     "ground048",
+     "ground109"
+    ],
     "contrast": 0.7,
     "hf": 0.5,
     "macro": 0.3,
@@ -273,7 +279,8 @@
     "relief": 8,
     "nstrength": 0.6,
     "grime": 0.2,
-    "wear": 0.1
+    "wear": 0.1,
+    "chroma": 0.04
    },
    "world_m": 3.0
   },
@@ -281,10 +288,12 @@
    "gen": "direct",
    "stoch": true,
    "p": {
-    "set": "role:moss",
-    "contrast": 1.0
-   },
-   "world_m": 1.5
+    "set": "role:rock",
+    "moss": 0.55,
+    "contrast": 1.0,
+    "hf": 1.0,
+    "chroma": 0.1
+   }
   },
   "a_metal": {
    "gen": "direct",
@@ -450,5 +459,12 @@
   "Z2_RANDOM": "dungeon",
   "KAKUSIANA": "dungeon"
  },
- "max_repeat": 8
+ "max_repeat": 8,
+ "unique": {
+  "scenes": [
+   "Z2_CLOCKTOWER",
+   "Z2_YADOYA",
+   "Z2_00KEIKOKU"
+  ]
+ }
 }
