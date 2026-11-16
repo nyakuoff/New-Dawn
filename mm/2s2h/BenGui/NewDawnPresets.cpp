@@ -31,6 +31,7 @@ const Row kRows[] = {
     { "gNewDawn.TAA.Enabled",                          I, { 1,     1,     0,     0,     0 } },
     { "gMatchRefreshRate",                             I, { 1,     1,     1,     1,     0 } },
     // Textures. Asset mods (gEnhancements.Mods.AlternateAssets) are the player's own choice and never part of a look.
+    { "gNewDawn.Textures.Remastered",                  I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.Textures.AsyncAltLoad",                I, { 1,     1,     1,     1,     1 } },
     { "gNewDawn.Textures.Mipmaps",                     I, { 1,     1,     1,     1,     1 } },
     { "gNewDawn.Textures.Anisotropy",                  I, { 16,    16,    8,     4,     16 } },

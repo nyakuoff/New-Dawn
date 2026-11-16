@@ -61,6 +61,7 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/Enhancements/GfxPatcher/PlayerCustomFlipbooks.h"
 #include "2s2h/Enhancements/ModMenu/ModMenu.h"
 #include "2s2h/NewDawn/RuntimeMaterials.h"
+#include "2s2h/NewDawn/RuntimeTextures.h"
 #include "2s2h/NewDawn/Mm3dCharacters.h"
 #include "2s2h/DeveloperTools/DebugConsole.h"
 #include "2s2h/Rando/Rando.h"
@@ -1049,6 +1050,18 @@ static void RunMaterialsBoot() {
                  } });
 }
 
+// Remastered textures: art-directed CC0 materials generated from the player's own N64 textures (docs/TEXTURE_PIPELINE.md).
+static void RunTexturesBoot() {
+    RunBootJob({ "Preparing remastered textures", "Building the replacement textures from your game data and the base materials.",
+                 "This runs once; the result is cached and reused on later launches.", NewDawnTextures::BootNeedsGeneration,
+                 NewDawnTextures::StartGeneration, NewDawnTextures::IsRunning, NewDawnTextures::FinishBoot,
+                 [](uint32_t& done, uint32_t& total) {
+                     const auto progress = NewDawnTextures::GetProgress();
+                     done = progress.done;
+                     total = progress.total;
+                 } });
+}
+
 // The player's own 3DS character models, converted once from their RomFS (docs/MM3D_CHARACTERS.md).
 static void RunMm3dBoot() {
     RunBootJob({ "Preparing 3DS characters", "Converting the 3DS character models from your Majora's Mask 3D RomFS.",
@@ -1078,6 +1091,7 @@ extern "C" void InitOTR(int argc, char* argv[]) {
     LoadGuiTextures();
     ModMenu_LoadArchives();
     RunMaterialsBoot();
+    RunTexturesBoot();
     RunMm3dBoot();
     BenGui::SetupGuiElements();
     ShipInit::InitAll();
@@ -1363,6 +1377,7 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
     }
 
     NewDawnMm3d::ApplyToggle();
+    NewDawnTextures::ApplyToggle();
 
     bool curAltAssets = CVarGetInteger("gEnhancements.Mods.AlternateAssets", 0);
     if (prevAltAssets != curAltAssets) {
