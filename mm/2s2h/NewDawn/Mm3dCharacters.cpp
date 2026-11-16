@@ -42,7 +42,7 @@ namespace NewDawnMm3d {
 namespace {
 
 // Bump when the conversion changes; the table and the dump's file identities are hashed into the signature too.
-constexpr const char* kConverterVersion = "1.10.0";
+constexpr const char* kConverterVersion = "1.11.0";
 
 struct Entry {
     const char* object;
@@ -54,6 +54,7 @@ struct Entry {
     float lightRef, saturation; // colour overrides for this model, 0 = the global defaults
     const char* rig;            // "bone:limb,..." when the 3DS rig differs from the N64 one (see ParseRig); "" = same hierarchy
     const char* face;           // eye and mouth states (see ParseFace); "" = the faces stay at their first frame
+    const char* matcls;         // "texture name part=class,...": character material classes that differ from the defaults (see ClassOfTexture)
     const char* tint;           // "material:hue degrees:saturation factor[:value factor[:from hue:to hue]],..." per CMB material (hair that reads hotter than the N64's)
 };
 const Entry kTable[] = {
@@ -557,7 +558,43 @@ std::vector<uint8_t> VtxArray(const std::vector<std::array<uint8_t, 16>>& verts)
     return out;
 }
 
-std::vector<uint8_t> TextureResource(const Mm3d::Image& img) {
+// Material class of a CMB texture, written into the texture's flags (TEX_FLAG_NEWDAWN_CHARCLASS): 1 skin, 2 costume (cloth, leather
+// and metal told apart per texel in the shader), 3 hair, 4 eyes and mouth, 5 metal, 6 cloth, 7 leather, 0 none. Defaults by the
+// texture's name and whether its material is lit; the table row overrides by name part ("link_child_f01=3").
+int ClassOfTexture(const std::string& name, const Mm3d::Material& mat, const char* overrides) {
+    std::string lower = name;
+    for (char& c : lower) {
+        c = (char)std::tolower((unsigned char)c);
+    }
+    std::string all(overrides ? overrides : "");
+    size_t pos = 0;
+    while (pos < all.size()) {
+        size_t end = all.find(',', pos);
+        end = end == std::string::npos ? all.size() : end;
+        const std::string tok = all.substr(pos, end - pos);
+        pos = end + 1;
+        const size_t eq = tok.find('=');
+        if (eq != std::string::npos && lower.find(tok.substr(0, eq)) != std::string::npos) {
+            return std::atoi(tok.c_str() + eq + 1);
+        }
+    }
+    auto tail = [&](const char* mark) { // "_e00", "_m00": the mark followed by a digit
+        const size_t at = lower.find(mark);
+        return at != std::string::npos && at + std::strlen(mark) < lower.size() && std::isdigit((unsigned char)lower[at + std::strlen(mark)]);
+    };
+    if (tail("_e") || tail("_m") || tail("_ev") || tail("_eb")) {
+        return 4;
+    }
+    if (lower.find("hair") != std::string::npos) {
+        return 3;
+    }
+    if (lower.find("skin") != std::string::npos) {
+        return 1;
+    }
+    return mat.fragmentLighting || mat.vertexLighting ? 2 : 0;
+}
+
+std::vector<uint8_t> TextureResource(const Mm3d::Image& img, int materialClass = 0) {
     std::vector<uint8_t> out = Header("XETO", 1);
     float one = 1.0f;
     uint32_t oneBits;
@@ -565,7 +602,8 @@ std::vector<uint8_t> TextureResource(const Mm3d::Image& img) {
     Put32(out, 1); // RGBA32
     Put32(out, img.width);
     Put32(out, img.height);
-    Put32(out, 2); // TEX_FLAG_LOAD_AS_IMG: the resource's own size, not the declared one
+    // TEX_FLAG_LOAD_AS_IMG: the resource's own size, not the declared one; bits 9 to 12 the material class.
+    Put32(out, 2u | ((uint32_t)materialClass << 9));
     Put32(out, oneBits);
     Put32(out, oneBits);
     Put32(out, (uint32_t)img.rgba.size());
@@ -1040,7 +1078,7 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                     }
                 }
                 MapColour(img, model.materials[fu.material], colour);
-                write(std::string("mm3d/objects/") + e.object + "/" + st.first, TextureResource(img));
+                write(std::string("mm3d/objects/") + e.object + "/" + st.first, TextureResource(img, 4));
                 ++res.textures;
             }
         }
@@ -1085,7 +1123,7 @@ Result Convert(const Entry& e, const std::vector<Limb>& limbs, Mm3d::Model& mode
                         }
                     }
                 }
-                write(texName[(int)mi], TextureResource(img));
+                write(texName[(int)mi], TextureResource(img, ClassOfTexture(model.textures[ti].name, m, e.matcls)));
                 ++res.textures;
             }
         }
@@ -1276,7 +1314,7 @@ std::string Signature(const std::string& dump) {
     }
     std::set<std::string> archives;
     for (const Entry& e : kTable) {
-        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig + e.face + e.tint, h);
+        h = Fnv1a(std::string(e.object) + e.skeleton + e.archive + e.cmb + e.skip + (Enabled(e) ? "1" : "0") + e.rig + e.face + e.matcls + e.tint, h);
         h = Fnv1a(&e.lightRef, sizeof(e.lightRef), h);
         h = Fnv1a(&e.saturation, sizeof(e.saturation), h);
         archives.insert(e.archive);

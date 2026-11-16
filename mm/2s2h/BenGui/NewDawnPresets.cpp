@@ -94,6 +94,8 @@ const Row kRows[] = {
     { "gNewDawn.Characters.LightShoulder",             F, { 0.5f,  0.5f,  0.5f,  0.0f,  0.0f } },
     { "gNewDawn.Characters.LightWrap",                 F, { 0.35f, 0.35f, 0.35f, 0.0f,  0.0f } },
     { "gNewDawn.Characters.GradeRelief",               F, { 0.8f,  0.8f,  0.8f,  0.0f,  0.0f } },
+    { "gNewDawn.Characters.Materials",                 F, { 0.8f,  0.8f,  0.8f,  0.0f,  0.0f } },
+    { "gNewDawn.Characters.Relief",                    F, { 0.6f,  0.6f,  0.0f,  0.0f,  0.0f } },
     { "gNewDawn.Characters.Smooth",                    I, { 1,     1,     0,     0,     0 } },
     { "gNewDawn.Characters.SmoothStrength",            F, { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f } },
     { "gNewDawn.Lighting.Local",                       I, { 1,     1,     1,     1,     0 } },

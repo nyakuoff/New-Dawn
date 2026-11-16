@@ -107,3 +107,53 @@ noon and dusk keep their own colours and do not go grey).
 texture itself is (0.91): no lighting model lowers that without a material change, which this pass does not make. The N64
 tunic at noon is unchanged in clipping (33%): its texture's blue is 0. The channel floor and the shoulder act on lit actor
 draws only; characters under material maps (`gNewDawn.Materials`) keep their own path.
+
+## Character materials (ROADMAP item 2, 2026-11-16)
+Per-material response for characters, N64 and 3DS, on top of the lighting pass above. Characters were one material: a lit
+albedo plus a rim and a metal guess from the texel colour. Now each draw knows what its texture is.
+
+**Classification** (render state only; it never touches a game structure). Every character draw carries a class for its first used
+texture: 1 skin, 2 costume (a CMB atlas holding tunic, belt, boots and skin: split per texel in the shader), 3 hair, 4 eyes and
+mouth, 5 metal, 6 cloth, 7 leather, 0 none.
+- 3DS models: the converter writes the class into bits 9 to 12 of the converted texture's flags (`TEX_FLAG_NEWDAWN_CHARCLASS`),
+  from the texture's CMB name (`_e00`, `_m00`, `_ev`, `_eb` eyes and mouth; "hair"; "skin"; any other lit material a costume
+  atlas) and the `MATCLASS` overrides of the table row (Link's face and hair textures, the Goron's and Zora's gear).
+- N64 models: the class comes from the texture's resource name, split into its camel-case words (`gLinkHumanBeltTex` is
+  leather, `gAnju1SkinTex` skin, `gSoldierArmorPlate1Tex` metal; palettes, icons, flames, numbers, skyboxes are 0), and every
+  untitled `object_link_*` texture is a costume atlas. The class is cached per resource and logged with
+  `gNewDawn.Characters.LightLog=1`; `LightDebug=5` paints the classes.
+
+**Response** (`newDawnCharMaterial` in `default.shader.glsl`, added to the lit radiance, bounded by the albedo like the specular):
+- skin: scattered light that turns red-orange in a band at the terminator and glows through thin parts when backlit, a faint
+  oily sheen, a warm sky fill at grazing angles; skin hues keep their matte specular;
+- cloth: a velvet sheen that grows towards the silhouette and follows the key light;
+- leather: a broad, low highlight tinted by the leather;
+- metal: forced crisp metal in the existing metal path for class 5;
+- hair: two anisotropic bands along the strands (Kajiya-Kay, the second tinted by the hair);
+- relief from the albedo (`gNewDawn.Characters.Relief`): the surface gradient of the texture's luminance from screen-space
+  derivatives, no tangents or generated maps, so it works for the 4x-upscaled 3DS textures and the N64 ones alike; strongest on
+  cloth and leather, weakest on skin; it perturbs only the diffuse and sheen terms.
+
+Cvars: `gNewDawn.Characters.Materials` (0..1, default 0.8; Ultra, High and Medium) and `gNewDawn.Characters.Relief` (0..1, default 0.6;
+Ultra and High). `MaterialTerms` is a debug bit mask of the terms (1 relief, 2 skin, 4 cloth, 8 leather, 16 hair, 32 sky).
+
+**Design note.** The request listed "generated normal and roughness detail for 3DS textures". This pass derives relief in the
+shader from the converted albedo instead of generating map textures: the 3DS atlases are 128 px sources upscaled to 512 px
+and the gradient of their luminance is the detail they have, a generated map would hold no more; it needs no archive, no
+cache and no extra sampler unit. Generated maps remain an option for the unique N64 art if a better detail source exists.
+
+**Colour discipline.** The reference gate (`refgate.py`) is unchanged by the pass: it reads the converted textures, and the
+only change to them is the class bits in their flags; all 58 rows give the same result before and after (the 6 default-on rows
+and the Link forms pass; the Dinolfos and the Poe balloon stay out). In game, with the deterministic-off list and a frozen frame,
+the pass changes Link's boots, hair, belt and shield rim (mean delta E over his pixels 3.2, only 1,684 pixels move), the guard
+(mean 0.6 over the whole frame), the receptionist and the shop gal; the tunic's green is not touched by it (cloth sheen is
+bounded by the albedo's own colour).
+
+**Verification limits.** Off identity (`Materials=0`, `Relief=0`, and the four light passes at 0) is true by construction (the
+class stays 0, the function returns first, no flush happens) but could not be shown bit-identical: with other sessions' games
+running, the frozen Inn and Termina Field fixtures were not reproducible, two runs of the unmodified main build differing in 1.7 M
+pixels. The off/on pairs of the sheets come from runs whose neighbourhood is identical; the Cremia and Anju pairs are excluded
+(Cremia's cow and bushes move between runs; Anju sat outside the Inn frame at the deterministic camera). GPU cost not measured.
+Images: `~/dev/ghm-mods/showcase/mm3d-characters/materials/` (`character_materials_reference_converted_pass.png`: the 3DS
+reference render, the converted model, and the in-game frame with the pass off and on, for Link, the guard, Anju, the receptionist
+and the shop gal; `captains_hat_fit.png`).
