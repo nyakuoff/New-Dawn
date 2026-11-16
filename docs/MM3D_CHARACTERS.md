@@ -218,6 +218,20 @@ row sits behind "Include unreviewed 3DS models" until masks and the other forms 
   (first-person view: the bow is the N64 bow display list in the right hand, identical in both), stand at idle.
   Not checked: mask attachments (an `equippedMask` poke did not take effect), the other forms, the hookshot, bottle and ocarina,
   swimming, climbing, and cutscene poses.
+- **Head direction (review of the first run sheet):** the head-down 3DS frames of the first sheet were a comparison of different
+  animation phases (the two builds' bursts drift by a few frames, and Link bows his head in the swing recovery in the N64 too),
+  not a rig fault. Checked three ways with the final build: (1) a long same-input burst in both builds (roll, three swings,
+  shield, side hop, back flip, spin; `link_human_burst_n64.png` / `_3ds.png`) and a phase-matched sheet
+  (`link_human_run_sword_n64_vs_3ds.png`): upright head wherever the N64's is, bowed where it bows; (2) an offline overlay
+  that poses both the N64 and the converted 3DS meshes with the same N64 animation matrices over 12 animations (sword
+  kiru, power-jump kiru, rolling kiru/spin, landing roll, shield, bow ready, back-turn jump, side jump, turn kiru, run, walk,
+  bow defence), 4 frames each (`link_human_head_overlay_12_animations.png`): the 3DS head and hat silhouette covers the
+  N64's in every frame, so the head follows the head limb's matrix and nothing else; (3) a rigid fit of the 3DS head mesh to
+  the N64's in the limb frame: 6.8 degrees about the lateral axis, left as is (the heads differ in shape, so the fit
+  absorbs some of it; the hat, shoulders and forearms fit within 7 to 37 degrees, the largest from the 3DS arms' different
+  rest bend). The same fit would show a missing neck bone or a double rotation as a large angle on the head.
+- Masks: poking `equippedMask` in the save and `currentMask` on the live Player actor (both with the form fixture) draws no
+  mask in either build; in-game mask changes are unverified for all five forms.
 - Rig quirks found: the hat bone's rest rotation (2.16 rad) differs from the N64 hat limb's, so the hat hangs steeper than the
   N64's; per-limb rotation registration over several animation frames did not give a clearly better frame for any limb.
 
