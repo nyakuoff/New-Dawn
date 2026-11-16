@@ -20,17 +20,16 @@ Quality** (Ultra, High, Medium, Low, or *Original look*); every feature also has
 
 | Area | What you get |
 |---|---|
-| **HDR and colour** | A linear HDR pipeline with a hue-preserving tonemap and filmic grade, an art-directed colour grade per area and time of day, and an optional texture recolour pass for muddy or garish textures. |
-| **Sky** | A physical sky with volumetric clouds that follow the in-game clock; warm dawns and dusks; special skies for the final day (an intensifying storm under the Moon), cursed Ikana and the poisoned swamp, also in cutscenes; and an overcast snow sky. Sky-driven ambient light and reflections keep the world consistent with the sky. |
-| **Lighting** | Real-time sun shadows with 4 cascades out to about 7,000 units; shadows from foliage, fences and grass; screen-space bounce light (GI) with colour bleeding; per-pixel lighting with character rim and specular light; and dynamic flickering light from torches, lamps and flames, with darker, moodier nights and interiors. |
-| **Grass** | Dense, render-only 3D grass on grassy ground that sways in the wind and is lit like the world (no collision change). |
-| **Atmosphere** | Volumetric fog and haze, screen-space sun rays through trees, a textured lens flare, sunlit dust motes, pollen, fireflies and drifting leaves, plus a shared gusting wind that sways foliage and drives clouds and particles. |
-| **Weather** | Soft sky-lit rain sheltered under roofs, splash rings, wet reflective ground that lingers after rain, and softer snow. |
-| **Water** | Per-area art-directed water colour, sharp reflections of geometry and the sky, Fresnel and sun glints, shoreline foam, refraction with depth absorption, caustics on seabeds, and an underwater view with fog, light shafts and particles. |
-| **Materials** | Generated normal, roughness and height maps for about 2,200 world textures, with GGX highlights and parallax occlusion mapping, so brick, cobble and stone have real depth. |
-| **Effects** | Redrawn fire (an animated flipbook rendered from a fluid simulation) with embers and light, soft glows, dust, sparks, bomb explosions, candles, and fire/ice/light arrows. |
-| **Image quality** | 4× MSAA with alpha-to-coverage for foliage edges, mipmaps with 16× anisotropic filtering, and async HD texture loading. |
-| **3DS geometry (experimental)** | An optional switch that draws the *Majora's Mask 3D* room geometry in 18 scenes, converted from your own 3DS dump with a clean-room tool. Off by default and not part of the preset. |
+| **Art direction** | A modern remake look in the spirit of the 2026 *Ocarina of Time* remake: a tactile, hyper-detailed world that is dark and beautiful, with colourful characters. New Dawn upgrades the original look rather than reproducing it. |
+| **Textures** | About 2,300 world textures replaced with art-directed, practical-set materials (84 CC0 sets with regional variants), recoloured to Termina's palette and **generated on your machine from your own game** on first launch; unique painted art upscaled 4×. Relief and material response indoors and out. |
+| **Lighting** | World-space global illumination (multi-bounce, stable, no light leaks); real-time sun shadows with cascades, culled-geometry casters and soft shadows from the nearest flames; warm flame light pools; darker, moodier nights and interiors; glowing clock and signs. |
+| **Characters** | Smooth, rounded character geometry at render time (animations untouched), soft character shading and shiny metal. Optional: models converted from your own *Majora's Mask 3D* dump, with blinking and talking faces. |
+| **Colour** | A linear HDR pipeline with a hue-preserving tonemap, deep darks and an art-directed grade per area and time of day. |
+| **Sky** | A physical sky with volumetric clouds following the in-game clock; warm dawns and dusks; a real star field, Milky Way and Moon glow at night; special skies for the final day, cursed Ikana and the poisoned swamp, also in cutscenes. |
+| **Water** | Rolling ocean swells, ripples and wakes around Link, flowing rivers, natural shoreline foam, reflections, refraction, caustics and an underwater view, with natural per-area colours. |
+| **Vegetation and atmosphere** | Dense 3D grass that bends around Link, flowers and clover, light through leaves, volumetric fog, sun rays, dust, pollen, fireflies, rain, snow and wet ground, all moved by a shared wind. |
+| **Effects** | Redrawn fire, embers, glows, sparks, explosions, magic arrows, a restyled sword trail, sparkles, frost and mask flashes. |
+| **Image quality and options** | Temporal anti-aliasing plus MSAA; five looks (Ultra to Original) with measured costs; a performance overlay (F3); Mouse Look; a Warp tab and the Dev Tools. |
 
 The renderer work is OpenGL-only for now. On Windows, choose OpenGL in *Display → Renderer API*.
 
@@ -57,18 +56,15 @@ It is on by default. A fresh install starts with the **Ultra** look; an existing
 asked once whether to switch the look on. Press **Esc** and open **Graphics → Quality** to pick Ultra, High, Medium,
 Low or *Original look* (every New Dawn effect off, the N64 path). The menu is described in [docs/MENU.md](docs/MENU.md).
 
-### 3. Optional: HD textures and models
-New Dawn is built and tuned around these community mods. They can't be redistributed here, so download them
-yourself, put the files in the game's `mods/` folder, and turn on **Use Alternate Assets** (**Tab**).
+### 3. Recommended: your *Majora's Mask 3D* dump
+New Dawn can convert character models from your own *Majora's Mask 3D* (3DS) dump on your machine. In
+**Graphics → Advanced → Experimental**, point the game at your decrypted RomFS folder and turn on **3DS character
+models**. Nothing from the 3DS game is shipped with New Dawn.
 
-| Mod | Source |
-|---|---|
-| MM Reloaded 4K (2Ship O2R) | [evilgames.eu](https://evilgames.eu/texture-packs/mm-reloaded.htm) |
-| 3DS Link and 3DS Equipment | [GameBanana 644553](https://gamebanana.com/mods/644553) |
-| HD Moon | [GameBanana 640438](https://gamebanana.com/mods/640438) |
-
-The material maps, texture recolour and effect textures are generated locally with the tools in
-[`tools/newdawn/`](tools/newdawn/README.md); they aren't shipped either.
+Every New Dawn asset ships with the game (see [docs/licenses/THIRD_PARTY_ASSETS.md](docs/licenses/THIRD_PARTY_ASSETS.md)),
+and everything derived from the original game (the remastered textures, upscaled art and converted models) is
+generated on your machine, not downloaded. Community texture and model packs are not needed; they still load as
+unofficial extras through 2Ship's **Use Alternate Assets** (**Tab**).
 
 ## Controls
 
