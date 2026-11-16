@@ -59,7 +59,10 @@ start and end of the checked cutscenes. 22 matched captures (Special 0 vs 1): ze
 - Not verified in motion: a doorway transition, rain/ash (the game has no day-3 weather and none was added). Cutscenes
   verified: South Clock Town arrival (day 1), Clock Tower rooftop with the Moon (day 1 morning and final night); the
   Lost Woods opening dungeon has no sky. Song of Time dawn, giants and Moon-crash cutscenes were not reached by the
-  test fixture. No per-cutscene fallback was needed. Snowhead/Great Bay/Romani and other unlisted outdoor scenes
+  test fixture (#77, 2026-11-16, still open: `gNewDawn.Debug.BootDay` now boots a capture on day 3 and the rooftop entrance at
+  6:00 plays the Moon approach with the final-day storm sky, `showcase/bugsweep/77-moon-approach-day3-6am.png`; setting the
+  save's `cutsceneIndex` to 0xFFF0-0xFFF4 does not select scripted cutscenes in this boot path, so the giants, Song of Time dawn,
+  Moon crash and ending still need a trigger, probably by playing the story flags up to them). No per-cutscene fallback was needed. Snowhead/Great Bay/Romani and other unlisted outdoor scenes
   keep the native sky; the winter Mountain Village keeps the D2 sky on days 1-2 only.
 - Stone Tower Temple (inverted) uses the cursed sky in its sky windows; only the Stone Tower tower views were framed,
   and they showed no sky.

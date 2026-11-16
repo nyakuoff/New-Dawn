@@ -59,6 +59,11 @@ void Warp(WarpPoint& warpPoint) {
         if (bootHour >= 0.0f) {
             gSaveContext.save.time = (u16)(bootHour * (0x10000 / 24.0f));
         }
+        // Capture/debug only: gNewDawn.Debug.BootDay (1-3) boots on that day, next to BootHour.
+        const int bootDay = CVarGetInteger("gNewDawn.Debug.BootDay", 0);
+        if (bootDay >= 1 && bootDay <= 3) {
+            gSaveContext.save.day = bootDay;
+        }
         gSaveContext.save.cutsceneIndex = 0;
         gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
         gSaveContext.save.linkAge = 0;
