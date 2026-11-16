@@ -101,12 +101,12 @@ Implemented, built (RelWithDebInfo, `nd-heavy build`) and run in game.
 
 | | |
 |---|---|
-| Skeletons in the table | 49 Flex skeletons (58 matched, 9 excluded) with a hierarchy identical to a CMB of the same-named 3DS archive (`chartable.py`) |
-| Converted / failed | **49 / 0** (every CMB parses, binds and writes) |
+| Skeletons in the table | 53: 49 with a hierarchy identical to a CMB of the same-named 3DS archive (58 matched, 9 excluded) and 4 paired by a rig recipe (`chartable.py`) |
+| Converted / failed | **53 / 0** (every CMB parses, binds and writes) |
 | Conversion time | **0.03 s** for all 58 without the texture upscale; **1.0 s** with it for the 4 enabled models (20 threads, includes reading the GARs and the N64 skeletons; 51,078 triangles, 154 textures, 9,114 triangles span a joint) |
 | Cache | 2.4 MB for the 4 enabled models with the 512 px textures (173 KB before the upscale) |
 | Enabled in game (reviewed) | **6**: Clock Town guard, Anju, Mayor's Residence receptionist, Business Scrub, Treasure Chest Shop gal, the tree climber in Termina Field |
-| Unreviewed (converted, off unless "Include unreviewed 3DS models (experimental)" is on) | 43, see "Review of the held-back models" |
+| Unreviewed (converted, off unless "Include unreviewed 3DS models (experimental)" is on) | 47, see "Review of the held-back models" |
 | Excluded (not converted at all) | 9 skeletons, `EXCLUDE` in `chartable.py` |
 | Off identity | toggle off with the cache mounted, and no dump at all: frozen Stock Pot Inn (clock 12, frame 30, the extended off list) is **pixel-identical** (0 differing pixels) to main `85fbd4fd4`, which itself reproduces exactly run to run |
 | GL errors | 0 in every capture (`MESA_DEBUG=context`) |
@@ -137,8 +137,8 @@ construction): guard (idle, wave, come-up-here), Anju (walk, idle, bow), recepti
 
 ### Review of the held-back models (milestone 2)
 The Graphics menu option "Include unreviewed 3DS models (experimental)" (`gNewDawn.MM3D.ReviewAll`, default off, applied on
-the next launch or Convert) also writes the 43 models that have not been checked in game, so they can be reviewed while
-playing; the default stays the 6 `reviewed` rows of the table. Checked at boot: off 6 enabled, on 49, off again 6. A scan of 25 scenes with it on found live actors for 13 of
+the next launch or Convert) also writes the 47 models that have not been checked in game, so they can be reviewed while
+playing; the default stays the 6 `reviewed` rows of the table. Checked at boot: off 6 enabled, on 53, off again 6. A scan of 25 scenes with it on found live actors for 13 of
 the 50 objects (guard, Anju, receptionist/treasure gal, scrub, dog, tree climber, Postman, tied monkey, Big Octo, Real
 Bombchu, Takkuri, Snowhead Wolfos, balloon Poe); the other 37 objects only appear in cutscenes, at other times of day or in
 rooms the fixture did not reach. The bind-pose gallery of all 58 (flat colour, front and side) gave these offline verdicts:
@@ -157,6 +157,26 @@ with the N64 swords) and the Great Fairy (one skeleton, five colour models; the 
 Props: the witches' brooms, the Wizzrobe staff, the pirate weapons and the Iron Knuckle axe are limbs of the N64 skeleton
 too (`KOUME_LIMB_BROOM`, `WIZROBE_LIMB_STAFF`, `IRON_KNUCKLE_LIMB_AXE`), so the matched bones drive them and nothing
 doubles; the only separately drawn prop found is Koume's potion bottle (`gKoumeBottleDL`), now in her `SKIP` list.
+
+### Rig reduction (milestone 2)
+Kafei, Romani, Cremia and the Bombers do not match an N64 hierarchy: the 3DS rigs have clavicles, split spines, a skirt of
+three bones, or a wrist and hand where the N64 has a pivot and two parts at the same joint. Their rows carry a rig recipe
+(`RIG` in `chartable.py`, "bone:limb" pairs, found from both trees and the joint offsets):
+- listed bones drive the paired limb; an unlisted 3DS bone follows its nearest listed ancestor (clavicles go to the torso,
+  the head's second bone to the first, the skirt chain to its first bone, the right wrist's pivot to the hand);
+- an unlisted N64 limb gets an empty display list (Dress2 to 4, the Bombers' spare head parts);
+- the rest shift of a bone is the N64 offset to its nearest listed ancestor limb (the unlisted pivots in between added up,
+  their rest rotation taken as identity) against the offset of the bone from the 3DS bone paired with that limb, both from
+  the world bind matrices.
+Pairing the skirt bones with the N64 dress limbs flared Cremia's skirt: the 3DS skirt bones carry rest rotations (up to
+0.77 rad) the N64 dress limbs do not, so those chains were folded into one bone. Everything in a recipe must share rest
+rotations with the limb it is paired with; a chain that does not has to be folded.
+
+In game, same-frame N64 vs 3DS (`showcase/mm3d-characters/review/`): **Romani** (walking, Romani Ranch), **Cremia**
+(milking, same scene) and a **Bomber** (East Clock Town) pose like the N64 model. **Kafei** converts (0 failures) but was
+not framed: the one scan scene with him (South Clock Town) is the intro cutscene, so he is unverified in game. All four stay
+in the experimental option. The five Bombers share one 3DS model (one hat), so with the option on they look alike, where the
+N64 gives each their own hat colour.
 
 ### Limits
 - Eye and mouth textures are static (see Faces). Props baked into a CMB are listed per skeleton (guard bottle, Anju's
