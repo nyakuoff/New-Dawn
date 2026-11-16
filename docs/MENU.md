@@ -36,29 +36,34 @@ tiers; the full table is `kRows` in `NewDawnPresets.cpp` (`tools/newdawn/capture
 
 | cvar | Ultra | High | Medium | Low | Original look |
 |---|---|---|---|---|---|
-| `gSettings.MSAAValue` | 4 | 4 | 2 | 1 | 1 |
+| `gSettings.MSAAValue` | 4 | 1 | 2 | 1 | 1 |
+| `gNewDawn.TAA.Enabled` | 1 | 1 | 0 | 0 | 0 |
 | `gNewDawn.Textures.Anisotropy` | 16 | 16 | 8 | 4 | 16 |
 | `gNewDawn.Textures.AlphaToCoverage` | 1 | 1 | 1 | 0 | 1 |
 | `gNewDawn.GI.Enabled` (bounce light) | 1 | 0 | 0 | 0 | 0 |
-| `gNewDawn.Fog.Volumetric` | 1 | 1 | 0 | 0 | 0 |
+| `gNewDawn.Fog.Volumetric` | 1 | 0 | 0 | 0 | 0 |
 | `gNewDawn.Shadows.MapSize` | 4096 | 2048 | 2048 | 1024 | 4096 |
 | `gNewDawn.Shadows.Cascades` | 4 | 3 | 2 | 1 | 1 |
 | `gNewDawn.Shadows.Foliage` | 1 | 1 | 0 | 0 | 0 |
 | `gNewDawn.Grass.Density` | 1.0 | 0.8 | 0.5 | 0.3 | 1.0 |
 | `gNewDawn.Grass.Distance` | 1000 | 850 | 650 | 450 | 1000 |
 | `gNewDawn.Water.Reflections` | 1 | 1 | 0 | 0 | 0 |
-| `gNewDawn.Water.Caustics` | 1 | 1 | 0 | 0 | 0 |
+| `gNewDawn.Water.Caustics` | 1 | 0 | 0 | 0 | 0 |
 | `gNewDawn.Water.Foam` / `Refraction` / `Underwater` | 1 | 1 | 1 | 0 | 0 |
-| `gNewDawn.Sky.Clouds` | 1 | 1 | 1 | 0 | 0 |
+| `gNewDawn.Sky.Clouds` | 1 | 1 | 0 | 0 | 0 |
 | `gNewDawn.Sky.Reflections` | 1 | 1 | 0 | 0 | 0 |
 | `gNewDawn.Sky.Flare` | 1 | 1 | 1 | 0 | 0 |
-| `gNewDawn.Materials.Parallax` | 1 | 1 | 0 | 0 | 0 |
+| `gNewDawn.Materials.Parallax` | 1 | 0 | 0 | 0 | 0 |
 | `gNewDawn.PostFx.AO.Enabled` | 1 | 1 | 1 | 0 | 1 |
 | `gNewDawn.SunShafts.Enabled` | 1 | 1 | 1 | 0 | 0 |
 | `gNewDawn.Atmos.Particles` | 1 | 1 | 1 | 0 | 0 |
 | `gNewDawn.Lighting.Characters` | 1 | 1 | 1 | 0 | 0 |
 | `gNewDawn.Characters.Smooth` | 1 | 1 | 0 | 0 | 0 |
 | `gNewDawn.Lighting.PointLightQuality` | 0.5 | 0.5 | 0.5 | 0.25 | 0 |
+| **Measured GPU cost** (mean of 8 heavy scenes, 1080p, RX 7800 XT) | **4.6 ms** | **2.8 ms (61%)** | **1.7 ms (38%)** | **1.3 ms (29%)** | **0.2 ms** |
+
+The cost row (and the same figure on each card in the menu) is from `docs/PERFORMANCE.md`, which has the per-scene, per-stage and
+high-refresh tables, the optimisations behind them and why Low stops at about 1.3 ms. Other GPUs: estimates only, unverified.
 
 Every tier except Original look keeps the modern lighting pipeline (`gNewDawn.HDR.Enabled`: linear lighting mapped to normal SDR output, no HDR monitor needed; the menu never calls it "HDR"), the physical sky, per-pixel lighting, local lights, materials, the colour
 grade, wind, weather, VFX and 3D grass on. **Original look** turns every New Dawn effect off (including scene
