@@ -1316,6 +1316,105 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
     ImGui::PopStyleColor();
 }
 
+// gNewDawn.Debug.PaceLog (developer fixture): how fast the game itself runs, which the frame rate does not tell.
+// Every five seconds: the game's speed (game frames against the rate the game asked for), the rendered frames per
+// second against their target, and where a game frame's time went: everything outside the draw (the game's own
+// update, audio) and the drawing of its frames (including the frame limiter's waits).
+static void NewDawnPaceLog(int gameFps, int fps, int targetFps, int rendered, double drawMs) {
+    using Clock = std::chrono::steady_clock;
+    static Clock::time_point windowStart = Clock::now(), lastEnd = windowStart;
+    static double gameSeconds = 0.0, drawSum = 0.0, restSum = 0.0;
+    static int ticks = 0, frames = 0;
+    const Clock::time_point now = Clock::now();
+    restSum += std::chrono::duration<double, std::milli>(now - lastEnd).count() - drawMs;
+    lastEnd = now;
+    gameSeconds += 1.0 / gameFps;
+    drawSum += drawMs;
+    ticks++;
+    frames += rendered;
+    const double wall = std::chrono::duration<double>(now - windowStart).count();
+    if (wall >= 5.0) {
+        SPDLOG_INFO("NewDawn pace: game speed {:.1f}% ({:.2f} game frames/s of {}), {:.1f} rendered frames/s of {}; "
+                    "per game frame: update {:.2f} ms, draw {:.2f} ms; interpolating to {}",
+                    100.0 * gameSeconds / wall, ticks / wall, gameFps, frames / wall, targetFps, restSum / ticks,
+                    drawSum / ticks, fps);
+        windowStart = now;
+        gameSeconds = drawSum = restSum = 0.0;
+        ticks = frames = 0;
+    }
+}
+
+// The game draws target / game-rate pictures for every game frame, each paced to the target rate. A renderer that
+// cannot keep up with the target therefore makes every game frame longer, and the game runs in slow motion: on a
+// 144 Hz display a look that manages 70 pictures a second plays at half speed, with a frame rate that reads fine.
+// The game's speed is not the renderer's to give away, so this is the rate the renderer is keeping up with, and the
+// game interpolates to that instead of to the target: fewer pictures per game frame, the same game frames a second.
+//
+// What it watches is how long game frames take against the pacing of their pictures (count / rate), over a second.
+// More than 1.5% over, or two game frames running 10% over, and the rate comes down to what was achieved. After a
+// hold it tries 5% more for a third of a second at a time, keeps what holds, and goes back to the last rate that
+// held when a step does not: the hold doubles on every failed try (2 s up to 30 s), so a renderer at its limit is
+// asked about twice a minute. With a renderer that keeps up, nothing here ever changes anything.
+// gNewDawn.HoldGameSpeed = 0 turns it off.
+static int NewDawnSustainedFps(int targetFps, int gameFps, int lastFps, int lastCount) {
+    using Clock = std::chrono::steady_clock;
+    static Clock::time_point lastTick = Clock::now();
+    static double rate = 0.0, good = 0.0, tickSum = 0.0, pacedSum = 0.0;
+    static int ticks = 0, runningOver = 0, hold = 0, backoff = 40;
+    static bool climbing = false;
+    const Clock::time_point now = Clock::now();
+    const double tickMs = std::chrono::duration<double, std::milli>(now - lastTick).count();
+    lastTick = now;
+    if (targetFps <= gameFps || CVarGetInteger("gNewDawn.HoldGameSpeed", 1) == 0) {
+        rate = 0.0;
+        return targetFps;
+    }
+    if (rate <= 0.0 || rate > targetFps) { // first use, or the target came down
+        rate = good = targetFps;
+        climbing = false;
+        hold = ticks = runningOver = 0;
+        tickSum = pacedSum = 0.0;
+        backoff = 40;
+    }
+    if (lastFps <= 0 || lastCount <= 0 || tickMs > 500.0) { // nothing to judge, or a load rather than a pace
+        return (int)std::lround(rate);
+    }
+    const double pacedMs = 1000.0 * lastCount / lastFps;
+    tickSum += tickMs;
+    pacedSum += pacedMs;
+    ticks++;
+    runningOver = tickMs > 1.10 * pacedMs ? runningOver + 1 : 0;
+    const bool windowDone = ticks >= (climbing ? 6 : 20);
+    if (runningOver >= 2 || (windowDone && tickSum > 1.015 * pacedSum)) {
+        if (climbing) {
+            rate = good;
+            hold = backoff;
+            backoff = std::min(backoff * 2, 600);
+        } else {
+            // What these game frames achieved; the window's sums when it is a whole window, else the two frames'
+            const double over = runningOver >= 2 ? tickMs / pacedMs : tickSum / pacedSum;
+            rate = good = std::max<double>(gameFps, lastFps / over * 0.99);
+            hold = 40;
+        }
+        climbing = false;
+    } else if (!windowDone) {
+        return (int)std::lround(rate);
+    } else if (climbing || hold <= 0) {
+        good = rate; // a whole window on time at this rate
+        climbing = rate < targetFps;
+        if (climbing) {
+            rate = std::min<double>(targetFps, rate * 1.05 + 0.5);
+        } else {
+            backoff = 40;
+        }
+    } else {
+        hold -= ticks;
+    }
+    ticks = runningOver = 0;
+    tickSum = pacedSum = 0.0;
+    return (int)std::lround(rate);
+}
+
 // C->C++ Bridge
 extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
     {
@@ -1327,6 +1426,8 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
     int target_fps = OTRGlobals::Instance->GetInterpolationFPS();
     static int last_fps;
     static int last_update_rate;
+    static int last_target_fps;
+    static int last_count;
     static int time;
     int fps = target_fps;
     int original_fps = 60 / R_UPDATE_RATE;
@@ -1335,8 +1436,14 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
     if (target_fps == 20 || original_fps > target_fps) {
         fps = original_fps;
     }
+    // New Dawn: the rate the renderer keeps up with (the target itself when it does), so the game keeps its speed
+    const int sustained_fps = NewDawnSustainedFps(fps, original_fps, last_fps, last_count);
+    const int wanted_fps = fps;
+    fps = sustained_fps;
 
-    if (last_fps != fps || last_update_rate != R_UPDATE_RATE) {
+    // The carry is the last picture's distance to the game frame's end, in (-original_fps, 0] whatever the rate: a
+    // rate that only follows the renderer keeps it; a new target or game rate starts over, as before.
+    if (last_target_fps != wanted_fps || last_update_rate != R_UPDATE_RATE) {
         time = 0;
     }
 
@@ -1364,9 +1471,17 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
         count = 1;
     }
 
+    const bool paceLog = CVarGetInteger("gNewDawn.Debug.PaceLog", 0) != 0;
+    const auto drawStart = std::chrono::steady_clock::now();
     RunCommands(commands, start_time, step, next_original_frame, count);
+    if (paceLog) {
+        NewDawnPaceLog(original_fps, fps, wanted_fps, count,
+                       std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - drawStart).count());
+    }
 
     last_fps = fps;
+    last_target_fps = wanted_fps;
+    last_count = GfxDebuggerIsDebugging() ? 0 : count; // a debugger step is not the renderer's pace
     last_update_rate = R_UPDATE_RATE;
 
     {

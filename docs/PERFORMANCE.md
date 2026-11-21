@@ -85,6 +85,29 @@ Evidence: `termina_field_old_vs_new_cull_giHz.png` and `stock_pot_inn_old_vs_new
 - **MSAA 4 + RGBA16F** costs 0.1 ms in Clock Town and 0.6 ms in Termina Field (resolve bandwidth); High uses temporal AA without MSAA instead.
 - At 240 fps the Clock Towns are render-thread CPU-bound (display-list walk, interpolation, recorders); the GPU is idle half the frame there.
 
+## Game speed below the target frame rate
+The game draws `target fps / 20` pictures for every game frame, each paced to the target (`gMatchRefreshRate`: the
+display's refresh rate). Until 2026-11-21 that count was fixed, so a renderer below the target stretched every game
+frame: **game speed = achieved fps / target fps**, with a frame rate that reads fine. Measured in South Clock Town
+with a 144 fps target (`gNewDawn.Debug.PaceLog=1` logs game frames per second, rendered frames and the split every
+five seconds; VSync off so the target is not the headless display's 60):
+
+| Case | Before: game speed @ fps | Now: game speed @ fps |
+|---|---|---|
+| Ultra, 3840x2160 | 49% @ 71 | 100% @ 62 |
+| High, 3840x2160 | 55-70% @ 80-101 | 100% @ 102 |
+| Ultra + neural rendering, 1920x1080 | 79% @ 114 | 99.5% @ 104 |
+| Off / High / Ultra, 1920x1080 (the renderer keeps up) | 100% @ 144 | 100% @ 144 |
+
+`NewDawnSustainedFps` (`mm/2s2h/BenPort.cpp`) now interpolates to the rate the renderer keeps up with instead: it
+compares how long game frames take with the pacing of their pictures, comes down to what was achieved when they run
+over (1.5% over a second, or 10% twice in a row), and tries 5% more after a hold that doubles on each failed try.
+The frame rate settles a little under the renderer's raw limit (62 against 71 above): the depth read the game does
+once per game frame waits for the GPU, and exact game time is worth more than those pictures. Setting by setting,
+Ultra's cost over High at 3840x2160 is spread out (MSAA 4 is the largest single part: 68 to 82 fps without it); no
+one setting restores the speed. `gNewDawn.HoldGameSpeed=0` gives the old behaviour. Below 20 fps the game still
+slows: one picture per game frame is the least it can draw.
+
 ## Tier rebalance
 The measured targets were: High about 60% of Ultra, Medium about 35%, Low about 15% with the core look, Original native.
 
