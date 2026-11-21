@@ -3,6 +3,7 @@
 #include "NewDawnPresets.h"
 #include <libultraship/libultraship.h>
 #include <fast/newdawn_perf.h>
+#include <fast/newdawn_neural.h>
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -104,6 +105,13 @@ void RebuildText(double now, bool detailed, float avgMs, int draws) {
     std::sort(order.rbegin(), order.rend());
     for (size_t i = 0; i < order.size() && i < 6; i++) {
         sStages.push_back({ Fast::NewDawnPerfStageName(order[i].second), Fmt("%.2f ms", order[i].first) });
+    }
+    // The neural rendering network runs in Vulkan, outside the stage timers: its own time, and how often it lands.
+    NewDawnNeuralInfo neural;
+    Fast::NewDawnNeuralGet(&neural);
+    if (neural.state == 2 && neural.runMs > 0.0f) {
+        sStages.push_back({ "neural network (" + std::to_string(neural.height) + "p)",
+                            Fmt("%.1f ms", neural.runMs) + Fmt(" x %.0f/s", neural.runsPerSecond) });
     }
 
     auto* vp = ImGui::GetMainViewport();

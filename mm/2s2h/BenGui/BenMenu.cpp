@@ -28,6 +28,7 @@
 #include "build.h"
 
 #include <fast/Fast3dGui.h>
+#include <fast/newdawn_neural.h>
 #include <fast/Fast3dWindow.h>
 
 extern "C" {
@@ -627,6 +628,135 @@ static void RenderMm3dCharacters() {
     }
 }
 
+// Neural rendering (docs/NEURAL_RENDERING.md): the world image re-rendered by the DLSS 5 network, which the player
+// brings: New Dawn reads it out of their own nvngx_dlssnr.dll on this computer and ships no part of it.
+static void RenderNeuralRendering() {
+    static std::unique_ptr<pfd::open_file> picker;
+    static char pathBuf[1024] = {};
+    static std::string shownPath;
+    const std::string cvarPath = CVarGetString("gNewDawn.Neural.DllPath", "");
+    if (cvarPath != shownPath) { // follow the config (first frame, or changed elsewhere)
+        shownPath = cvarPath;
+        snprintf(pathBuf, sizeof(pathBuf), "%s", cvarPath.c_str());
+    }
+    const bool on = CVarGetInteger("gNewDawn.Neural.Enabled", 0) != 0;
+    UIWidgets::CVarCheckbox(
+        "Neural Rendering (experimental, needs your own DLSS file)", "gNewDawn.Neural.Enabled",
+        UIWidgets::CheckboxOptions()
+            .Color(UIWidgets::Colors::NewDawn)
+            .DefaultValue(false)
+            .Tooltip("Re-renders the 3D world with the DLSS 5 neural rendering network: new shading and material "
+                     "detail on the same geometry. The HUD and menus are left alone. Heavy: it needs a recent graphics "
+                     "card (measured on a Radeon RX 7800 XT) and the Modern Lighting Pipeline. Linux and OpenGL only "
+                     "for now."));
+    NewDawnNeuralInfo info;
+    Fast::NewDawnNeuralGet(&info);
+    if (info.state == 2 && info.runMs > 0.0f) {
+        ImGui::TextWrapped("%s. Now: %.1f ms a run, %.0f runs a second.", info.status, info.runMs, info.runsPerSecond);
+    } else if (on || info.state == 3) {
+        ImGui::TextColored(info.state == 3 ? ImVec4(1.0f, 0.55f, 0.35f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Text),
+                           "%s", !on && info.state != 3 ? "Off" : info.status);
+    } else {
+        ImGui::TextUnformatted("Off");
+    }
+    ImGui::SetNextItemWidth(-1.0f);
+    if (ImGui::InputTextWithHint("##nrdll", "Path to your nvngx_dlssnr.dll", pathBuf, sizeof(pathBuf),
+                                 ImGuiInputTextFlags_EnterReturnsTrue)) {
+        CVarSetString("gNewDawn.Neural.DllPath", pathBuf);
+        CVarSave();
+    }
+    if (picker && picker->ready(0)) {
+        const std::vector<std::string> chosen = picker->result();
+        picker.reset();
+        if (!chosen.empty()) {
+            CVarSetString("gNewDawn.Neural.DllPath", chosen[0].c_str());
+            CVarSave();
+        }
+    }
+    UIWidgets::ButtonOptions options = {};
+    options.color = UIWidgets::Colors::NewDawn;
+    options.tooltip = "Pick nvngx_dlssnr.dll (version 310.8.0) from a game you own that ships DLSS 5.";
+    if (UIWidgets::Button("Choose nvngx_dlssnr.dll", options) && !picker) {
+        picker = std::make_unique<pfd::open_file>(
+            "nvngx_dlssnr.dll", shownPath.empty() ? "." : shownPath,
+            std::vector<std::string>{ "DLSS neural rendering", "nvngx_dlssnr.dll *.dll" });
+    }
+    ImGui::SameLine();
+    options.tooltip = "Reads the network out of that file into this install's own folder (a few seconds). Done "
+                      "automatically the first time; press it after replacing the file.";
+    const bool canExtract = on && pathBuf[0] != 0 && info.state != 1;
+    if (!canExtract) {
+        ImGui::BeginDisabled();
+    }
+    if (UIWidgets::Button("Extract", options)) {
+        CVarSetInteger("gNewDawn.Neural.ExtractRequest", CVarGetInteger("gNewDawn.Neural.ExtractRequest", 0) + 1);
+    }
+    if (!canExtract) {
+        ImGui::EndDisabled();
+    }
+    static const std::unordered_map<int32_t, const char*> heights = {
+        { 360, "360p (fastest)" }, { 480, "480p" }, { 540, "540p" },
+        { 720, "720p" },           { 900, "900p" }, { 1080, "1080p" },
+    };
+    UIWidgets::CVarCombobox(
+        "Network resolution", "gNewDawn.Neural.Height", &heights,
+        UIWidgets::ComboboxOptions()
+            .Color(UIWidgets::Colors::NewDawn)
+            .DefaultIndex(540)
+            .Tooltip("The size of the picture the network works on. Its changes are carried onto the "
+                     "full-resolution image, so a smaller size costs detail in what it adds, not "
+                     "sharpness. Cost grows with the pixel count."));
+    static const std::unordered_map<int32_t, const char*> interleaves = {
+        { 1, "Every frame" },
+        { 2, "Every 2nd frame" },
+        { 3, "Every 3rd frame" },
+        { 4, "Every 4th frame" },
+    };
+    UIWidgets::CVarCombobox(
+        "Network runs", "gNewDawn.Neural.Interleave", &interleaves,
+        UIWidgets::ComboboxOptions()
+            .Color(UIWidgets::Colors::NewDawn)
+            .DefaultIndex(2)
+            .Tooltip("How often the network runs. Its work is spread over the frames in between, and "
+                     "its last result follows the camera until the next one lands."));
+    UIWidgets::CVarSliderFloat("Strength: %.2f", "gNewDawn.Neural.Strength",
+                               UIWidgets::FloatSliderOptions()
+                                   .Color(UIWidgets::Colors::NewDawn)
+                                   .Min(0.0f)
+                                   .Max(1.0f)
+                                   .Step(0.05f)
+                                   .Format("%.2f")
+                                   .DefaultValue(1.0f)
+                                   .Tooltip("How much of the network's change is applied."));
+    static const std::unordered_map<int32_t, const char*> styles = { { 0, "Default" },
+                                                                     { 1, "Natural" },
+                                                                     { 2, "Cinematic" } };
+    UIWidgets::CVarCombobox("Style", "gNewDawn.Neural.Style", &styles,
+                            UIWidgets::ComboboxOptions()
+                                .Color(UIWidgets::Colors::NewDawn)
+                                .DefaultIndex(0)
+                                .Tooltip("The style the network is asked for."));
+    UIWidgets::CVarCheckbox(
+        "Reuse global context (experimental)", "gNewDawn.Neural.VitReuse",
+        UIWidgets::CheckboxOptions()
+            .Color(UIWidgets::Colors::NewDawn)
+            .DefaultValue(false)
+            .Tooltip("Every second run reuses the network's whole-picture pass from the run before. "
+                     "Saves a little time; can make the picture's brightness waver."));
+    UIWidgets::CVarCheckbox(
+        "Run before anti-aliasing", "gNewDawn.Neural.BeforeTaa",
+        UIWidgets::CheckboxOptions()
+            .Color(UIWidgets::Colors::NewDawn)
+            .DefaultValue(false)
+            .Tooltip("Feeds the network the image before temporal anti-aliasing and lets TAA smooth "
+                     "the result, instead of working on the anti-aliased image."));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::TextWrapped("DLSS is NVIDIA's technology. New Dawn is not affiliated with NVIDIA and contains none of its "
+                       "files: the network is read on this computer from the nvngx_dlssnr.dll you supply, and you are "
+                       "responsible for the licence of that file.");
+    ImGui::PopStyleColor();
+}
+
 static void RenderAboutPage() {
     using namespace NewDawn::Theme;
     const float u = Unit();
@@ -1013,6 +1143,9 @@ void BenMenu::AddSettings() {
             "Set gNewDawn.MM3D.Path to your converted asset directory. OpenGL only."));
     AddWidget(path, "3DS Character Models", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
         RenderMm3dCharacters();
+    });
+    AddWidget(path, "Neural Rendering", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        RenderNeuralRendering();
     });
     path.group = "Image & Colour";
     AddWidget(path, "Scene Post-Processing", WIDGET_CVAR_CHECKBOX)
