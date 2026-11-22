@@ -30,6 +30,10 @@ const Row kRows[] = {
     { "gSettings.MSAAValue",                           I, { 4,     1,     2,     1,     1 } },
     { "gNewDawn.TAA.Enabled",                          I, { 1,     1,     0,     0,     0 } },
     { "gMatchRefreshRate",                             I, { 1,     1,     1,     1,     0 } },
+    // Neural rendering is the player's own switch and in no look (gNewDawn.Neural.Enabled is not here). These are
+    // the settings it runs with when they turn it on: measured to hold 60 fps on a Radeon RX 7800 XT.
+    { "gNewDawn.Neural.Height",                        I, { 540,   540,   540,   540,   540 } },
+    { "gNewDawn.Neural.Interleave",                    I, { 2,     2,     2,     2,     2 } },
     // Textures. Asset mods (gEnhancements.Mods.AlternateAssets) are the player's own choice and never part of a look.
     { "gNewDawn.Textures.Remastered",                  I, { 1,     1,     1,     0,     0 } },
     { "gNewDawn.Textures.AsyncAltLoad",                I, { 1,     1,     1,     1,     1 } },
