@@ -652,7 +652,11 @@ static void RenderNeuralRendering() {
     NewDawnNeuralInfo info;
     Fast::NewDawnNeuralGet(&info);
     if (info.state == 2 && info.runMs > 0.0f) {
-        ImGui::TextWrapped("%s. Now: %.1f ms a run, %.0f runs a second.", info.status, info.runMs, info.runsPerSecond);
+        const std::string cadence = info.interleave <= 1   ? "every frame"
+                                    : info.interleave == 2 ? "every 2nd frame"
+                                    : info.interleave == 3 ? "every 3rd frame"
+                                                           : "every " + std::to_string(info.interleave) + "th frame";
+        ImGui::TextWrapped("%s. Now: %s, %.0f results a second.", info.status, cadence.c_str(), info.runsPerSecond);
     } else if (on || info.state == 3) {
         ImGui::TextColored(info.state == 3 ? ImVec4(1.0f, 0.55f, 0.35f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Text),
                            "%s", !on && info.state != 3 ? "Off" : info.status);
@@ -717,17 +721,24 @@ static void RenderNeuralRendering() {
         UIWidgets::ComboboxOptions()
             .Color(UIWidgets::Colors::NewDawn)
             .DefaultIndex(2)
-            .Tooltip("How often the network runs. Its work is spread over the frames in between, and "
-                     "its last result follows the camera until the next one lands."));
+            .Tooltip("How often the network runs at most. Its work is spread over the frames in between, "
+                     "and its last result follows the camera until the next one lands."));
+    UIWidgets::CVarCheckbox("Hold the frame rate", "gNewDawn.Neural.Governor",
+                            UIWidgets::CheckboxOptions()
+                                .Color(UIWidgets::Colors::NewDawn)
+                                .DefaultValue(true)
+                                .Tooltip("Lets the network run less often than set while a scene is too heavy for both "
+                                         "it and the frame rate, and come back when there is room."));
     UIWidgets::CVarSliderFloat("Strength: %.2f", "gNewDawn.Neural.Strength",
                                UIWidgets::FloatSliderOptions()
                                    .Color(UIWidgets::Colors::NewDawn)
                                    .Min(0.0f)
-                                   .Max(1.0f)
+                                   .Max(2.0f)
                                    .Step(0.05f)
                                    .Format("%.2f")
                                    .DefaultValue(1.0f)
-                                   .Tooltip("How much of the network's change is applied."));
+                                   .Tooltip("How much of the network's change is applied: 0 leaves the picture "
+                                            "alone, 1 is the network's own picture, above 1 pushes past it."));
     static const std::unordered_map<int32_t, const char*> styles = { { 0, "Default" },
                                                                      { 1, "Natural" },
                                                                      { 2, "Cinematic" } };
@@ -735,7 +746,8 @@ static void RenderNeuralRendering() {
                             UIWidgets::ComboboxOptions()
                                 .Color(UIWidgets::Colors::NewDawn)
                                 .DefaultIndex(0)
-                                .Tooltip("The style the network is asked for."));
+                                .Tooltip("The style the network is asked for. Natural and Cinematic also calm the "
+                                         "colours a little, as the network's own presets do."));
     UIWidgets::CVarCheckbox(
         "Reuse global context (experimental)", "gNewDawn.Neural.VitReuse",
         UIWidgets::CheckboxOptions()
